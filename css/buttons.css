@@ -138,3 +138,31 @@
     box-shadow: 0 0 0 6px rgba(220, 38, 38, 0);
   }
 }
+
+/* ── FLOATING SCROLL BUTTON ── */
+.fab-bottom {
+  position: fixed;
+  bottom: 70px;
+  right: 20px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--pr);
+  color: #fff;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(59, 109, 224, 0.4);
+  z-index: 150;
+  transition: 0.2s;
+  opacity: 0;
+  pointer-events: none;
+}
+.fab-bottom.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.fab-bottom:hover {
+  background: var(--ph);
+  transform: scale(1.1);
+}

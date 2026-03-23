@@ -167,6 +167,22 @@ async function init() {
     btn.addEventListener('click', () => addRow(btn.dataset.table));
   });
 
+  // Floating scroll-to-bottom button
+  const fab = document.getElementById('fabBottom');
+  if (fab) {
+    fab.addEventListener('click', () => {
+      const tw = document.querySelector('.tab-view.active .tw');
+      if (tw) tw.scrollTo({ top: tw.scrollHeight, behavior: 'smooth' });
+    });
+    // Show/hide based on scroll position
+    document.addEventListener('scroll', e => {
+      const tw = e.target.closest?.('.tw');
+      if (!tw) return;
+      const nearBottom = tw.scrollHeight - tw.scrollTop - tw.clientHeight < 200;
+      fab.classList.toggle('show', !nearBottom && tw.scrollHeight > tw.clientHeight + 300);
+    }, true);
+  }
+
   // Beforeunload warning
   window.addEventListener('beforeunload', e => { if (state.hasChanges) { e.preventDefault(); e.returnValue = ''; } });
 
