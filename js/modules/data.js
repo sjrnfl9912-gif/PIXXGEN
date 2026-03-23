@@ -1,7 +1,7 @@
 import { getSupabase } from '../config.js';
 import { SHIP_FIELDS, PROD_FIELDS } from '../config.js';
-import { saveCache } from './storage.js';
-import { showLoading, toast } from './ui.js';
+import { saveCache } from '../services/storage.js';
+import { showLoading, toast } from '../services/uijs';
 
 export async function loadAllData() {
   try {
