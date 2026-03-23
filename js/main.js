@@ -1,137 +1,204 @@
-import { loadAllData, createNewRow } from './modules/data.js';
-import { renderShipmentTable, renderProductionTable } from './modules/table.js';
-import { backupJSON, exportToExcel } from './modules/export.js';
-import { loadCache, saveCache } from './services/storage.js';
-import { toast, customConfirm, debounce, getElement, showLoading } from './services/ui.js';
-import { debounceSearch, detectDuplicates, filterData, searchData } from './utils.js';
+// ═══════════════════════════════════════
+// MAIN.JS - Application Orchestrator
+// ═══════════════════════════════════════
+import { SHIP_FIELDS, PROD_FIELDS } from './config.js';
+import { state, rebuildTft, markDirty, markDupDirty } from './state.js';
+import { dbFetchAll } from './db.js';
+import { renderAll, renderShipmentTable, renderProductionTable } from './modules/table.js';
+import { saveCache, loadCache } from './services/storage.js';
+import { toast, showLoading, customConfirm } from './services/ui.js';
+import { init as initSelection } from './modules/selection.js';
+import { init as initFill } from './modules/fill.js';
+import { init as initContextMenu } from './modules/context-menu.js';
+import { init as initKeyboard } from './services/keyboard.js';
+import { init as initMobile } from './services/mobile.js';
+import { initRealtime } from './services/realtime.js';
+import { initKPI } from './modules/kpi.js';
+import { backupJSON, restoreJSON, exportAll } from './modules/export.js';
+import { buildMerge } from './modules/merge.js';
+import { saveAll } from './modules/dirty.js';
+import { initResize } from './modules/resize.js';
 
-// ═══ STATE ═══
-let shipD = [],
-  prodD = [],
-  mergeD = [];
-let curTab = 'ship',
-  shipFilt = 'all',
-  workerFilt = 'all';
-let shipShownDup = false,
-  prodShownDup = false;
-
-// ═══ EVENT SETUP ═══
-async function init() {
-  try {
-    // 모든 환경에서 실제 DB 연동
-    const { shipD: s, prodD: p } = await loadAllData();
-    shipD = s;
-    prodD = p;
-  } catch (error) {
-    console.error('데이터 로드 실패:', error);
-    toast('데이터 로드 실패', 'er');
+// ═══ ROW OPERATIONS ═══
+export function addRow(type) {
+  if (type === 'ship') {
+    const n = state.shipD.reduce((m, r) => Math.max(m, r.row_no || 0), 0) + 1;
+    const newRow = { _id: 'new_' + Date.now(), _new: true, row_no: n };
+    SHIP_FIELDS.forEach(f => { if (!newRow[f]) newRow[f] = null; });
+    state.shipD.push(newRow); state.dirty.inserts.ship.push(newRow);
+    markDirty(); markDupDirty(); renderShipmentTable();
+  } else {
+    const w = state.workerFilt !== 'all' ? state.workerFilt : null;
+    const newRow = { _id: 'new_' + Date.now(), _new: true, worker: w };
+    PROD_FIELDS.forEach(f => { if (!newRow[f]) newRow[f] = null; });
+    state.prodD.push(newRow); state.dirty.inserts.prod.push(newRow);
+    markDirty(); markDupDirty(); rebuildTft(); renderProductionTable();
   }
+  const tbId = type === 'ship' ? 'b1' : 'b2';
+  setTimeout(() => { const tb = document.getElementById(tbId); const last = tb?.lastElementChild; if (last) last.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50);
+  saveCache(state.shipD, state.prodD);
+  toast('행 추가됨 (저장 버튼으로 DB 반영)', 'info');
+}
 
+function cleanNull(type) {
+  const arr = type === 'ship' ? state.shipD : state.prodD;
+  const delKey = type === 'ship' ? 'ship' : 'prod';
+  const keyF = type === 'ship' ? ['product_name', 'detector_sn', 'company', 'country'] : ['prod_no', 'tft_sn', 'cpu_sn', 'main_board_sn'];
+  const nullRows = arr.filter(r => keyF.every(f => !r[f]));
+  if (!nullRows.length) { toast('빈 행이 없습니다', 'info'); return; }
+  customConfirm(nullRows.length + '개 빈 행을 삭제하시겠습니까?', () => {
+    nullRows.forEach(r => {
+      const isNew = String(r._id).startsWith('new_');
+      if (isNew) { const idx = state.dirty.inserts[delKey].findIndex(x => x._id === r._id); if (idx >= 0) state.dirty.inserts[delKey].splice(idx, 1); }
+      else { state.dirty.deletes[delKey].push(+r._id); const tbl = delKey === 'ship' ? 'shipment' : 'production'; delete state.dirty.updates[tbl + ':' + r._id]; }
+      const i = arr.findIndex(x => x._id === r._id); if (i >= 0) arr.splice(i, 1);
+    });
+    markDirty(); if (type === 'prod') rebuildTft();
+    markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
+    toast(nullRows.length + '개 빈 행 삭제 (저장 시 DB 반영)', 'info');
+  });
+}
+
+// ═══ DB LOAD ═══
+async function fullReload() {
+  toast('DB 전체 동기화 중...', 'info');
+  try {
+    const [sData, pData] = await Promise.all([dbFetchAll('shipment'), dbFetchAll('production')]);
+    state.shipD = sData.map(r => ({ ...r, _id: r.id }));
+    state.prodD = pData.map(r => ({ ...r, _id: r.id }));
+    rebuildTft(); markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
+    document.querySelector('.sync-dot').style.background = 'var(--ok)';
+    toast('DB 동기화 완료 (출하 ' + state.shipD.length + ' / 생산 ' + state.prodD.length + ')', 'ok');
+  } catch (e) {
+    console.error(e); toast('DB 연결 실패', 'er');
+    document.querySelector('.sync-dot').style.background = 'var(--er)';
+  }
+}
+
+// ═══ DEBOUNCE ═══
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// ═══ INIT ═══
+async function init() {
   // Tab navigation
-  document.querySelectorAll('.tab[data-tab]').forEach((tab) => {
+  document.querySelectorAll('.tab[data-tab]').forEach(tab => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach((t) => t.classList.remove('on'));
-      document.querySelectorAll('.tab-view').forEach((v) => v.classList.remove('active'));
+      const t = tab.dataset.tab;
+      state.curTab = t;
+      document.querySelectorAll('.tab').forEach(e => e.classList.remove('on'));
       tab.classList.add('on');
-      document.getElementById('v-' + tab.dataset.tab).classList.add('active');
-      curTab = tab.dataset.tab;
+      document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+      document.getElementById('v-' + t)?.classList.add('active');
       renderAll();
     });
   });
 
-  // Filter buttons
-  document.querySelectorAll('[data-filter]').forEach((chip) => {
+  // Filters (ship)
+  document.querySelectorAll('[data-filter][data-table="ship"]').forEach(chip => {
     chip.addEventListener('click', () => {
-      document.querySelectorAll(`[data-filter][data-table="${chip.dataset.table}"]`).forEach((c) => c.classList.remove('on'));
+      document.querySelectorAll('[data-filter][data-table="ship"]').forEach(c => c.classList.remove('on'));
       chip.classList.add('on');
-      if (chip.dataset.table === 'ship') {
-        shipFilt = chip.dataset.filter;
-      } else {
-        workerFilt = chip.dataset.filter;
-      }
-      renderAll();
+      state.shipFilt = chip.dataset.filter;
+      renderShipmentTable();
+    });
+  });
+
+  // Filters (prod)
+  document.querySelectorAll('[data-filter][data-table="prod"]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('[data-filter][data-table="prod"]').forEach(c => c.classList.remove('on'));
+      chip.classList.add('on');
+      state.workerFilt = chip.dataset.filter;
+      renderProductionTable();
     });
   });
 
   // Search boxes
-  const dR1 = debounceSearch(() => renderAll(), 200);
-  const dR2 = debounceSearch(() => renderAll(), 200);
-  const dR3 = debounceSearch(() => renderAll(), 200);
-
-  getElement('q1').addEventListener('input', (e) => {
-    getElement('sb1').classList.toggle('has-val', !!e.target.value);
-    dR1();
-  });
-
-  getElement('q2').addEventListener('input', (e) => {
-    getElement('sb2').classList.toggle('has-val', !!e.target.value);
-    dR2();
-  });
-
-  getElement('q3').addEventListener('input', (e) => {
-    getElement('sb3').classList.toggle('has-val', !!e.target.value);
-    dR3();
-  });
+  const dR1 = debounce(() => renderShipmentTable(), 200);
+  const dR2 = debounce(() => renderProductionTable(), 200);
+  const dR3 = debounce(() => { import('./modules/table.js').then(t => t.renderAll()); }, 200);
+  document.getElementById('q1')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR1(); });
+  document.getElementById('q2')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR2(); });
+  document.getElementById('q3')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR3(); });
 
   // Clear buttons
-  document.querySelectorAll('.s-clear').forEach((btn) => {
+  document.querySelectorAll('.s-clear').forEach(btn => {
+    btn.addEventListener('click', () => { const inp = btn.parentElement.querySelector('input'); inp.value = ''; inp.parentElement.classList.remove('has-val'); renderAll(); });
+  });
+
+  // Toolbar toggle (mobile)
+  document.querySelectorAll('.toolbar-toggle').forEach(btn => {
     btn.addEventListener('click', () => {
-      const input = btn.parentElement.querySelector('input');
-      input.value = '';
-      input.parentElement.classList.remove('has-val');
-      renderAll();
+      const ex = btn.closest('.toolbar')?.querySelector('.toolbar-extras');
+      if (ex) { const open = ex.classList.toggle('open'); btn.textContent = open ? '필터 ▲' : '필터 ▼'; }
     });
   });
+
+  // Duplicate toggle
+  document.getElementById('dupChip1')?.addEventListener('click', () => { state.dupMode.ship = !state.dupMode.ship; document.getElementById('dupChip1').classList.toggle('on', state.dupMode.ship); renderShipmentTable(); });
+  document.getElementById('dupChip2')?.addEventListener('click', () => { state.dupMode.prod = !state.dupMode.prod; document.getElementById('dupChip2').classList.toggle('on', state.dupMode.prod); renderProductionTable(); });
 
   // Main buttons
-  getElement('saveBtn').addEventListener('click', () => toast('저장 기능 준비 중', 'info'));
-  getElement('backupBtn').addEventListener('click', () => backupJSON(shipD, prodD));
-  getElement('reloadBtn').addEventListener('click', init);
-  getElement('exportBtn').addEventListener('click', () => {
-    const data = curTab === 'ship' ? shipD : curTab === 'prod' ? prodD : mergeD;
-    exportToExcel(data, `${curTab}_export.xlsx`);
-  });
+  document.getElementById('saveBtn')?.addEventListener('click', saveAll);
+  document.getElementById('backupBtn')?.addEventListener('click', backupJSON);
+  document.getElementById('restoreBtn')?.addEventListener('click', () => document.getElementById('restoreFile')?.click());
+  document.getElementById('restoreFile')?.addEventListener('change', e => restoreJSON(e.target));
+  document.getElementById('reloadBtn')?.addEventListener('click', fullReload);
+  document.getElementById('exportBtn')?.addEventListener('click', exportAll);
+  document.getElementById('buildMergeBtn')?.addEventListener('click', () => { buildMerge(); state.curTab = 'merge'; document.querySelectorAll('.tab').forEach(e => e.classList.remove('on')); document.querySelector('[data-tab="merge"]')?.classList.add('on'); document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active')); document.getElementById('v-merge')?.classList.add('active'); });
 
-  getElement('restoreBtn').addEventListener('click', () => {
-    getElement('restoreFile').click();
-  });
+  // Modal buttons
+  document.getElementById('modalCloseBtn')?.addEventListener('click', () => document.getElementById('modalBg')?.classList.remove('show'));
+  document.getElementById('modalBg')?.addEventListener('click', e => { if (e.target === document.getElementById('modalBg')) document.getElementById('modalBg').classList.remove('show'); });
+
+  // TFT match button
+  document.getElementById('tftMatchBtn')?.addEventListener('click', () => { /* TODO: TFT modal */ toast('TFT 매칭 모달 (준비 중)', 'info'); });
+
+  // Paste buttons (modal paste)
+  document.getElementById('pasteShipBtn')?.addEventListener('click', () => { /* TODO: Paste modal */ toast('붙여넣기 모달 (준비 중)', 'info'); });
+  document.getElementById('pasteProdBtn')?.addEventListener('click', () => { /* TODO: Paste modal */ toast('붙여넣기 모달 (준비 중)', 'info'); });
+
+  // Clean null buttons
+  document.getElementById('cleanShipBtn')?.addEventListener('click', () => cleanNull('ship'));
+  document.getElementById('cleanProdBtn')?.addEventListener('click', () => cleanNull('prod'));
 
   // Add row buttons
-  document.querySelectorAll('[data-table]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const type = btn.dataset.table;
-      const arr = type === 'ship' ? shipD : prodD;
-      arr.push(createNewRow(type));
-      saveCache(shipD, prodD);
-      renderAll();
-      toast('새 행이 추가되었습니다', 'info');
-    });
+  document.querySelectorAll('.addrow[data-table]').forEach(btn => {
+    btn.addEventListener('click', () => addRow(btn.dataset.table));
   });
 
+  // Beforeunload warning
+  window.addEventListener('beforeunload', e => { if (state.hasChanges) { e.preventDefault(); e.returnValue = ''; } });
+
+  // ═══ INIT MODULES ═══
+  initSelection();
+  initFill();
+  initContextMenu();
+  initKeyboard();
+  initMobile();
+  initKPI();
+
+  // ═══ LOAD DATA ═══
+  // Try cache first for instant display
+  const { ship, prod } = loadCache();
+  if (ship.length || prod.length) {
+    state.shipD = ship; state.prodD = prod;
+    rebuildTft(); markDupDirty(); renderAll();
+    toast('캐시 로드 (' + ship.length + '/' + prod.length + '건)', 'info');
+  }
+
+  // Then full DB sync
+  await fullReload();
+
+  // Init realtime after data loaded
+  initRealtime();
+
+  // Post-render: init resize on visible tables
+  setTimeout(() => { initResize('b1'); initResize('b2'); initResize('b3'); }, 100);
+
+  // Hide loading
   showLoading(false);
-  renderAll();
-  toast('DB 연동 완료', 'ok');
+  setTimeout(() => { const ov = document.getElementById('loadingOverlay'); if (ov) ov.remove(); }, 300);
 }
 
-function renderAll() {
-  const q1 = getElement('q1').value;
-  const q2 = getElement('q2').value;
-  const q3 = getElement('q3').value;
-
-  const shipFiltered = filterData(shipD, shipFilt, 'company');
-  const shipSearched = searchData(shipFiltered, q1, ['mgmt_no', 'product_name', 'detector_sn']);
-
-  const prodFiltered = filterData(prodD, workerFilt, 'worker');
-  const prodSearched = searchData(prodFiltered, q2, ['prod_no', 'tft_sn', 'cpu_sn']);
-
-  renderShipmentTable(shipSearched);
-  renderProductionTable(prodSearched);
-
-  getElement('cnt1').textContent = shipSearched.length;
-  getElement('cnt2').textContent = prodSearched.length;
-  getElement('p1').textContent = shipSearched.length + '건';
-  getElement('p2').textContent = prodSearched.length + '건';
-}
-
-// Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', init);
