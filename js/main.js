@@ -125,6 +125,7 @@ async function init() {
     });
   });
 
+  showLoading(false);
   renderAll();
   toast(isGitHubPages ? 'GitHub Pages 준비 완료' : 'DB 연동 완료', 'ok');
 }

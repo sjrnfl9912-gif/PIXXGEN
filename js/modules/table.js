@@ -1,4 +1,4 @@
-import { SHIP_HEADS, PROD_HEADS, MERGE_HEADS, MERGE_VC_START } from '../config.js';
+import { SHIP_FIELDS, PROD_FIELDS, SHIP_HEADS, PROD_HEADS, MERGE_HEADS, MERGE_VC_START } from '../config.js';
 
 export function renderTable(tableId, headId, bodyId, data, fields, heads) {
   const thead = document.getElementById(headId);
@@ -37,11 +37,11 @@ export function renderTable(tableId, headId, bodyId, data, fields, heads) {
 }
 
 export function renderShipmentTable(data) {
-  renderTable('t1', 'th1', 'b1', data, SHIP_HEADS.map((_, i) => i), SHIP_HEADS);
+  renderTable('t1', 'th1', 'b1', data, SHIP_FIELDS, SHIP_HEADS);
 }
 
 export function renderProductionTable(data) {
-  renderTable('t2', 'th2', 'b2', data, PROD_HEADS.map((_, i) => i), PROD_HEADS);
+  renderTable('t2', 'th2', 'b2', data, PROD_FIELDS, PROD_HEADS);
 }
 
 export function renderMergeTable(mergedData) {
