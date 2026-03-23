@@ -15,30 +15,13 @@ let curTab = 'ship',
 let shipShownDup = false,
   prodShownDup = false;
 
-// ═══ GITHUB PAGES 감지 ═══
-const isGitHubPages = window.location.hostname.includes('github.io');
-
 // ═══ EVENT SETUP ═══
 async function init() {
   try {
-    if (isGitHubPages) {
-      // GitHub Pages: 더미 데이터 사용
-      console.log('🌐 GitHub Pages 감지: 더미 데이터 사용');
-      shipD = [
-        { _id: 'dummy_1', mgmt_no: 'A001', product_name: 'PRUDENT_O_171TW', mfg_date: '2026-01-02', planned_ship_date: '2026-01-12', warranty: '1년', country: 'India', usage_type: '의료', company: 'PRUDENT', detector_sn: 'SN001', cbbox_sn: 'CB001', cbbox_ver: 'V1.0', detector_fw: 'FW1.2', manager_info: '홍길동', zview_sw: 'SW1.0', tft_sn: 'TFT001' },
-        { _id: 'dummy_2', mgmt_no: 'A002', product_name: 'PIXX_O_171TW', mfg_date: '2026-01-03', planned_ship_date: '2026-01-13', warranty: '2년', country: 'Korea', usage_type: '산업', company: 'PIXX', detector_sn: 'SN002', cbbox_sn: 'CB002', cbbox_ver: 'V1.1', detector_fw: 'FW1.3', manager_info: '김영희', zview_sw: 'SW1.1', tft_sn: 'TFT002' }
-      ];
-      prodD = [
-        { _id: 'dummy_3', prod_no: 'P001', tft_sn: 'TFT001', scintillator: 'CsI', cpu_sn: 'CPU001', main_board_sn: 'MB001', main_board_ver: 'V1', panel_type: 'A', completed_date: '2026-01-02', detector_fw: 'FW1.2', micom_ver: 'V1.0', bat_micom_ver: 'V0.9', worker: '홍승범', aed_sn: 'AED001', note1: '', note2: '' },
-        { _id: 'dummy_4', prod_no: 'P002', tft_sn: 'TFT002', scintillator: 'Gd2O2S', cpu_sn: 'CPU002', main_board_sn: 'MB002', main_board_ver: 'V1.1', panel_type: 'B', completed_date: '2026-01-03', detector_fw: 'FW1.3', micom_ver: 'V1.1', bat_micom_ver: 'V1.0', worker: '김남식', aed_sn: 'AED002', note1: '테스트', note2: '' }
-      ];
-    } else {
-      // 로컬: 실제 DB 연동
-      console.log('💻 로컬 환경 감지: DB 연동');
-      const { shipD: s, prodD: p } = await loadAllData();
-      shipD = s;
-      prodD = p;
-    }
+    // 모든 환경에서 실제 DB 연동
+    const { shipD: s, prodD: p } = await loadAllData();
+    shipD = s;
+    prodD = p;
   } catch (error) {
     console.error('데이터 로드 실패:', error);
     toast('데이터 로드 실패', 'er');
@@ -127,7 +110,7 @@ async function init() {
 
   showLoading(false);
   renderAll();
-  toast(isGitHubPages ? 'GitHub Pages 준비 완료' : 'DB 연동 완료', 'ok');
+  toast('DB 연동 완료', 'ok');
 }
 
 function renderAll() {
