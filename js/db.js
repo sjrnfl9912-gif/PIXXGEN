@@ -1,6 +1,9 @@
-import { supabase } from './config.js';
+import { getSupabase } from './config.js';
+
+const supabase = getSupabase();
 
 export async function dbInsert(table, data) {
+  if (!supabase) return null;
   const { data: row, error } = await supabase.from(table).insert(data).select().single();
   if (error) {
     console.error(`Insert failed on ${table}:`, error);
@@ -10,7 +13,7 @@ export async function dbInsert(table, data) {
 }
 
 export async function dbBulkInsert(table, arr) {
-  if (arr.length === 0) return [];
+  if (!supabase || arr.length === 0) return [];
   const { data: rows, error } = await supabase.from(table).insert(arr).select();
   if (error) {
     console.error(`Bulk insert failed on ${table}:`, error);
@@ -20,6 +23,7 @@ export async function dbBulkInsert(table, arr) {
 }
 
 export async function dbUpdate(table, id, data) {
+  if (!supabase) return null;
   const { data: row, error } = await supabase
     .from(table)
     .update(data)
@@ -34,7 +38,7 @@ export async function dbUpdate(table, id, data) {
 }
 
 export async function dbBulkUpdate(table, updates) {
-  if (updates.length === 0) return [];
+  if (!supabase || updates.length === 0) return [];
   const results = [];
   for (const { id, data } of updates) {
     const result = await dbUpdate(table, id, data);
@@ -44,6 +48,7 @@ export async function dbBulkUpdate(table, updates) {
 }
 
 export async function dbDelete(table, ids) {
+  if (!supabase) return false;
   const { error } = await supabase.from(table).delete().in('id', ids);
   if (error) {
     console.error(`Delete failed on ${table}:`, error);
@@ -53,6 +58,7 @@ export async function dbDelete(table, ids) {
 }
 
 export async function dbFetchAll(table) {
+  if (!supabase) return [];
   let all = [],
     from = 0,
     size = 1000;

@@ -1,9 +1,23 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Supabase 라이브러리는 HTML의 <script> 태그에서 전역으로 로드됨
+// window.supabase를 직접 사용합니다
 
 export const SB_URL = 'https://arfytjlszyztmeycoeqk.supabase.co';
 export const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFyZnl0amxzenl6dG1leWNvZXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3MjU2NDMsImV4cCI6MjA4OTMwMTY0M30.dkhBveG0eP3Tggl6kSwKYZf_waXbcJ5MMVGFoq44kb8';
 
-export const supabase = createClient(SB_URL, SB_KEY);
+// supabase 전역 객체를 export (HTML 로드 완료 후 사용)
+export const getSupabase = () => {
+  if (!window.supabase) {
+    console.error('Supabase 라이브러리가 로드되지 않았습니다');
+    return null;
+  }
+  // 처음 한 번만 초기화
+  if (!window.supabaseClient) {
+    window.supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
+  }
+  return window.supabaseClient;
+};
+
+export const supabase = getSupabase();
 
 // Table schemas
 export const SHIP_FIELDS = ['row_no', 'mgmt_no', 'product_name', 'mfg_date', 'planned_ship_date', 'warranty', 'country', 'usage_type', 'company', 'detector_sn', 'cbbox_sn', 'cbbox_ver', 'detector_fw', 'manager_info', 'zview_sw', 'tft_sn'];
