@@ -17,13 +17,13 @@ export async function loadAllData() {
 
     console.log('DB에서 데이터 로드 중...');
 
-    // 타임아웃 설정 (10초)
+     // 타임아웃 설정 (20초 - 대용량 데이터 로드용)
     const timeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('DB 연결 타임아웃')), 10000)
+      setTimeout(() => reject(new Error('DB 연결 타임아웃')), 20000)
     );
 
-    const shipmentPromise = supabase.from('shipment').select('*').limit(1000);
-    const productionPromise = supabase.from('production').select('*').limit(1000);
+    const shipmentPromise = supabase.from('shipment').select('*');
+    const productionPromise = supabase.from('production').select('*');
 
     const [shipmentRes, productionRes] = await Promise.race([
       Promise.all([shipmentPromise, productionPromise]),
