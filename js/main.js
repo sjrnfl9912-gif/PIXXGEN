@@ -128,19 +128,4 @@ function renderAll() {
 }
 
 // Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-  // 임시: 더미 데이터로 테스트
-  shipD = [
-    { _id: 'test_1', mgmt_no: 'A001', product_name: '테스트상품', mfg_date: '2026-03', planned_ship_date: '2026-04', warranty: '1년', country: 'KR', usage_type: '의료', company: 'PIXX', detector_sn: 'SN001', cbbox_sn: 'CB001', cbbox_ver: 'V1', detector_fw: 'FW1', manager_info: '홍길동', zview_sw: 'SW1', tft_sn: 'TFT001' }
-  ];
-  prodD = [
-    { _id: 'test_2', prod_no: 'P001', tft_sn: 'TFT001', scintillator: 'CsI', cpu_sn: 'CPU001', main_board_sn: 'MB001', main_board_ver: 'V1', panel_type: 'A', completed_date: '2026-03', detector_fw: 'FW1', micom_ver: 'V1', bat_micom_ver: 'V1', worker: '홍승범', aed_sn: 'AED001', note1: '', note2: '' }
-  ];
-  
-  console.log('더미 데이터 로드됨:', shipD.length, prodD.length);
-  renderAll();
-  toast('준비 완료', 'ok');
-  
-  // TODO: 이것을 DB 연동으로 나중에 변경
-  // init();
-});
+document.addEventListener('DOMContentLoaded', init);
