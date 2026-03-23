@@ -1,0 +1,181 @@
+/* ── MOBILE ── */
+@media (max-width: 640px) {
+  body {
+    font-size: 12px;
+  }
+
+  .topbar {
+    padding: 0 10px;
+  }
+
+  .topbar h1 {
+    font-size: 12px;
+  }
+
+  .btn-hide-m {
+    display: none !important;
+  }
+
+  /* 탭 바 */
+  .tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    position: relative;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .tab-right {
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  #saveStatus {
+    display: none;
+  }
+
+  /* 툴바 접이식 */
+  .toolbar {
+    padding: 6px 8px;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .toolbar-toggle {
+    display: inline-flex;
+    padding: 6px 10px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .toolbar-extras {
+    display: none;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 2px;
+  }
+
+  .toolbar-extras.open {
+    display: flex;
+  }
+
+  /* 검색박스 */
+  .sbox {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .pill {
+    font-size: 10px;
+    margin-left: 0;
+  }
+
+  /* 터치 타겟 확대 */
+  .chip {
+    padding: 8px 12px;
+    font-size: 10px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* 테이블: 가로 스크롤 + 관성 스크롤 + 더블탭 줌 방지 */
+  .tw {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+  }
+
+  table.g {
+    width: max-content;
+    min-width: 100%;
+    touch-action: manipulation;
+  }
+
+  table.g td {
+    height: 44px;
+    white-space: nowrap;
+    min-width: 52px;
+  }
+
+  table.g th {
+    min-width: 52px;
+  }
+
+  table.g td,
+  .c {
+    font-size: 11px;
+  }
+
+  /* 행번호 + 코너셀 sticky 고정 (가로 스크롤 시 첫 열 유지) */
+  td.rn {
+    position: sticky;
+    left: 0;
+    z-index: 4;
+  }
+
+  th.corner {
+    position: sticky;
+    left: 0;
+    z-index: 14;
+  }
+
+  /* 알파벳 헤더 행(A,B,C…) 모바일에서 숨김 */
+  table.g thead tr:first-child {
+    display: none;
+  }
+
+  .addrow {
+    padding: 10px 14px;
+  }
+
+  /* KPI */
+  .kpi-cards {
+    flex-direction: column;
+  }
+
+  .kpi-wrap {
+    padding: 10px;
+  }
+
+  .kpi-sec {
+    overflow: visible;
+    flex-shrink: 0;
+  }
+
+  .kpi-br {
+    flex-wrap: wrap;
+  }
+
+  .kpi-bv {
+    min-width: unset;
+  }
+
+  /* 모달 반응형 */
+  .cfm {
+    min-width: min(320px, 90vw);
+  }
+}
+
+@media (max-width: 400px) {
+  .topbar h1 .logo-txt {
+    display: none;
+  }
+
+  .tab {
+    padding: 8px 8px;
+    font-size: 10px;
+  }
+}

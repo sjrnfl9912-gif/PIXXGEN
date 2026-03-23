@@ -1,0 +1,140 @@
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--bd);
+  background: var(--sf);
+  color: var(--tx);
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: 0.12s;
+}
+
+.btn:hover {
+  background: var(--rh);
+}
+
+.btn-pr {
+  background: var(--pr);
+  color: #fff;
+  border-color: var(--pr);
+}
+
+.btn-pr:hover {
+  background: var(--ph);
+}
+
+.btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.btn-hide-m {
+  /* Hidden on mobile, shown on desktop */
+}
+
+/* ── CHIPS ── */
+.chip {
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 10px;
+  font-weight: 500;
+  background: var(--sf);
+  border: 1px solid var(--bd);
+  cursor: pointer;
+  transition: 0.12s;
+}
+
+.chip:hover {
+  border-color: var(--pr);
+  color: var(--pr);
+}
+
+.chip.on {
+  background: var(--pl);
+  border-color: var(--pr);
+  color: var(--pr);
+}
+
+/* ── DUPLICATE CHIP ── */
+.chip.dup {
+  border-color: var(--er);
+  color: var(--er);
+  background: #fff5f5;
+}
+
+.chip.dup.on {
+  background: #fee2e2;
+  border-color: var(--er);
+  color: var(--er);
+  font-weight: 600;
+}
+
+.dup-badge {
+  display: inline-block;
+  background: var(--er);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  margin-left: 4px;
+}
+
+/* ── ADD ROW ── */
+.addrow {
+  background: var(--pl);
+  border: 1.5px dashed rgba(59, 109, 224, 0.3);
+  border-radius: 6px;
+  margin: 6px 8px 8px;
+  padding: 7px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: 0.12s;
+  flex-shrink: 0;
+}
+
+.addrow:hover {
+  background: #d8e4ff;
+  border-color: var(--pr);
+}
+
+.addrow span {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--pr);
+}
+
+.addrow kbd {
+  font-size: 9px;
+  background: rgba(59, 109, 224, 0.12);
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: var(--pr);
+  font-family: inherit;
+  font-weight: 600;
+}
+
+#saveBtn.dirty {
+  background: #dc2626;
+  border-color: #dc2626;
+  animation: pulse-save 1.5s infinite;
+}
+
+@keyframes pulse-save {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(220, 38, 38, 0);
+  }
+}

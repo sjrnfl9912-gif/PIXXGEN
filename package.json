@@ -1,0 +1,16 @@
+{
+  "name": "pixxgen",
+  "version": "1.0.0",
+  "description": "출하 관리 시스템",
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-modules node_modules/jest/bin/jest.js",
+    "dev": "python -m http.server 8000"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  }
+}

@@ -1,0 +1,1883 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=3.0, user-scalable=yes">
+<title>출하 관리 시스템</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+:root{--bg:#eef1f5;--sf:#fff;--bd:#d8dce6;--tx:#1a1d26;--ts:#6b7280;--pr:#3b6de0;--ph:#2f5bc4;--pl:#e8eeff;--ok:#22c55e;--wn:#f59e0b;--er:#ef4444;--hd:#1b2537;--ht:#e2e8f0;--rh:#edf2ff;--ra:#f6f8fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--tx);font-size:13px;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+html{height:100vh;height:100dvh;overflow:hidden}
+
+/* ── TOPBAR ── */
+.top-fixed{flex-shrink:0;z-index:100}
+.tab-view{display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.tab-view.active{display:flex}
+.topbar{background:linear-gradient(135deg,#0f172a,#1a365d);color:#e2e8f0;height:46px;padding:0 20px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.topbar .logo{width:24px;height:24px;background:var(--pr);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.sync{display:flex;align-items:center;gap:5px;font-size:11px;color:#94a3b8}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--ok);animation:blink 2s infinite}
+@keyframes blink{50%{opacity:.4}}
+
+/* ── TABS ── */
+.tabs{background:var(--sf);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:0;box-shadow:0 2px 4px rgba(0,0,0,.06)}
+.tab{padding:10px 16px;font-size:12px;font-weight:500;color:var(--ts);cursor:pointer;border-bottom:2px solid transparent;transition:.15s}
+.tab:hover{color:var(--tx);background:var(--rh)}
+.tab.on{color:var(--pr);border-color:var(--pr);font-weight:600}
+.tab .cnt{background:rgba(59,109,224,.1);color:var(--pr);padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700;margin-left:4px}
+.tab-right{margin-left:auto;display:flex;gap:6px;align-items:center;padding:4px 0}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:5px;font-size:11px;font-weight:500;border:1px solid var(--bd);background:var(--sf);color:var(--tx);cursor:pointer;font-family:inherit;white-space:nowrap;transition:.12s}
+.btn:hover{background:var(--rh)}
+.btn-pr{background:var(--pr);color:#fff;border-color:var(--pr)}
+.btn-pr:hover{background:var(--ph)}
+.btn svg{width:13px;height:13px}
+
+/* ── TOOLBAR ── */
+.toolbar{display:flex;align-items:center;padding:8px 16px;gap:6px;flex-wrap:wrap;background:var(--bg);flex-shrink:0}
+.sbox{display:flex;align-items:center;background:var(--sf);border:1px solid var(--bd);border-radius:5px;padding:0 8px;width:220px}
+.sbox:focus-within{border-color:var(--pr)}
+.sbox input{border:none;outline:none;padding:6px;font-size:11px;font-family:inherit;width:100%;background:transparent}
+.sbox .s-clear{border:none;background:none;cursor:pointer;font-size:14px;color:var(--ts);padding:0 4px;line-height:1;display:none}
+.sbox .s-clear:hover{color:var(--er)}
+.sbox.has-val .s-clear{display:block}
+.chip{padding:4px 10px;border-radius:14px;font-size:10px;font-weight:500;background:var(--sf);border:1px solid var(--bd);cursor:pointer;transition:.12s}
+.chip:hover{border-color:var(--pr);color:var(--pr)}
+.chip.on{background:var(--pl);border-color:var(--pr);color:var(--pr)}
+.pill{padding:4px 10px;border-radius:14px;font-size:10px;font-weight:600;background:var(--pl);color:var(--pr);margin-left:auto}
+
+/* ── DUPLICATE ── */
+.chip.dup{border-color:var(--er);color:var(--er);background:#fff5f5}
+.chip.dup.on{background:#fee2e2;border-color:var(--er);color:var(--er);font-weight:600}
+td.dup-cell{background:#fef2f2 !important}
+td.dup-cell input.c{color:var(--er) !important;font-weight:600 !important}
+.dup-badge{display:inline-block;background:var(--er);color:#fff;font-size:8px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:4px}
+
+/* ── TABLE ── */
+.tw{padding:0 8px 8px;overflow:auto;flex:1;min-height:0;border-radius:6px;position:relative}
+table.g{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0;background:var(--sf);box-shadow:0 1px 4px rgba(0,0,0,.06)}
+table.g thead{position:sticky;top:0;z-index:10}
+table.g th{background:var(--hd);color:var(--ht);padding:5px 4px;font-size:9px;font-weight:500;text-align:center;border-right:1px solid rgba(255,255,255,.05);white-space:pre-line;line-height:1.3;user-select:none}
+table.g th:last-child{border-right:none}
+table.g th.al{background:#2a3a52;cursor:pointer;font-size:8px;color:#7a8ba4;padding:3px 2px}
+table.g th.al:hover{background:#3a4f6e;color:#fff}
+table.g th.al.sel{background:var(--pr);color:#fff}
+table.g th.vc{background:#1a3352}
+table.g th .sub{display:block;font-size:7px;opacity:.45;margin-top:1px}
+table.g td{padding:2px 3px;border-bottom:1px solid #eff1f5;border-right:1px solid #f5f6f9;font-size:10.5px;white-space:nowrap;height:26px;position:relative;user-select:none}
+table.g tr:nth-child(even) td{background:var(--ra)}
+table.g tr:hover td:not(.sel):not(.sel-r){background:var(--rh)}
+td.rn{width:30px;min-width:30px;text-align:center;color:var(--ts);font-size:9px;font-weight:500;background:#f3f5f8 !important;cursor:pointer;border-right:1px solid #dde1e9 !important}
+td.rn:hover{background:#dde5ff !important;color:var(--pr)}
+td.rn.sel{background:var(--pl) !important;color:var(--pr);font-weight:700}
+th.corner{background:#2a3a52 !important;width:30px;min-width:30px;cursor:pointer}
+th.corner:hover{background:#3a4f6e !important}
+
+/* ── CELLS ── */
+.cw{position:relative;overflow:hidden}
+.c{width:100%;border:none;outline:none;background:transparent;font-family:inherit;font-size:10.5px;padding:1px 2px;color:var(--tx);cursor:cell;caret-color:transparent}
+.c.edit{cursor:text;caret-color:var(--tx);background:#fffde7}
+.c.vl{color:var(--pr);font-weight:500;pointer-events:none;background:rgba(59,109,224,.02)}
+.fh{position:absolute;right:-1px;bottom:-1px;width:7px;height:7px;background:var(--pr);border:1px solid #fff;cursor:crosshair;z-index:5;opacity:0;transition:.1s}
+td:hover .fh,td:focus-within .fh{opacity:1}
+
+/* ── SELECTION ── */
+td.sel{background:#b8ccff !important}
+td.sel-r{background:#c8d9ff !important}
+td.sel-r input.c{color:#1a1d26 !important}
+.sel-box{position:absolute;pointer-events:none;border:2px solid #1a56db;box-sizing:border-box;z-index:20}
+td.chg{animation:saved .6s ease-out}
+@keyframes saved{0%{background:#dcfce7}100%{background:transparent}}
+td.fill-r{background:rgba(59,109,224,.08) !important;border-bottom:1px dashed var(--pr) !important}
+
+/* ── CONTEXT MENU ── */
+.ctx{position:fixed;background:var(--sf);border:1px solid var(--bd);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:250;min-width:160px;padding:4px 0;display:none}
+.ctx.show{display:block}
+.ctx-i{padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.ctx-i:hover{background:var(--rh)}
+.ctx-i.red{color:var(--er)}
+.ctx-i.red:hover{background:#fef2f2}
+.ctx-i kbd{font-size:9px;color:var(--ts);margin-left:auto}
+.ctx-s{height:1px;background:var(--bd);margin:3px 0}
+
+/* ── MODAL ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:var(--sf);border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.15);width:680px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column}
+.modal-h{padding:16px 20px;border-bottom:1px solid var(--bd)}
+.modal-h h3{font-size:14px;font-weight:600}
+.modal-h p{font-size:11px;color:var(--ts);margin-top:2px}
+.modal-b{padding:14px 20px;flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.modal-b textarea{width:100%;height:100px;border:1px solid var(--bd);border-radius:5px;padding:8px;font-family:Consolas,monospace;font-size:10px;resize:vertical;outline:none;background:#fafbfc}
+.modal-b textarea:focus{border-color:var(--pr)}
+.mprev{border:1px solid var(--bd);border-radius:5px;overflow:auto;max-height:220px;background:#fafbfc}
+.mprev table{width:100%;border-collapse:collapse;font-size:10px}
+.mprev th{background:var(--hd);color:var(--ht);padding:4px 6px;text-align:left;position:sticky;top:0;font-weight:500;font-size:9px}
+.mprev td{padding:3px 6px;border-bottom:1px solid #eee}
+.mprev tr:hover td{background:var(--rh)}
+.modal-f{padding:12px 20px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.modal-f .cnt{margin-right:auto;font-size:11px;font-weight:600;color:var(--pr)}
+
+/* ── ADD ROW ── */
+.addrow{background:var(--pl);border:1.5px dashed rgba(59,109,224,.3);border-radius:6px;margin:6px 8px 8px;padding:7px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:.12s;flex-shrink:0}
+.addrow:hover{background:#d8e4ff;border-color:var(--pr)}
+.addrow span{font-size:11px;font-weight:500;color:var(--pr)}
+.addrow kbd{font-size:9px;background:rgba(59,109,224,.12);padding:2px 5px;border-radius:3px;color:var(--pr);font-family:inherit;font-weight:600}
+
+/* ── TOAST ── */
+.toast-box{position:fixed;bottom:16px;right:16px;z-index:300;display:flex;flex-direction:column;gap:4px}
+.toast{background:#1e293b;color:#fff;padding:8px 14px;border-radius:6px;font-size:11px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.15);animation:tin .2s ease-out;display:flex;align-items:center;gap:6px}
+.toast.ok{border-left:3px solid var(--ok)}.toast.er{border-left:3px solid var(--er)}.toast.info{border-left:3px solid var(--pr)}
+@keyframes tin{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+
+/* ── FILL PREVIEW ── */
+.fill-tip{position:fixed;background:#1e293b;color:#fff;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:500;pointer-events:none;z-index:250}
+
+/* ── CONFIRM MODAL ── */
+.cfm-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:flex;align-items:center;justify-content:center}
+.cfm{background:var(--sf);border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.18);padding:24px;min-width:320px;max-width:90vw;text-align:center}
+.cfm-msg{font-size:13px;line-height:1.6;white-space:pre-line;margin-bottom:18px;color:var(--tx)}
+.cfm-btns{display:flex;gap:8px;justify-content:center}
+.cfm-btns .btn{min-width:80px;justify-content:center}
+
+/* ── RESIZE ── */
+.resizer{position:absolute;right:0;top:0;width:4px;height:100%;cursor:col-resize;z-index:5}
+.resizer:hover,.resizer.on{background:var(--pr);opacity:.4}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{height:6px;width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#bfc6d4;border-radius:3px}
+
+/* ── LOADING OVERLAY ── */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;transition:opacity .3s}
+.loading-overlay.hide{opacity:0;pointer-events:none}
+.loading-spinner{width:36px;height:36px;border:3px solid var(--bd);border-top-color:var(--pr);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:13px;color:var(--ts);font-weight:500}
+
+#saveBtn.dirty{background:#dc2626;border-color:#dc2626;animation:pulse-save 1.5s infinite}
+@keyframes pulse-save{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.4)}50%{box-shadow:0 0 0 6px rgba(220,38,38,0)}}
+
+/* ── KPI ── */
+.kpi-wrap{padding:14px 16px;overflow:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:14px}.kpi-wrap>*{flex-shrink:0}
+.kpi-cards{display:flex;gap:10px;flex-wrap:wrap}
+.kpi-card{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:14px 18px;min-width:150px;flex:1}
+.kpi-card .kc-lbl{font-size:10px;color:var(--ts);font-weight:500;margin-bottom:4px}
+.kpi-card .kc-val{font-size:24px;font-weight:700;color:var(--tx);line-height:1.1}
+.kpi-card .kc-val span{font-size:12px;font-weight:500}
+.kpi-card .kc-sub{font-size:9px;color:var(--ts);margin-top:3px}
+.kpi-card.hi{border-color:var(--pr);background:var(--pl)}.kpi-card.hi .kc-val{color:var(--pr)}
+.kpi-card.ok2{border-color:var(--ok);background:#f0fdf4}.kpi-card.ok2 .kc-val{color:#16a34a}
+.kpi-sec{background:var(--sf);border:1px solid var(--bd);border-radius:8px;overflow:visible;flex-shrink:0}
+.kpi-sec-h{padding:9px 14px;background:var(--hd);color:var(--ht);font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px}
+table.kt{width:100%;border-collapse:collapse}
+table.kt th{background:#2a3a52;color:var(--ht);padding:7px 10px;font-size:9px;font-weight:500;text-align:center;border-right:1px solid rgba(255,255,255,.08);white-space:nowrap}
+table.kt th.tl{text-align:left}
+table.kt td{padding:6px 10px;font-size:11px;border-bottom:1px solid #f0f2f5;border-right:1px solid #f5f6f9;text-align:center;vertical-align:middle}
+table.kt tr:hover td{background:var(--rh)}
+table.kt td.wn{text-align:left;font-weight:600;color:var(--tx);background:#f8f9fc;white-space:nowrap}
+table.kt td.tc{background:#eef2ff;font-weight:600;color:var(--pr)}
+table.kt tr.tr td{background:var(--hd)!important;color:var(--ht);font-weight:600}
+table.kt tr.tr .kn{color:#e2e8f0;font-size:14px}
+table.kt tr.tr .ka{color:#7eb3f5;opacity:1}
+table.kt tr.tr div[style*="opacity"]{color:#94a3b8;opacity:1!important}
+.kn{font-size:15px;font-weight:700;color:var(--tx)}
+.ka{font-size:9px;color:var(--ts);margin-top:1px}
+.kpi-bars{padding:10px 16px;display:flex;flex-direction:column;gap:8px}
+.kpi-br{display:flex;align-items:center;gap:10px}
+.kpi-bn{width:64px;font-size:10px;font-weight:600;text-align:right;color:var(--ts);flex-shrink:0}
+.kpi-b{flex:1;background:#eef1f5;border-radius:4px;height:18px;overflow:hidden}
+.kpi-bf{height:100%;background:linear-gradient(90deg,var(--pr),#6b8ef5);border-radius:4px;transition:width .4s}
+.kpi-bv{font-size:10px;font-weight:600;color:var(--tx);white-space:nowrap;min-width:80px}
+.kpi-ys{background:var(--sf);border:1px solid var(--bd);border-radius:5px;padding:5px 8px;font-size:11px;font-family:inherit;outline:none;cursor:pointer}
+.kpi-ys:focus{border-color:var(--pr)}
+.kpi-empty{padding:60px;text-align:center;color:var(--ts);font-size:13px}
+
+/* ── TOOLBAR TOGGLE (mobile only) ── */
+.toolbar-toggle{display:none}
+.toolbar-extras{display:contents}
+
+/* ── MOBILE ── */
+@media(max-width:640px){
+  body{font-size:12px}
+  .topbar{padding:0 10px}
+  .topbar h1{font-size:12px}
+  .btn-hide-m{display:none!important}
+
+  /* 탭 바 */
+  .tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:relative}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;flex-shrink:0;padding:8px 10px;font-size:11px}
+  .tab-right{gap:4px;flex-shrink:0}
+  #saveStatus{display:none}
+
+  /* 툴바 접이식 */
+  .toolbar{padding:6px 8px;gap:6px;flex-wrap:wrap;align-items:center}
+  .toolbar-toggle{display:inline-flex;padding:6px 10px;font-size:11px;flex-shrink:0}
+  .toolbar-extras{display:none;width:100%;flex-wrap:wrap;gap:6px;padding-top:2px}
+  .toolbar-extras.open{display:flex}
+
+  /* 검색박스 */
+  .sbox{flex:1;min-width:0}
+  .pill{font-size:10px;margin-left:0}
+
+  /* 터치 타겟 확대 */
+  .chip{padding:8px 12px;font-size:10px;min-height:36px;display:inline-flex;align-items:center}
+
+  /* 테이블: 가로 스크롤 + 관성 스크롤 + 더블탭 줌 방지 */
+  .tw{-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
+  table.g{width:max-content;min-width:100%;touch-action:manipulation}
+  table.g td{height:44px;white-space:nowrap;min-width:52px}
+  table.g th{min-width:52px}
+  table.g td,.c{font-size:11px}
+
+  /* 행번호 + 코너셀 sticky 고정 (가로 스크롤 시 첫 열 유지) */
+  td.rn{position:sticky;left:0;z-index:4}
+  th.corner{position:sticky;left:0;z-index:14}
+
+  /* 알파벳 헤더 행(A,B,C…) 모바일에서 숨김 */
+  table.g thead tr:first-child{display:none}
+
+  .addrow{padding:10px 14px}
+
+  /* KPI */
+  .kpi-cards{flex-direction:column}
+  .kpi-wrap{padding:10px}
+  .kpi-sec{overflow:visible;flex-shrink:0}
+  .kpi-br{flex-wrap:wrap}
+  .kpi-bv{min-width:unset}
+
+  /* 모달 반응형 */
+  .cfm{min-width:min(320px,90vw)}
+}
+@media(max-width:400px){
+  .topbar h1 .logo-txt{display:none}
+  .tab{padding:8px 8px;font-size:10px}
+}
+/* ── Mobile proxy input (KakaoTalk webview keyboard workaround) ── */
+#mob-proxy{position:fixed;left:-600px;top:0;width:10px;height:44px;font-size:16px;border:none;outline:none;z-index:9999;background:transparent;padding:0;opacity:.01;pointer-events:none;-webkit-user-select:text;user-select:text}
+
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div><div class="loading-text">DB 동기화 중...</div></div>
+
+<div class="top-fixed">
+  <div class="topbar">
+    <h1><span class="logo">📦</span>통합 출하 관리 시스템</h1>
+    <div class="sync"><div class="sync-dot"></div>동기화 중</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" onclick="swTab('ship')">검사포장 출하이력<span class="cnt" id="cnt1">0</span></div>
+    <div class="tab" onclick="swTab('prod')">생산관리대장<span class="cnt" id="cnt2">0</span></div>
+    <div class="tab" onclick="swTab('merge')">통합취합본<span class="cnt" id="cnt3">0</span></div>
+    <div class="tab" onclick="swTab('kpi')">📊 KPI 통계</div>
+    <div class="tab-right">
+      <span id="saveStatus" style="font-size:10px;color:var(--ok)">저장 완료</span>
+      <button class="btn btn-pr" id="saveBtn" onclick="saveAll()" style="font-weight:600">💾 저장</button>
+      <button class="btn btn-hide-m" onclick="backupJSON()">📥 백업</button>
+      <button class="btn btn-hide-m" onclick="document.getElementById('restoreFile').click()">📤 복원</button>
+      <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreJSON(this)">
+      <button class="btn" onclick="fullReload()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg><span class="btn-hide-m">새로고침</span></button>
+      <button class="btn btn-pr btn-hide-m" onclick="exportAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>엑셀 추출</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TAB: 검사포장 ══ -->
+<div id="v-ship" class="tab-view active">
+  <div class="toolbar">
+    <div class="sbox" id="sb1"><input placeholder="검색..." id="q1" oninput="this.parentElement.classList.toggle('has-val',!!this.value);dR1()"><button class="s-clear" onclick="document.getElementById('q1').value='';this.parentElement.classList.remove('has-val');R1();">&times;</button></div>
+    <button class="btn toolbar-toggle" onclick="toggleTb(this)">필터 ▼</button>
+    <span class="pill" id="p1">0건</span>
+    <div class="toolbar-extras">
+      <div class="chip on" onclick="setF(this,'all')">전체</div>
+      <div class="chip" onclick="setF(this,'PIXX')">PIXX</div>
+      <div class="chip" onclick="setF(this,'PRUDENT')">PRUDENT</div>
+      <div class="chip" onclick="setF(this,'OPTIMUM')">OPTIMUM</div>
+      <div class="chip dup" id="dupChip1" onclick="toggleDup('ship')">중복 S/N<span class="dup-badge" id="dupCnt1" style="display:none">0</span></div>
+      <button class="btn" onclick="openModal('tft')">🔗 TFT 매칭</button>
+      <button class="btn" onclick="openModal('paste-s')">📋 붙여넣기</button>
+      <button class="btn" onclick="cleanNull('ship')" title="빈 행 정리">🧹 빈행 삭제</button>
+    </div>
+  </div>
+  <div class="tw"><table class="g" id="t1"><thead id="th1"></thead><tbody id="b1"></tbody></table></div>
+  <div class="addrow" onclick="addRow('ship')"><span>+ 새 행 추가</span><kbd>Ctrl+Enter</kbd></div>
+</div>
+
+<!-- ══ TAB: 생산관리대장 ══ -->
+<div id="v-prod" class="tab-view">
+  <div class="toolbar">
+    <div class="sbox" id="sb2"><input placeholder="검색..." id="q2" oninput="this.parentElement.classList.toggle('has-val',!!this.value);dR2()"><button class="s-clear" onclick="document.getElementById('q2').value='';this.parentElement.classList.remove('has-val');R2();">&times;</button></div>
+    <button class="btn toolbar-toggle" onclick="toggleTb(this)">필터 ▼</button>
+    <span class="pill" id="p2">0건</span>
+    <div class="toolbar-extras">
+      <div class="chip on" onclick="setW(this,'all')">전체</div>
+      <div class="chip" onclick="setW(this,'홍승범')">홍승범</div>
+      <div class="chip" onclick="setW(this,'김남식')">김남식</div>
+      <div class="chip" onclick="setW(this,'이다니엘')">이다니엘</div>
+      <div class="chip" onclick="setW(this,'방정완')">방정완</div>
+      <div class="chip dup" id="dupChip2" onclick="toggleDup('prod')">중복 S/N<span class="dup-badge" id="dupCnt2" style="display:none">0</span></div>
+      <button class="btn" onclick="openModal('paste-p')">📋 붙여넣기</button>
+      <button class="btn" onclick="cleanNull('prod')" title="빈 행 정리">🧹 빈행 삭제</button>
+    </div>
+  </div>
+  <div class="tw"><table class="g" id="t2"><thead id="th2"></thead><tbody id="b2"></tbody></table></div>
+  <div class="addrow" onclick="addRow('prod')"><span>+ 새 행 추가</span><kbd>Ctrl+Enter</kbd></div>
+</div>
+
+<!-- ══ TAB: 통합취합본 ══ -->
+<div id="v-merge" class="tab-view">
+  <div class="toolbar">
+    <div class="sbox" id="sb3"><input placeholder="검색..." id="q3" oninput="this.parentElement.classList.toggle('has-val',!!this.value);dR3()"><button class="s-clear" onclick="document.getElementById('q3').value='';this.parentElement.classList.remove('has-val');R3();">&times;</button></div>
+    <button class="btn btn-pr" onclick="buildMerge()">🔄 출하+생산 취합</button>
+    <span class="pill" id="p3">0건</span>
+  </div>
+  <div class="tw"><table class="g" id="t3"><thead id="th3"></thead><tbody id="b3"></tbody></table></div>
+</div>
+
+<!-- ══ TAB: KPI ══ -->
+<div id="v-kpi" class="tab-view">
+  <div class="toolbar">
+    <label style="font-size:11px;font-weight:500;color:var(--ts)">연도</label>
+    <select class="kpi-ys" id="kpiYear" onchange="renderKPI()"></select>
+    <div class="chip on" id="kpiH0" onclick="setKpiH(0)">전체</div>
+    <div class="chip" id="kpiH1" onclick="setKpiH(1)">상반기 (1~6월)</div>
+    <div class="chip" id="kpiH2" onclick="setKpiH(2)">하반기 (7~12월)</div>
+    <span class="pill" id="kpiTotal">0건</span>
+  </div>
+  <div class="kpi-wrap" id="kpiWrap"></div>
+</div>
+
+<!-- Context Menu -->
+<div class="ctx" id="ctx">
+  <div class="ctx-i" onclick="ctxDo('copy')">📋 복사<kbd>Ctrl+C</kbd></div>
+  <div class="ctx-i" onclick="ctxDo('cut')">✂ 잘라내기<kbd>Ctrl+X</kbd></div>
+  <div class="ctx-i" onclick="ctxDo('paste')">📌 붙여넣기<kbd>Ctrl+V</kbd></div>
+  <div class="ctx-s"></div>
+  <div class="ctx-i" onclick="ctxDo('addrow')">➕ 행 추가</div>
+  <div class="ctx-i red" onclick="ctxDo('delrow')">🗑 행 삭제<kbd>Ctrl+-</kbd></div>
+</div>
+
+<!-- Modal (shared) -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-h"><h3 id="mTitle"></h3><p id="mDesc"></p></div>
+    <div class="modal-b">
+      <textarea id="mArea" spellcheck="false"></textarea>
+      <div class="mprev" id="mPrev"></div>
+    </div>
+    <div class="modal-f">
+      <span class="cnt" id="mCnt">0건</span>
+      <button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn btn-pr" onclick="confirmModal()">적용</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-box" id="toasts"></div>
+
+<!-- Mobile proxy input: 처음부터 readonly가 아닌 input → KakaoTalk webview에서 키보드 올리기 위해 사용 -->
+<input id="mob-proxy" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+<script>
+// ═══════════════════════════════════════
+// DOM CACHE
+// ═══════════════════════════════════════
+const $=id=>document.getElementById(id);
+let $b1,$b2,$b3,$p1,$p2,$p3,$cnt1,$cnt2,$cnt3,$q1,$q2,$q3,$dupCnt1,$dupCnt2,$saveStatus,$saveBtn;
+document.addEventListener('DOMContentLoaded',()=>{
+  $b1=$('b1');$b2=$('b2');$b3=$('b3');
+  $p1=$('p1');$p2=$('p2');$p3=$('p3');
+  $cnt1=$('cnt1');$cnt2=$('cnt2');$cnt3=$('cnt3');
+  $q1=$('q1');$q2=$('q2');$q3=$('q3');
+  $dupCnt1=$('dupCnt1');$dupCnt2=$('dupCnt2');
+  $saveStatus=$('saveStatus');$saveBtn=$('saveBtn');
+});
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+function debounce(fn,ms){let t;return function(...a){clearTimeout(t);t=setTimeout(()=>fn.apply(this,a),ms)}}
+
+function customConfirm(msg,onOk,onCancel){
+  const bg=document.createElement('div');bg.className='cfm-bg';
+  bg.innerHTML='<div class="cfm"><div class="cfm-msg"></div><div class="cfm-btns"><button class="btn" id="cfmNo">취소</button><button class="btn btn-pr" id="cfmYes">확인</button></div></div>';
+  bg.querySelector('.cfm-msg').textContent=msg;
+  document.body.appendChild(bg);
+  bg.querySelector('#cfmYes').onclick=()=>{bg.remove();if(onOk)onOk()};
+  bg.querySelector('#cfmNo').onclick=()=>{bg.remove();if(onCancel)onCancel()};
+  bg.addEventListener('click',e=>{if(e.target===bg){bg.remove();if(onCancel)onCancel()}});
+}
+const dR1=debounce(()=>R1(),200);
+const dR2=debounce(()=>R2(),200);
+const dR3=debounce(()=>R3(),200);
+
+// ═══════════════════════════════════════
+// SUPABASE
+// ═══════════════════════════════════════
+const SB_URL='https://arfytjlszyztmeycoeqk.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFyZnl0amxzenl6dG1leWNvZXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3MjU2NDMsImV4cCI6MjA4OTMwMTY0M30.dkhBveG0eP3Tggl6kSwKYZf_waXbcJ5MMVGFoq44kb8';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+
+async function dbInsert(table,data){
+  const{data:row,error}=await sb.from(table).insert(data).select().single();
+  if(error){toast('추가 실패: '+error.message,'er');return null}
+  return row;
+}
+async function dbBulkInsert(table,arr){
+  const{data:rows,error}=await sb.from(table).insert(arr).select();
+  if(error){toast('저장 실패: '+error.message,'er');return []}
+  return rows||[];
+}
+async function dbDelete(table,ids){
+  const{error}=await sb.from(table).delete().in('id',ids);
+  if(error){toast('삭제 실패: '+error.message,'er');return false}
+  return true;
+}
+
+// ═══════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════
+let shipD=[],prodD=[],mergeD=[],tftMap={};
+let curTab='ship',shipFilt='all',workerFilt='all';
+
+const SHIP_FIELDS=['row_no','mgmt_no','product_name','mfg_date','planned_ship_date','warranty','country','usage_type','company','detector_sn','cbbox_sn','cbbox_ver','detector_fw','manager_info','zview_sw','tft_sn'];
+const SHIP_HEADS=['NO','관리\n번호','품명','제조\n년월일','예상\n출하일','Warranty','국가','구분','업체 &\n병원명','디텍터\nS/N','CB BOX\nS/N','CB BOX\nVER.','DETECTOR\nF/W','MANAGER','ZVIEW\nS/W','TFT\nS/N'];
+const PROD_FIELDS=['prod_no','tft_sn','scintillator','cpu_sn','main_board_sn','main_board_ver','panel_type','completed_date','detector_fw','micom_ver','bat_micom_ver','worker','aed_sn','note1','note2'];
+const PROD_HEADS=['생산번호','TFT\nS/N','Scintillator\nTYPE','CPU\nS/N','MAIN BOARD\nS/N','MAIN BOARD\nVER','중판\nTYPE','완제품\n제작완료일','DETECTOR\nF/W','MICOM\nVER.','BAT MICOM\nVER.','작업자','AED\nS/N','비고 1','비고'];
+const MERGE_HEADS=[...SHIP_HEADS,'TFT S/N\n(생산)','Scintillator\nTYPE','CPU\nS/N','BOARD\nS/N','BOARD\nVER','중판\nTYPE','제작\n완료일','F/W\n(생산)','MICOM\nVER.','BAT MICOM\nVER.','작업자','AED\nS/N','비고 1','비고'];
+const MERGE_VC_START=16; // index where vlookup cols start
+
+function rebuildTft(){tftMap={};prodD.forEach(p=>{if(p.tft_sn)tftMap[p.tft_sn]=p})}
+
+// ═══════════════════════════════════════
+// LOAD & REALTIME
+// ═══════════════════════════════════════
+
+// ═══ NULL CLEANUP ═══
+function cleanNull(type){
+  const arr=type==='ship'?shipD:prodD;
+  const delKey=type==='ship'?'ship':'prod';
+  const keyF=type==='ship'?['product_name','detector_sn','company','country']:['prod_no','tft_sn','cpu_sn','main_board_sn'];
+  const nullRows=arr.filter(r=>keyF.every(f=>!r[f]));
+  if(!nullRows.length){toast('빈 행이 없습니다','info');return}
+  customConfirm(nullRows.length+'개 빈 행을 삭제하시겠습니까?',()=>{
+    nullRows.forEach(r=>{
+      const isNew=String(r._id).startsWith('new_');
+      if(isNew){const idx=dirty.inserts[delKey].findIndex(x=>x._id===r._id);if(idx>=0)dirty.inserts[delKey].splice(idx,1)}
+      else{dirty.deletes[delKey].push(+r._id);const tbl=delKey==='ship'?'shipment':'production';delete dirty.updates[tbl+':'+r._id]}
+      const i=arr.findIndex(x=>x._id===r._id);if(i>=0)arr.splice(i,1);
+    });
+    markDirty();if(type==='prod')rebuildTft();
+    markDupDirty();renderAll();saveCache();toast(nullRows.length+'개 빈 행 삭제 (저장 시 DB 반영)','info');
+  });
+}
+// ═══ LOCAL CACHE + DB SYNC ═══
+const CACHE_KEY_SHIP='cache_shipment';
+const CACHE_KEY_PROD='cache_production';
+const CACHE_KEY_TS='cache_timestamp';
+
+function saveCache(){
+  try{
+    localStorage.setItem(CACHE_KEY_SHIP,JSON.stringify(shipD));
+    localStorage.setItem(CACHE_KEY_PROD,JSON.stringify(prodD));
+    localStorage.setItem(CACHE_KEY_TS,Date.now().toString());
+  }catch(e){console.warn('Cache save failed:',e)}
+}
+
+function loadCache(){
+  try{
+    const s=localStorage.getItem(CACHE_KEY_SHIP);
+    const p=localStorage.getItem(CACHE_KEY_PROD);
+    if(s&&p){
+      shipD=JSON.parse(s);
+      prodD=JSON.parse(p);
+      rebuildTft();markDupDirty();renderAll();
+      const ts=localStorage.getItem(CACHE_KEY_TS);
+      const ago=ts?Math.round((Date.now()-parseInt(ts))/1000):0;
+      toast('캐시 로드 ('+shipD.length+'/'+prodD.length+'건, '+ago+'초 전)','info');
+      return true;
+    }
+  }catch(e){console.warn('Cache load failed:',e)}
+  return false;
+}
+
+
+// ═══ DIRTY TRACKING (변경분만 저장) ═══
+const dirty={updates:{},inserts:{ship:[],prod:[]},deletes:{ship:[],prod:[]}};
+// updates: { "shipment:123": {table,id,fields:{field:val}} }
+// inserts: arrays of local objects not yet in DB
+// deletes: arrays of ids to delete
+
+let hasChanges=false;
+
+function markDirty(){
+  if(!hasChanges){
+    hasChanges=true;
+    if($saveBtn)$saveBtn.classList.add('dirty');
+    if($saveStatus){$saveStatus.textContent='저장 안 됨';$saveStatus.style.color='var(--wn)'}
+  }
+}
+
+function trackUpdate(table,id,field,val){
+  // 새 행(아직 DB에 없는)이면 inserts 쪽 객체를 직접 업데이트
+  const idStr=String(id);
+  if(idStr.startsWith('new_')){
+    const key=table==='shipment'?'ship':'prod';
+    const ins=dirty.inserts[key].find(r=>String(r._id)===idStr);
+    if(ins)ins[field]=val;
+    markDirty();saveCache();return;
+  }
+  const k=table+':'+id;
+  if(!dirty.updates[k])dirty.updates[k]={table,id,fields:{}};
+  dirty.updates[k].fields[field]=val;
+  markDirty();
+  saveCache();
+}
+
+async function saveAll(){
+  if(typeof _mpSync==='function'){_mpSync();_mpStop();}
+  endEdit();
+  if(!hasChanges){toast('변경사항 없음','info');return}
+  const btn=$saveBtn||$('saveBtn');
+  btn.disabled=true;btn.textContent='💾 저장 중...';
+  
+  try{
+    const errors=[];let updCnt=0;
+
+    // 1. Process updates (changed cells)
+    const updates=Object.values(dirty.updates);
+    if(updates.length){
+      const results=await Promise.allSettled(updates.map(u=>sb.from(u.table).update(u.fields).eq('id',u.id)));
+      const failed={};
+      results.forEach((r,i)=>{if(r.status==='rejected'||r.value?.error){const u=updates[i];failed[u.table+':'+u.id]=u;errors.push('수정 실패: '+u.id)}else updCnt++});
+      dirty.updates=failed;
+    }else{dirty.updates={}}
+
+    // 2. Process deletes
+    if(dirty.deletes.ship.length){
+      const{error}=await sb.from('shipment').delete().in('id',dirty.deletes.ship);
+      if(error)errors.push('출하 삭제 실패');else dirty.deletes.ship=[];
+    }
+    if(dirty.deletes.prod.length){
+      const{error}=await sb.from('production').delete().in('id',dirty.deletes.prod);
+      if(error)errors.push('생산 삭제 실패');else dirty.deletes.prod=[];
+    }
+
+    // 3. Process inserts (new rows)
+    if(dirty.inserts.ship.length){
+      const rows=dirty.inserts.ship.map(r=>{const o={...r};delete o._id;delete o._new;return o});
+      const{data,error}=await sb.from('shipment').insert(rows).select();
+      if(error){errors.push('출하 추가 실패')}
+      else{
+        if(data)data.forEach((dbRow,i)=>{
+          const local=dirty.inserts.ship[i];
+          if(local){const idx=shipD.findIndex(r=>r._id===local._id);if(idx>=0){shipD[idx]={...dbRow,_id:dbRow.id}}}
+        });
+        dirty.inserts.ship=[];
+      }
+    }
+    if(dirty.inserts.prod.length){
+      const rows=dirty.inserts.prod.map(r=>{const o={...r};delete o._id;delete o._new;return o});
+      const{data,error}=await sb.from('production').insert(rows).select();
+      if(error){errors.push('생산 추가 실패')}
+      else{
+        if(data)data.forEach((dbRow,i)=>{
+          const local=dirty.inserts.prod[i];
+          if(local){const idx=prodD.findIndex(r=>r._id===local._id);if(idx>=0){prodD[idx]={...dbRow,_id:dbRow.id}}}
+        });
+        dirty.inserts.prod=[];
+      }
+    }
+
+    // Check remaining dirty
+    const stillDirty=Object.keys(dirty.updates).length||dirty.inserts.ship.length||dirty.inserts.prod.length||dirty.deletes.ship.length||dirty.deletes.prod.length;
+    if(!stillDirty){
+      hasChanges=false;
+      btn.classList.remove('dirty');
+      if($saveStatus){$saveStatus.textContent='저장 완료';$saveStatus.style.color='var(--ok)'}
+    }else{
+      if($saveStatus){$saveStatus.textContent='일부 실패 ('+errors.length+'건)';$saveStatus.style.color='var(--er)'}
+    }
+    saveCache();rebuildTft();renderAll();
+    if(errors.length)toast('일부 저장 실패: '+errors.join(', '),'er');
+    else toast('저장 완료 ('+updCnt+'건 수정)','ok');
+  }catch(e){
+    console.error(e);
+    toast('저장 실패: '+e.message,'er');
+  }finally{
+    btn.disabled=false;btn.textContent='💾 저장';
+  }
+}
+
+
+// ═══ JSON BACKUP / RESTORE ═══
+function backupJSON(){
+  const data={
+    version:1,
+    date:new Date().toISOString(),
+    shipment:shipD.map(r=>{const o={...r};delete o._id;delete o._new;return o}),
+    production:prodD.map(r=>{const o={...r};delete o._id;delete o._new;return o})
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  const d=new Date();
+  a.download='출하관리_백업_'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0')+'.json';
+  a.click();URL.revokeObjectURL(a.href);
+  toast('백업 파일 다운로드 (출하 '+shipD.length+' / 생산 '+prodD.length+')','ok');
+}
+
+function restoreJSON(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.shipment||!data.production)throw new Error("잘못된 백업 파일");
+      var msg="백업 복원 ("+data.date+")\n출하 "+data.shipment.length+"건 / 생산 "+data.production.length+"건\n현재 데이터를 덮어씁니다.";
+      customConfirm(msg,()=>{
+        shipD=data.shipment.map((r,i)=>({...r,_id:'restore_'+i}));
+        prodD=data.production.map((r,i)=>({...r,_id:'restore_prod_'+i}));
+        rebuildTft();renderAll();saveCache();
+        customConfirm("DB에도 반영하시겠습니까?\n(기존 DB 데이터 삭제 후 백업 데이터로 교체)",()=>{
+          restoreToDB(data);
+        },()=>{
+          toast('로컬만 복원됨 (저장 누르면 DB 반영 안 됨)','info');
+        });
+      });
+    }catch(err){
+      toast('복원 실패: '+err.message,'er');
+    }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+async function restoreToDB(data){
+  toast('DB 복원 중...','info');
+  try{
+    // Delete all existing
+    await sb.from('shipment').delete().gte('id',0);
+    await sb.from('production').delete().gte('id',0);
+    // Bulk insert in chunks of 500
+    for(let i=0;i<data.shipment.length;i+=500){
+      const chunk=data.shipment.slice(i,i+500);
+      await sb.from('shipment').insert(chunk);
+    }
+    for(let i=0;i<data.production.length;i+=500){
+      const chunk=data.production.slice(i,i+500);
+      await sb.from('production').insert(chunk);
+    }
+    // Reload from DB to get proper IDs
+    await fullReload();
+    toast('DB 복원 완료','ok');
+  }catch(e){
+    console.error(e);
+    toast('DB 복원 실패: '+e.message,'er');
+  }
+}
+
+async function fetchAll(table){
+  let all=[],from=0,size=1000;
+  while(true){
+    const{data,error}=await sb.from(table).select('*').order('id').range(from,from+size-1);
+    if(error)throw error;
+    if(!data||!data.length)break;
+    all=all.concat(data);
+    if(data.length<size)break;
+    from+=size;
+  }
+  return all;
+}
+
+async function fullReload(){
+  toast('DB 전체 동기화 중...','info');
+  try{
+    const[sData,pData]=await Promise.all([fetchAll('shipment'),fetchAll('production')]);
+    shipD=sData.map(r=>({...r,_id:r.id}));
+    prodD=pData.map(r=>({...r,_id:r.id}));
+    rebuildTft();markDupDirty();renderAll();saveCache();
+    if(curTab==='kpi')renderKPI();
+    document.querySelector('.sync-dot').style.background='var(--ok)';
+    toast('DB 동기화 완료 (출하 '+shipD.length+' / 생산 '+prodD.length+')','ok');
+  }catch(e){
+    console.error(e);toast('DB 연결 실패','er');
+    document.querySelector('.sync-dot').style.background='var(--er)';
+  }
+}
+
+sb.channel('rt').on('postgres_changes',{event:'*',schema:'public',table:'shipment'},p=>{
+  rtHandle(shipD,p);renderAll();
+}).on('postgres_changes',{event:'*',schema:'public',table:'production'},p=>{
+  rtHandle(prodD,p);rebuildTft();renderAll();
+}).subscribe();
+
+function rtHandle(arr,p){
+  if(p.eventType==='INSERT'){if(!arr.find(r=>r._id===p.new.id)){p.new._id=p.new.id;arr.push(p.new)}}
+  else if(p.eventType==='UPDATE'){const i=arr.findIndex(r=>r._id===p.new.id);if(i>=0){p.new._id=p.new.id;arr[i]=p.new}}
+  else if(p.eventType==='DELETE'){const i=arr.findIndex(r=>r._id===p.old.id);if(i>=0)arr.splice(i,1)}
+  markDupDirty();saveCache();
+}
+
+// ═══════════════════════════════════════
+// UNDO
+// ═══════════════════════════════════════
+const undoS=[],redoS=[];
+function pushU(entries){undoS.push(entries);if(undoS.length>200)undoS.shift();redoS.length=0}
+function applyU(entries,undo){
+  entries.forEach(e=>{
+    const v=undo?e.ov:e.nv;
+    const arr=e.t==='s'?shipD:e.t==='p'?prodD:mergeD;
+    const row=arr.find(r=>r._id===e.id);
+    if(row)row[e.f]=v;
+    const dbt=e.t==='s'?'shipment':e.t==='p'?'production':null;
+    if(dbt)trackUpdate(dbt,e.id,e.f,v);
+  });
+  rebuildTft();renderAll();saveCache();
+}
+
+// ═══════════════════════════════════════
+// SELECTION ENGINE
+// ═══════════════════════════════════════
+let sel=null,range=null,editing=false,isDrag=false;
+
+function cellPos(td){const tr=td.closest('tr'),tb=tr.parentElement;return{r:[...tb.children].indexOf(tr),c:[...tr.children].indexOf(td),tb}}
+function cellAt(tb,r,c){const tr=tb.children[r];if(!tr)return null;const td=tr.children[c];if(!td)return null;return{td,inp:td.querySelector('input.c:not(.vl)')}}
+function clearS(){
+  document.querySelectorAll('td.sel,td.sel-r,th.sel,td.rn.sel').forEach(e=>e.classList.remove('sel','sel-r'));
+  document.querySelectorAll('.sel-box').forEach(e=>e.remove());
+}
+
+function selCell(td,inp){
+  // 모바일 proxy가 활성화되어 있으면 먼저 값 동기화 후 종료
+  if(typeof _mpSync==='function'){_mpSync();_mpStop();}
+  clearS();endEdit();
+  // 이전 fh 제거, 새 셀에 fh 추가
+  const oldFh=document.querySelector('.fh');if(oldFh)oldFh.remove();
+  td.classList.add('sel');
+  const{r,c,tb}=cellPos(td);
+  sel={td,inp,r,c,tb};range={r1:r,c1:c,r2:r,c2:c};
+  editing=false;
+  if(inp&&!inp.classList.contains('vl')){
+    // 모바일: 선택 시 focus() 하면 이미 focused 상태가 되어 편집 진입 시 재focus가 키보드를 못 올림
+    // 모바일에서는 focus 없이 readOnly=true만 세팅, 편집 진입 시 blur→focus로 키보드 올림
+    const isMob='ontouchstart' in window;
+    if(!isMob)inp.focus();
+    inp.readOnly=true;inp.classList.remove('edit');
+    const fh=document.createElement('div');fh.className='fh';fh.style.opacity='1';
+    fh.onmousedown=e=>fillStart(e,fh);
+    td.appendChild(fh);
+  }
+}
+
+function startEdit(inp,clear){
+  if(!inp||inp.classList.contains('vl'))return;
+  editing=true;inp.readOnly=false;inp.classList.add('edit');
+  inp.dataset.bk=inp.value;
+  if(clear){inp.value=''}else{inp.setSelectionRange(inp.value.length,inp.value.length)}
+  inp.focus(); // iOS: readOnly=false 후 재focus해야 키보드 올라옴
+}
+
+function endEdit(){
+  if(!sel||!editing)return;
+  const inp=sel.inp;if(!inp)return;
+  editing=false;inp.readOnly=true;inp.classList.remove('edit');
+  if(inp.value!==inp.dataset.o){
+    const ov=inp.dataset.bk||inp.dataset.o,nv=inp.value.trim()||null;
+    inp.dataset.o=inp.value;
+    const rawId=inp.dataset.id,id=String(rawId).startsWith('new_')?rawId:+rawId,f=inp.dataset.f,t=inp.dataset.t;
+    const arr=t==='s'?shipD:t==='p'?prodD:mergeD;
+    const row=arr.find(x=>String(x._id)===String(id));if(row)row[f]=nv;
+    pushU([{id,t,f,ov,nv}]);
+    // 통합취합본 수정 시 원본 shipD에도 반영
+    const dbt=t==='s'?'shipment':t==='p'?'production':t==='m'?'shipment':null;
+    if(t==='m'){const orig=shipD.find(x=>String(x._id)===String(id));if(orig)orig[f]=nv}
+    if(dbt)trackUpdate(dbt,id,f,nv);
+    if(t==='p')rebuildTft();
+    markDupDirty();
+    inp.closest('td').classList.add('chg');setTimeout(()=>inp.closest('td').classList.remove('chg'),600);saveCache();
+  }
+}
+
+function paintR(){
+  if(!range||!sel)return;clearS();sel.td.classList.add('sel');
+  const{tb}=sel,r1=Math.min(range.r1,range.r2),r2=Math.max(range.r1,range.r2),c1=Math.min(range.c1,range.c2),c2=Math.max(range.c1,range.c2);
+  let tdTL=null,tdBR=null;
+  for(let r=r1;r<=r2;r++){
+    const tr=tb.children[r];if(!tr)continue;
+    for(let c=c1;c<=c2;c++){
+      const td=tr.children[c];if(!td)continue;
+      td.classList.add('sel-r');
+      if(r===r1&&c===c1)tdTL=td;
+      if(r===r2&&c===c2)tdBR=td;
+    }
+  }
+  if(tdTL&&tdBR){
+    const tw=tb.closest('.tw');
+    const cr=tw.getBoundingClientRect();
+    const a=tdTL.getBoundingClientRect(),b=tdBR.getBoundingClientRect();
+    const box=document.createElement('div');
+    box.className='sel-box';
+    box.style.left=(a.left-cr.left+tw.scrollLeft)+'px';
+    box.style.top=(a.top-cr.top+tw.scrollTop)+'px';
+    box.style.width=(b.right-a.left)+'px';
+    box.style.height=(b.bottom-a.top)+'px';
+    tw.appendChild(box);
+  }
+}
+
+function moveSel(dr,dc,shift){
+  if(!sel)return;
+  if(shift){range.r2=Math.max(0,Math.min(sel.tb.children.length-1,range.r2+dr));range.c2=Math.max(0,range.c2+dc);paintR()}
+  else{const c=cellAt(sel.tb,sel.r+dr,sel.c+dc);if(c)selCell(c.td,c.inp)}
+}
+
+function getSelVals(){
+  if(!sel||!range)return null;
+  const{tb}=sel,r1=Math.min(range.r1,range.r2),r2=Math.max(range.r1,range.r2),c1=Math.min(range.c1,range.c2),c2=Math.max(range.c1,range.c2);
+  const vals=[];
+  for(let r=r1;r<=r2;r++){const rv=[];const tr=tb.children[r];for(let c=c1;c<=c2;c++){const inp=tr?.children[c]?.querySelector('input.c');rv.push(inp?inp.value:'')}vals.push(rv)}
+  return vals;
+}
+
+function pasteGrid(text){
+  if(!sel)return;
+  const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l);
+  if(!lines.length)return;
+  const grid=lines.map(l=>l.split('\t'));
+  const srcRows=grid.length,srcCols=Math.max(...grid.map(r=>r.length));
+  const{tb,r:sr,c:sc}=sel;
+  // 붙여넣기 영역 결정: 선택 범위가 소스보다 크면 타일링(엑셀 동작)
+  let pr1=sr,pc1=sc,pr2=sr+srcRows-1,pc2=sc+srcCols-1;
+  if(range){
+    const rr1=Math.min(range.r1,range.r2),rr2=Math.max(range.r1,range.r2);
+    const rc1=Math.min(range.c1,range.c2),rc2=Math.max(range.c1,range.c2);
+    const selR=rr2-rr1+1,selC=rc2-rc1+1;
+    if(selR>=srcRows&&selC>=srcCols&&(selR>1||selC>1)){pr1=rr1;pc1=rc1;pr2=rr2;pc2=rc2}
+  }
+  const us=[];let n=0;
+  for(let r=pr1;r<=pr2;r++){
+    const tr=tb.children[r];if(!tr)break;
+    const srcR=grid[(r-pr1)%srcRows];
+    for(let c=pc1;c<=pc2;c++){
+      const td=tr.children[c];if(!td)break;
+      const inp=td.querySelector('input.c:not(.vl)');if(!inp)continue;
+      const nv=(srcR[(c-pc1)%srcCols]||'').trim(),ov=inp.value;
+      inp.value=nv;inp.dataset.o=nv;
+      const rawId=inp.dataset.id,id=String(rawId).startsWith('new_')?rawId:+rawId,f=inp.dataset.f,t=inp.dataset.t;
+      const arr=t==='s'?shipD:t==='p'?prodD:mergeD;
+      const row=arr.find(x=>String(x._id)===String(id));if(row)row[f]=nv||null;
+      us.push({id,t,f,ov,nv:nv||null});
+      td.classList.add('chg');setTimeout(()=>td.classList.remove('chg'),600);
+      n++;
+    }
+  }
+  if(us.length){pushU(us);batchDbSave(us)}
+  rebuildTft();markDupDirty();saveCache();toast(n+'셀 붙여넣기','ok');
+}
+
+// Ctrl+D: 선택 영역 첫 행 값을 아래로 채우기 (엑셀 Fill Down)
+function fillDown(){
+  if(!sel||!range)return;
+  const{tb}=sel,r1=Math.min(range.r1,range.r2),r2=Math.max(range.r1,range.r2),c1=Math.min(range.c1,range.c2),c2=Math.max(range.c1,range.c2);
+  if(r1===r2)return;
+  const topTr=tb.children[r1];if(!topTr)return;
+  const srcVals=[];for(let c=c1;c<=c2;c++){const inp=topTr.children[c]?.querySelector('input.c');srcVals.push(inp?inp.value:'')}
+  const us=[];let n=0;
+  for(let r=r1+1;r<=r2;r++){const tr=tb.children[r];if(!tr)continue;
+    for(let c=c1;c<=c2;c++){const inp=tr.children[c]?.querySelector('input.c:not(.vl)');if(!inp)continue;
+      const nv=srcVals[c-c1],ov=inp.value;if(nv===ov)continue;
+      inp.value=nv;inp.dataset.o=nv;
+      const rawId=inp.dataset.id,id=String(rawId).startsWith('new_')?rawId:+rawId,f=inp.dataset.f,t=inp.dataset.t;
+      const arr=t==='s'?shipD:t==='p'?prodD:mergeD;const row=arr.find(x=>String(x._id)===String(id));if(row)row[f]=nv||null;
+      us.push({id,t,f,ov,nv:nv||null});const td_=tr.children[c];td_.classList.add('chg');setTimeout(()=>td_.classList.remove('chg'),600);n++;
+    }
+  }
+  if(us.length){pushU(us);batchDbSave(us)}rebuildTft();markDupDirty();saveCache();if(n)toast(n+'셀 아래로 채우기','ok');
+}
+
+// Ctrl+R: 선택 영역 첫 열 값을 오른쪽으로 채우기 (엑셀 Fill Right)
+function fillRight(){
+  if(!sel||!range)return;
+  const{tb}=sel,r1=Math.min(range.r1,range.r2),r2=Math.max(range.r1,range.r2),c1=Math.min(range.c1,range.c2),c2=Math.max(range.c1,range.c2);
+  if(c1===c2)return;
+  const us=[];let n=0;
+  for(let r=r1;r<=r2;r++){const tr=tb.children[r];if(!tr)continue;
+    const srcInp=tr.children[c1]?.querySelector('input.c');const srcV=srcInp?srcInp.value:'';
+    for(let c=c1+1;c<=c2;c++){const inp=tr.children[c]?.querySelector('input.c:not(.vl)');if(!inp)continue;
+      const ov=inp.value;if(srcV===ov)continue;
+      inp.value=srcV;inp.dataset.o=srcV;
+      const rawId=inp.dataset.id,id=String(rawId).startsWith('new_')?rawId:+rawId,f=inp.dataset.f,t=inp.dataset.t;
+      const arr=t==='s'?shipD:t==='p'?prodD:mergeD;const row=arr.find(x=>String(x._id)===String(id));if(row)row[f]=srcV||null;
+      us.push({id,t,f,ov,nv:srcV||null});const td_=tr.children[c];td_.classList.add('chg');setTimeout(()=>td_.classList.remove('chg'),600);n++;
+    }
+  }
+  if(us.length){pushU(us);batchDbSave(us)}rebuildTft();markDupDirty();saveCache();if(n)toast(n+'셀 오른쪽으로 채우기','ok');
+}
+
+function deleteRange(){
+  if(!sel||!range)return;
+  const{tb}=sel,r1=Math.min(range.r1,range.r2),r2=Math.max(range.r1,range.r2),c1=Math.min(range.c1,range.c2),c2=Math.max(range.c1,range.c2);
+  const us=[];let n=0;
+  for(let r=r1;r<=r2;r++){const tr=tb.children[r];if(!tr)continue;
+    for(let c=c1;c<=c2;c++){const inp=tr.children[c]?.querySelector('input.c:not(.vl)');if(!inp||!inp.value)continue;
+      const ov=inp.value;inp.value='';inp.dataset.o='';
+      const rawId=inp.dataset.id,id=String(rawId).startsWith('new_')?rawId:+rawId,f=inp.dataset.f,t=inp.dataset.t;
+      const arr=t==='s'?shipD:t==='p'?prodD:mergeD;const row=arr.find(x=>String(x._id)===String(id));if(row)row[f]=null;
+      us.push({id,t,f,ov,nv:null});n++;
+    }
+  }
+  if(us.length){pushU(us);batchDbSave(us)}
+  rebuildTft();markDupDirty();saveCache();if(n)toast(n+'셀 삭제','info');
+}
+
+function deleteRows(){
+  if(!sel||!range)return;
+  const{tb}=sel,r1=Math.min(range.r1,range.r2),r2=Math.max(range.r1,range.r2);
+  const cnt=r2-r1+1;
+  customConfirm(cnt+'행을 삭제하시겠습니까?',()=>{
+    const tblKey=tb.id==='b1'?'s':tb.id==='b2'?'p':'m';
+    const arr=tblKey==='s'?shipD:tblKey==='p'?prodD:mergeD;
+    const delKey=tblKey==='s'?'ship':'prod';
+    for(let r=r1;r<=r2;r++){
+      const inp=tb.children[r]?.querySelector('input.c');
+      if(!inp)continue;
+      const id=inp.dataset.id;
+      const isNew=String(id).startsWith('new_');
+      if(isNew){
+        const idx=dirty.inserts[delKey].findIndex(r=>r._id===id);
+        if(idx>=0)dirty.inserts[delKey].splice(idx,1);
+      }else{
+        dirty.deletes[delKey].push(+id);
+        const tbl=delKey==='ship'?'shipment':'production';delete dirty.updates[tbl+':'+id];
+      }
+      const i=arr.findIndex(r=>String(r._id)===String(id));
+      if(i>=0)arr.splice(i,1);
+    }
+    markDirty();rebuildTft();markDupDirty();clearS();sel=null;range=null;renderAll();saveCache();toast(cnt+'행 삭제 (저장 시 DB 반영)','info');
+  });
+}
+
+function batchDbSave(us){
+  us.forEach(u=>{
+    const dbt=u.t==='s'?'shipment':u.t==='p'?'production':u.t==='m'?'shipment':null;
+    if(u.t==='m'){const orig=shipD.find(x=>String(x._id)===String(u.id));if(orig)orig[u.f]=u.nv}
+    if(dbt)trackUpdate(dbt,u.id,u.f,u.nv);
+  });
+}
+
+function selWholeCol(tbId,c){
+  const tb=document.getElementById(tbId);if(!tb||!tb.children.length)return;
+  clearS();endEdit();
+  const td0=tb.children[0].children[c],inp0=td0?.querySelector('input.c:not(.vl)');
+  sel={td:td0,inp:inp0,r:0,c,tb};
+  range={r1:0,c1:c,r2:tb.children.length-1,c2:c};paintR();
+}
+
+function selWholeRow(tbId,r){
+  const tb=document.getElementById(tbId);if(!tb||!tb.children[r])return;
+  clearS();endEdit();
+  const tr=tb.children[r],cols=tr.children.length;
+  const td0=tr.children[1]||tr.children[0],inp0=td0?.querySelector('input.c:not(.vl)');
+  sel={td:td0,inp:inp0,r,c:0,tb};
+  range={r1:r,c1:0,r2:r,c2:cols-1};paintR();
+  tr.children[0]?.classList.add('sel');
+}
+
+function selAllCells(tbId){
+  const tb=document.getElementById(tbId);if(!tb||!tb.children.length)return;
+  clearS();endEdit();
+  const td0=tb.children[0].children[0];
+  sel={td:td0,inp:null,r:0,c:0,tb};
+  range={r1:0,c1:0,r2:tb.children.length-1,c2:tb.children[0].children.length-1};paintR();
+}
+
+// ── Mouse Events ──
+document.addEventListener('mousedown',e=>{
+  const ctx=document.getElementById('ctx');ctx.classList.remove('show');
+  const td=e.target.closest('td');
+  if(!td||!td.closest('table.g tbody'))return;
+  if(e.target.classList.contains('fh'))return;
+  const inp=td.querySelector('input.c:not(.vl)');
+  if(e.detail===2){if(inp){selCell(td,inp);startEdit(inp,false)}return}
+  if(e.shiftKey&&sel){const{r,c}=cellPos(td);range.r2=r;range.c2=c;paintR();isDrag=true;e.preventDefault();return}
+  selCell(td,inp);isDrag=true;e.preventDefault();
+});
+document.addEventListener('mousemove',e=>{
+  if(!isDrag||!sel)return;
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  const td=el?.closest('td');
+  if(!td||!td.closest('table.g tbody'))return;
+  const{r,c}=cellPos(td);
+  if(r!==range.r2||c!==range.c2){range.r2=r;range.c2=c;paintR()}
+});
+document.addEventListener('mouseup',()=>{isDrag=false});
+// 폴백: mousedown이 확장프로그램에 의해 차단된 경우 click/focusin에서 셀 선택
+document.addEventListener('click',e=>{
+  if(sel)return;
+  const td=e.target.closest('td');
+  if(!td||!td.closest('table.g tbody'))return;
+  const inp=td.querySelector('input.c:not(.vl)');
+  selCell(td,inp);
+});
+document.addEventListener('focusin',e=>{
+  if(sel)return;
+  const el=e.target;
+  if(!el||!el.classList||!el.classList.contains('c')||el.classList.contains('vl'))return;
+  const td=el.closest('td');
+  if(td&&td.closest('table.g tbody'))selCell(td,el);
+});
+
+// ── Touch Events (mobile) ──
+let lastTap=0,lastTapTd=null,touchDragActive=false;
+let _ts={x:0,y:0,td:null,inp:null,isDoubleTap:false};
+document.addEventListener('touchstart',e=>{
+  const td=e.target.closest('td');
+  if(!td||!td.closest('table.g tbody'))return;
+  if(e.target.classList.contains('fh'))return;
+  const touch=e.touches[0];
+  const inp=td.querySelector('input.c:not(.vl)');
+  const now=Date.now();
+  const isDoubleTap=now-lastTap<350&&lastTapTd===td;
+  lastTap=isDoubleTap?0:now;lastTapTd=isDoubleTap?null:td;
+  _ts={x:touch.clientX,y:touch.clientY,td,inp,isDoubleTap};
+  touchDragActive=false;
+},{passive:true}); // passive:true → 세로 스크롤 차단 안 함
+document.addEventListener('touchmove',e=>{
+  if(!_ts.td)return;
+  const touch=e.touches[0];
+  const dx=Math.abs(touch.clientX-_ts.x),dy=Math.abs(touch.clientY-_ts.y);
+  if(dx<4&&dy<4)return;
+  // 움직이면 탭 취소 → 브라우저가 스크롤 처리
+  _ts.isDoubleTap=false;
+  _ts.td=null;
+  touchDragActive=false;
+},{passive:true});
+document.addEventListener('touchend',()=>{
+  if(!_ts.td){touchDragActive=false;isDrag=false;return}
+  if(!touchDragActive){
+    if(_ts.isDoubleTap&&_ts.inp&&!_ts.inp.classList.contains('vl')){
+      // 더블탭: selCell을 우회해 readOnly=true focus를 막고, 바로 readOnly=false→focus
+      // iOS는 readOnly=false인 상태에서 focus()해야 키보드가 올라옴
+      if(!editing){
+        clearS();endEdit();
+        const oldFh=document.querySelector('.fh');if(oldFh)oldFh.remove();
+        _ts.td.classList.add('sel');
+        const{r,c,tb}=cellPos(_ts.td);
+        sel={td:_ts.td,inp:_ts.inp,r,c,tb};range={r1:r,c1:c,r2:r,c2:c};
+        editing=false;
+        const fh=document.createElement('div');fh.className='fh';fh.style.opacity='1';
+        fh.onmousedown=e=>fillStart(e,fh);_ts.td.appendChild(fh);
+        // mob-proxy(처음부터 readonly 아닌 input)에 focus → KakaoTalk webview 키보드 올림
+        _ts.inp.readOnly=false;_ts.inp.classList.add('edit');
+        _ts.inp.dataset.bk=_ts.inp.value;
+        editing=true;
+        _mpEnter(_ts.td,_ts.inp);
+      }
+    }else{
+      // 이미 선택된 셀을 다시 탭 → 편집 진입
+      if(sel&&sel.td===_ts.td&&!editing&&_ts.inp&&!_ts.inp.classList.contains('vl')){
+        _ts.inp.readOnly=false;_ts.inp.classList.add('edit');
+        _ts.inp.dataset.bk=_ts.inp.value;
+        editing=true;_mpEnter(_ts.td,_ts.inp);
+      }else{
+        selCell(_ts.td,_ts.inp);
+      }
+    }
+  }
+  touchDragActive=false;isDrag=false;_ts.td=null;
+});
+
+// ── Mobile Proxy Keyboard (KakaoTalk webview workaround) ──
+// readonly로 렌더된 input은 KakaoTalk webview에서 키보드를 올릴 수 없음.
+// 처음부터 readonly가 아닌 #mob-proxy input에 focus하여 키보드를 올리고,
+// input 이벤트로 실제 셀 input에 값을 동기화함.
+let _mpTgt=null;
+function _mpEnter(td,inp){
+  const px=document.getElementById('mob-proxy');if(!px)return;
+  _mpTgt=inp;
+  px.value=inp.value;
+  // 셀 위치에 proxy를 얹어 커서 위치 맞춤 (완전 투명이면 iOS가 키보드 안 올릴 수 있음)
+  const r=td.getBoundingClientRect();
+  px.style.left=Math.max(0,r.left)+'px';
+  px.style.top=Math.max(0,r.top)+'px';
+  px.style.width=r.width+'px';
+  px.style.pointerEvents='auto';
+  px.focus();
+  px.setSelectionRange(px.value.length,px.value.length);
+}
+function _mpSync(){if(_mpTgt&&document.getElementById('mob-proxy'))_mpTgt.value=document.getElementById('mob-proxy').value}
+function _mpStop(){
+  _mpTgt=null;
+  const px=document.getElementById('mob-proxy');
+  if(!px)return;
+  px.style.pointerEvents='none';
+  px.style.left='-600px';
+}
+(function(){
+  const px=document.getElementById('mob-proxy');if(!px)return;
+  // 실시간 값 동기화
+  px.addEventListener('input',()=>{if(_mpTgt)_mpTgt.value=px.value});
+  // 키보드 Enter/Tab/Escape 처리
+  px.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();_mpSync();endEdit();_mpStop();if(sel)moveSel(1,0,false)}
+    else if(e.key==='Tab'){e.preventDefault();_mpSync();endEdit();_mpStop();if(sel)moveSel(0,e.shiftKey?-1:1,false)}
+    else if(e.key==='Escape'){
+      e.preventDefault();
+      if(_mpTgt){_mpTgt.value=_mpTgt.dataset.bk||_mpTgt.dataset.o;_mpTgt.readOnly=true;_mpTgt.classList.remove('edit')}
+      editing=false;_mpStop();
+    }
+  });
+  // blur: 다른 셀 탭 시 selCell이 _mpSync+_mpStop을 먼저 호출하므로 _mpTgt=null
+  // 그 외(화면 바깥 탭 등) 경우만 여기서 처리
+  px.addEventListener('blur',()=>{
+    if(!_mpTgt)return;
+    setTimeout(()=>{if(_mpTgt){_mpSync();endEdit();_mpStop()}},200);
+  });
+})();
+
+// ── Context Menu ──
+document.addEventListener('contextmenu',e=>{
+  const td=e.target.closest('td');
+  if(!td||!td.closest('table.g tbody'))return;
+  e.preventDefault();
+  const inp=td.querySelector('input.c:not(.vl)');
+  if(!sel||sel.td!==td)selCell(td,inp);
+  const ctx=document.getElementById('ctx');
+  ctx.style.left=e.clientX+'px';ctx.style.top=e.clientY+'px';ctx.classList.add('show');
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.ctx'))document.getElementById('ctx').classList.remove('show')});
+
+function ctxDo(a){
+  document.getElementById('ctx').classList.remove('show');
+  if(a==='copy')doCopy();
+  else if(a==='cut'){doCopy();deleteRange()}
+  else if(a==='paste'){if(_internalClip)pasteGrid(_internalClip);}
+  else if(a==='addrow'){if(curTab==='ship')addRow('ship');else if(curTab==='prod')addRow('prod')}
+  else if(a==='delrow')deleteRows();
+}
+
+function escH(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+// 내부 클립보드 (시스템 클립보드 실패 시 폴백)
+let _internalClip='';
+
+function doCopy(){
+  const v=getSelVals();if(!v)return;
+  const tsv=v.map(r=>r.join('\t')).join('\n');
+  _internalClip=tsv;
+  // 방법 1: execCommand (HTTP/file:// 환경에서도 동작)
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=tsv;
+    ta.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.focus();ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    if(sel&&sel.inp)sel.inp.focus();
+    toast('복사됨','info');
+    return;
+  }catch(e){}
+  // 방법 2: Clipboard API
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(tsv).then(()=>toast('복사됨','info')).catch(()=>toast('내부 복사됨','info'));
+      return;
+    }
+  }catch(e){}
+  toast('내부 복사됨','info');
+}
+
+// ── Keyboard ──
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='TEXTAREA'||e.target.closest('.sbox'))return;
+  // Modal escape
+  if(e.key==='Escape'&&document.getElementById('modalBg').classList.contains('show')){closeModal();return}
+  // Undo/Redo
+  var _kc=e.code||'',_kk=e.key||'';
+  if(e.ctrlKey&&(_kk==='s'||_kc==='KeyS')){e.preventDefault();saveAll();return}
+  if(e.ctrlKey&&(_kk==='z'||_kc==='KeyZ')&&!e.shiftKey){e.preventDefault();if(!undoS.length)return;const u=undoS.pop();redoS.push(u);applyU(u,true);toast('되돌리기','info');return}
+  if(e.ctrlKey&&((_kk==='y'||_kc==='KeyY')||((_kk==='z'||_kc==='KeyZ')&&e.shiftKey))){e.preventDefault();if(!redoS.length)return;const u=redoS.pop();undoS.push(u);applyU(u,false);toast('다시 실행','info');return}
+  if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();if(curTab==='ship')addRow('ship');else if(curTab==='prod')addRow('prod');return}
+  // sel이 null이면 현재 포커스된 셀에서 자동 복구 (확장프로그램이 mousedown을 가로챈 경우 대비)
+  if(!sel){
+    var _fi=document.activeElement;
+    if(_fi&&_fi.classList&&_fi.classList.contains('c')&&!_fi.classList.contains('vl')){
+      var _td=_fi.closest('td');
+      if(_td&&_td.closest('table.g tbody')){selCell(_td,_fi)}
+    }
+  }
+  if(!sel)return;
+  // Ctrl 단축키: 편집 중이든 아니든 항상 처리
+  // e.code 사용: 한글 IME 활성 시 e.key가 'ㅊ','ㅈ' 등으로 올 수 있으므로 물리키 기준 체크
+  if(e.ctrlKey){
+    var kc=e.code||'',kk=e.key||'';
+    if(kk==='c'||kc==='KeyC'){e.preventDefault();if(editing)endEdit();doCopy();return}
+    if(kk==='x'||kc==='KeyX'){e.preventDefault();if(editing)endEdit();doCopy();deleteRange();return}
+    if(kk==='a'||kc==='KeyA'){e.preventDefault();if(editing)endEdit();selAllCells(sel.tb.id);return}
+    if(kk==='-'){e.preventDefault();if(editing)endEdit();deleteRows();return}
+    if(kk==='d'||kc==='KeyD'){e.preventDefault();if(editing)endEdit();fillDown();return}
+    if(kk==='r'||kc==='KeyR'){e.preventDefault();if(editing)endEdit();fillRight();return}
+    if(kk==='v'||kc==='KeyV'){
+      // paste 이벤트를 통해 clipboardData를 읽는 것이 가장 안정적
+      // → preventDefault 하지 않고 브라우저가 paste 이벤트 발생하도록 둠
+      // paste 이벤트 미발생 시 폴백 (80ms 후 체크)
+      _pasteHandled=false;
+      setTimeout(()=>{
+        if(!_pasteHandled&&_internalClip){
+          if(editing){
+            var isM=/\t/.test(_internalClip)||_internalClip.split(/\r?\n/).filter(function(l){return l}).length>1;
+            if(!isM)return;
+            editing=false;if(sel&&sel.inp){sel.inp.classList.remove('edit');sel.inp.dataset.o=sel.inp.value}
+          }
+          pasteGrid(_internalClip);
+        }
+      },80);
+      return;
+    }
+    return;
+  }
+  if(editing){
+    if(e.key==='Escape'){e.preventDefault();sel.inp.value=sel.inp.dataset.bk||sel.inp.dataset.o;endEdit();editing=false;sel.inp.readOnly=true;sel.inp.classList.remove('edit')}
+    else if(e.key==='Enter'){e.preventDefault();endEdit();moveSel(1,0,false)}
+    else if(e.key==='Tab'){e.preventDefault();endEdit();moveSel(0,e.shiftKey?-1:1,false)}
+    return;
+  }
+  // View mode
+  if(e.key==='ArrowDown'){e.preventDefault();moveSel(1,0,e.shiftKey)}
+  else if(e.key==='ArrowUp'){e.preventDefault();moveSel(-1,0,e.shiftKey)}
+  else if(e.key==='ArrowRight'){e.preventDefault();moveSel(0,1,e.shiftKey)}
+  else if(e.key==='ArrowLeft'){e.preventDefault();moveSel(0,-1,e.shiftKey)}
+  else if(e.key==='Tab'){e.preventDefault();moveSel(0,e.shiftKey?-1:1,false)}
+  else if(e.key==='Enter'){e.preventDefault();moveSel(1,0,false)}
+  else if(e.key==='F2'){e.preventDefault();if(sel.inp)startEdit(sel.inp,false)}
+  else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteRange()}
+  else if(e.key==='Escape'){
+    if(fillSt){fillEnd();return}
+    clearS();sel=null;
+  }
+  else if(e.key.length===1&&!e.ctrlKey&&!e.altKey&&!e.metaKey){if(sel.inp)startEdit(sel.inp,true)}
+});
+
+// Paste event
+let _pasteHandled=false;
+document.addEventListener('paste',function(e){
+  try{
+    if(e.target.tagName==='TEXTAREA')return;
+    if(e.target.closest&&e.target.closest('.sbox'))return;
+    if(!sel)return;
+    _pasteHandled=true;
+    var cd=e.clipboardData||window.clipboardData;
+    var html='',t='';
+    try{html=cd?cd.getData('text/html'):'';}catch(x){html='';}
+    try{t=cd?cd.getData('text/plain')||cd.getData('text')||'':'';}catch(x){t='';}
+    // clipboardData가 비어있으면 내부 클립보드로 폴백
+    if(!html&&!t){
+      e.preventDefault();
+      if(editing){editing=false;if(sel&&sel.inp){sel.inp.classList.remove('edit');sel.inp.dataset.o=sel.inp.value}}
+      if(_internalClip)pasteGrid(_internalClip);
+      return;
+    }
+    // 다중 셀 데이터 판별
+    var isMulti=(html&&/<tr[\s>]/i.test(html))||/\t/.test(t)||(t.split(/\r?\n/).filter(function(l){return l}).length>1);
+    // 편집 중 단일 값은 기본 input 동작 유지
+    if(editing&&!isMulti)return;
+    e.preventDefault();
+    if(editing){editing=false;if(sel&&sel.inp){sel.inp.classList.remove('edit');sel.inp.dataset.o=sel.inp.value}}
+    // HTML 테이블 우선 파싱 (엑셀 복사 시 HTML 형식)
+    if(html){
+      try{
+        var doc2=new DOMParser().parseFromString(html,'text/html');
+        var rows=doc2.querySelectorAll('tr');
+        if(rows.length){
+          var tsv=[];
+          for(var i=0;i<rows.length;i++){
+            var cells=rows[i].querySelectorAll('td,th');
+            var rv=[];
+            for(var j=0;j<cells.length;j++)rv.push((cells[j].innerText||cells[j].textContent||'').replace(/\r?\n/g,' ').trim());
+            tsv.push(rv.join('\t'));
+          }
+          var tsvStr=tsv.join('\n');
+          if(tsvStr){pasteGrid(tsvStr);return;}
+        }
+      }catch(x){}
+    }
+    if(t)pasteGrid(t);
+  }catch(err){
+    console.error('Paste error:',err);
+    // 최후의 폴백
+    if(_internalClip&&sel){
+      try{e.preventDefault();}catch(x){}
+      pasteGrid(_internalClip);
+    }
+  }
+});
+
+// ═══════════════════════════════════════
+// FILL HANDLE
+// ═══════════════════════════════════════
+let fillSt=null,fillTip=null;
+function fillStart(e,el){
+  e.preventDefault();e.stopPropagation();
+  const td=el.closest('td'),inp=td.querySelector('input.c');if(!inp)return;
+  const tr=td.closest('tr'),tb=tr.parentElement;
+  fillSt={inp,td,tb,rows:[...tb.children],ri:[...tb.children].indexOf(tr),ci:[...tr.children].indexOf(td),val:inp.value,curR:[...tb.children].indexOf(tr)};
+  fillTip=document.createElement('div');fillTip.className='fill-tip';document.body.appendChild(fillTip);
+  document.addEventListener('mousemove',fillMove);document.addEventListener('mouseup',fillEnd);
+}
+function fillMove(e){
+  if(!fillSt)return;
+  const{rows,ci,ri,val}=fillSt;
+  for(let i=0;i<rows.length;i++){const r=rows[i].getBoundingClientRect();if(e.clientY>=r.top&&e.clientY<=r.bottom){fillSt.curR=i;break}}
+  rows.forEach((row,i)=>{const td=row.children[ci];if(td)td.classList.toggle('fill-r',i>ri&&i<=fillSt.curR)});
+  const cnt=fillSt.curR-ri;
+  if(cnt>0){fillTip.textContent=fillVal(val,cnt)+' ('+cnt+'행)';fillTip.style.display='block'}else fillTip.style.display='none';
+  fillTip.style.left=(e.clientX+10)+'px';fillTip.style.top=(e.clientY-6)+'px';
+}
+function fillEnd(){
+  if(!fillSt)return;
+  document.removeEventListener('mousemove',fillMove);document.removeEventListener('mouseup',fillEnd);
+  const{rows,ci,ri,curR,val}=fillSt,cnt=curR-ri,us=[];
+  if(cnt>0){for(let i=1;i<=cnt;i++){
+    const td=rows[ri+i]?.children[ci];if(!td)break;
+    const inp=td.querySelector('input.c:not(.vl)');if(!inp)continue;
+    const nv=fillVal(val,i),ov=inp.value;inp.value=nv;inp.dataset.o=nv;
+    const rawId=inp.dataset.id,id=String(rawId).startsWith('new_')?rawId:+rawId,f=inp.dataset.f,t=inp.dataset.t;
+    const arr=t==='s'?shipD:t==='p'?prodD:mergeD;const row=arr.find(x=>String(x._id)===String(id));if(row)row[f]=nv||null;
+    us.push({id,t,f,ov,nv});td.classList.add('chg');setTimeout(()=>td.classList.remove('chg'),600);
+  }if(us.length){pushU(us);batchDbSave(us)}rebuildTft();markDupDirty();saveCache();toast(cnt+'셀 채우기','ok')}
+  rows.forEach(row=>{const td=row.children[ci];if(td)td.classList.remove('fill-r')});
+  if(fillTip){fillTip.remove();fillTip=null}fillSt=null;
+}
+function fillVal(v,off){
+  if(!v)return v;
+  const dm=v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(dm){const d=new Date(+dm[1],+dm[2]-1,+dm[3]);d.setDate(d.getDate()+off);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+  const nm=v.match(/^(.*?)(-?)(\d+)$/);
+  if(nm){const pre=nm[1]+nm[2],n=parseInt(nm[3]),pad=nm[3].length;return pre+(nm[3][0]==='0'&&pad>1?String(n+off).padStart(pad,'0'):String(n+off))}
+  if(!isNaN(Number(v))&&v.trim())return String(Number(v)+off);
+  return v;
+}
+
+// ═══════════════════════════════════════
+// DUPLICATE S/N DETECTION
+// ═══════════════════════════════════════
+const SHIP_SN_FIELDS=['detector_sn','cbbox_sn','tft_sn'];
+const PROD_SN_FIELDS=['tft_sn','cpu_sn','main_board_sn','aed_sn'];
+let dupMode={ship:false,prod:false};
+// {field -> Set of duplicate values}
+let shipDups={},prodDups={},dupDirty=true;
+
+function markDupDirty(){dupDirty=true}
+
+function findDups(arr,snFields){
+  const result={};
+  snFields.forEach(f=>{
+    const counts={};
+    arr.forEach(r=>{const v=r[f];if(v&&String(v).trim())counts[String(v).trim()]=(counts[String(v).trim()]||0)+1});
+    result[f]=new Set(Object.keys(counts).filter(k=>counts[k]>1));
+  });
+  return result;
+}
+
+function rowHasDup(row,dups,snFields){
+  return snFields.some(f=>row[f]&&dups[f]&&dups[f].has(String(row[f]).trim()));
+}
+
+function updateDupCounts(){
+  if(!dupDirty)return;
+  dupDirty=false;
+  shipDups=findDups(shipD,SHIP_SN_FIELDS);
+  prodDups=findDups(prodD,PROD_SN_FIELDS);
+  const sCnt=shipD.filter(r=>rowHasDup(r,shipDups,SHIP_SN_FIELDS)).length;
+  const pCnt=prodD.filter(r=>rowHasDup(r,prodDups,PROD_SN_FIELDS)).length;
+  if($dupCnt1){$dupCnt1.textContent=sCnt;$dupCnt1.style.display=sCnt?'':'none'}
+  if($dupCnt2){$dupCnt2.textContent=pCnt;$dupCnt2.style.display=pCnt?'':'none'}
+}
+
+function toggleDup(type){
+  dupMode[type]=!dupMode[type];
+  const chip=document.getElementById(type==='ship'?'dupChip1':'dupChip2');
+  chip.classList.toggle('on',dupMode[type]);
+  if(type==='ship')R1();else R2();
+}
+
+// ═══════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════
+function colL(n){let s='';while(n>=0){s=String.fromCharCode(65+(n%26))+s;n=Math.floor(n/26)-1}return s}
+
+const _headCache={};
+function mkHead(thId,tbId,heads,vcStart){
+  const cacheKey=tbId+(vcStart??'');
+  if(_headCache[thId]===cacheKey&&document.getElementById(thId).childElementCount)return;
+  _headCache[thId]=cacheKey;
+  const th=document.getElementById(thId);
+  let h1='<tr><th class="corner" onclick="selAllCells(\''+tbId+'\')"></th>';
+  for(let i=0;i<heads.length;i++)h1+='<th class="al" onmousedown="colDragS(event,\''+tbId+'\','+(i+1)+')" ondblclick="autoFitCol(event,\''+tbId+'\','+(i+1)+')">'+colL(i)+'</th>';
+  h1+='</tr><tr><th style="width:30px;background:#2a3a52">　</th>';
+  for(let i=0;i<heads.length;i++){
+    const vc=vcStart!==undefined&&i>=vcStart;
+    h1+='<th'+(vc?' class="vc"':'')+'>'+heads[i].replace(/\n/g,'<br>')+(vc?'<span class="sub">← 자동</span>':'')+'</th>';
+  }
+  th.innerHTML=h1+'</tr>';
+}
+
+function ci(id,t,f,v){var s=v==null?'':String(v).replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');return '<input class="c" type="text" value="'+s+'" data-id="'+id+'" data-t="'+t+'" data-f="'+f+'" data-o="'+s+'" readonly>'}
+function vl(v,key){if(!key)return '<span style="color:#ccc;font-size:9px">-</span>';if(!v)return '<span style="color:#d97706;font-size:9px">매칭없음</span>';var s=String(v).replace(/"/g,'&quot;');return '<input class="c vl" value="'+s+'" readonly tabindex="-1">'}
+
+
+
+function isDupCell(f,v,dups){return v&&dups[f]&&dups[f].has(String(v).trim())}
+
+function R1(){
+  updateDupCounts();
+  const q=($q1&&$q1.value||'').toLowerCase();
+  let d=shipD;
+  if(shipFilt!=='all')d=d.filter(r=>r.product_name&&r.product_name.toUpperCase().includes(shipFilt));
+  if(q)d=d.filter(r=>Object.values(r).some(v=>v&&String(v).toLowerCase().includes(q)));
+  if(dupMode.ship)d=d.filter(r=>rowHasDup(r,shipDups,SHIP_SN_FIELDS));
+  if($p1)$p1.textContent=d.length+'건';
+  if($cnt1)$cnt1.textContent=shipD.length;
+  mkHead('th1','b1',SHIP_HEADS);
+  const rows=[];
+  for(let i=0;i<d.length;i++){const r=d[i];const cells=['<tr><td class="rn" onmousedown="rowDragS(event,\'b1\','+i+')">'+String(i+1)+'</td>'];for(let j=0;j<SHIP_FIELDS.length;j++){const f=SHIP_FIELDS[j],dup=isDupCell(f,r[f],shipDups);cells.push('<td class="cw'+(dup?' dup-cell':'')+'">'+ci(r._id,'s',f,r[f])+'</td>')}cells.push('</tr>');rows.push(cells.join(''))}
+  if($b1)$b1.innerHTML=rows.join('');initResize('b1');
+}
+function R2(){
+  updateDupCounts();
+  const q=($q2&&$q2.value||'').toLowerCase();
+  let d=prodD;
+  if(workerFilt!=='all')d=d.filter(r=>r.worker===workerFilt);
+  if(q)d=d.filter(r=>Object.values(r).some(v=>v&&String(v).toLowerCase().includes(q)));
+  if(dupMode.prod)d=d.filter(r=>rowHasDup(r,prodDups,PROD_SN_FIELDS));
+  if($p2)$p2.textContent=d.length+'건';
+  if($cnt2)$cnt2.textContent=prodD.length;
+  mkHead('th2','b2',PROD_HEADS);
+  const rows=[];
+  for(let i=0;i<d.length;i++){const r=d[i];const cells=['<tr><td class="rn" onmousedown="rowDragS(event,\'b2\','+i+')">'+String(i+1)+'</td>'];for(let j=0;j<PROD_FIELDS.length;j++){const f=PROD_FIELDS[j],dup=isDupCell(f,r[f],prodDups);cells.push('<td class="cw'+(dup?' dup-cell':'')+'">'+ci(r._id,'p',f,r[f])+'</td>')}cells.push('</tr>');rows.push(cells.join(''))}
+  if($b2)$b2.innerHTML=rows.join('');initResize('b2');
+}
+const PROD_VL_FIELDS=['tft_sn','scintillator','cpu_sn','main_board_sn','main_board_ver','panel_type','completed_date','detector_fw','micom_ver','bat_micom_ver','worker','aed_sn','note1','note2'];
+function R3(){
+  const q=($q3&&$q3.value||'').toLowerCase();
+  let d=mergeD;
+  if(q)d=d.filter(r=>Object.values(r).some(v=>v&&String(v).toLowerCase().includes(q)));
+  if($p3)$p3.textContent=d.length+'건';
+  if($cnt3)$cnt3.textContent=mergeD.length;
+  mkHead('th3','b3',MERGE_HEADS,MERGE_VC_START);
+  const rows=[];
+  for(let i=0;i<d.length;i++){const r=d[i],p=tftMap[r.tft_sn]||{};
+    const cells=['<tr><td class="rn" onmousedown="rowDragS(event,\'b3\','+i+')">'+String(i+1)+'</td>'];
+    for(let j=0;j<SHIP_FIELDS.length;j++)cells.push('<td class="cw">'+ci(r._id,'m',SHIP_FIELDS[j],r[SHIP_FIELDS[j]])+'</td>');
+    for(let j=0;j<PROD_VL_FIELDS.length;j++)cells.push('<td>'+vl(p[PROD_VL_FIELDS[j]],r.tft_sn)+'</td>');
+    cells.push('</tr>');rows.push(cells.join(''))}
+  if($b3)$b3.innerHTML=rows.join('');initResize('b3');
+}
+function renderAll(){
+  if($cnt1)$cnt1.textContent=shipD.length;
+  if($cnt2)$cnt2.textContent=prodD.length;
+  if($cnt3)$cnt3.textContent=mergeD.length;
+  if(curTab==='ship')R1();
+  else if(curTab==='prod')R2();
+  else if(curTab==='merge')R3();
+  else if(curTab==='kpi')renderKPI();
+}
+
+// ═══════════════════════════════════════
+// KPI
+// ═══════════════════════════════════════
+let kpiH=0; // 0=전체, 1=상반기, 2=하반기
+function setKpiH(h){
+  kpiH=h;
+  [0,1,2].forEach(i=>{const el=document.getElementById('kpiH'+i);if(el)el.classList.toggle('on',i===h)});
+  renderKPI();
+}
+function wdRange(s,e){
+  let c=0;const d=new Date(s.getTime());
+  while(d<=e){const w=d.getDay();if(w&&w<6)c++;d.setDate(d.getDate()+1)}
+  return c;
+}
+function mRange(yr,m){return{s:new Date(yr,m-1,1),e:new Date(yr,m,0)}}
+function hRange(yr,h){
+  if(!h)return{s:new Date(yr,0,1),e:new Date(yr,11,31)};
+  return h===1?{s:new Date(yr,0,1),e:new Date(yr,5,30)}:{s:new Date(yr,6,1),e:new Date(yr,11,31)};
+}
+function renderKPI(){
+  const wrap=document.getElementById('kpiWrap');if(!wrap)return;
+  const yrs=[...new Set(prodD.filter(r=>r.completed_date).map(r=>new Date(r.completed_date).getFullYear()).filter(y=>!isNaN(y)))].sort((a,b)=>b-a);
+  const ySel=document.getElementById('kpiYear');if(!ySel)return;
+  if(ySel.options.length!==yrs.length)ySel.innerHTML=yrs.map(y=>`<option value="${y}">${y}년</option>`).join('');
+  const yr=parseInt(ySel.value)||yrs[0];
+  if(!yr){wrap.innerHTML='<div class="kpi-empty">생산 데이터가 없습니다</div>';return}
+  const today=new Date();
+  // 표시할 월 목록
+  const months=kpiH===1?[1,2,3,4,5,6]:kpiH===2?[7,8,9,10,11,12]:[1,2,3,4,5,6,7,8,9,10,11,12];
+  // 워킹데이 계산 (월별)
+  const mWd={};
+  months.forEach(m=>{const{s,e}=mRange(yr,m);if(s>today){mWd[m]=0}else{mWd[m]=wdRange(s,e>today?today:e)}});
+  const{s:hs,e:he}=hRange(yr,kpiH);
+  const totalWd=hs>today?0:wdRange(hs,he>today?today:he);
+  // 반기별 워킹데이
+  const h1Wd=(()=>{const{s,e}=hRange(yr,1);return s>today?0:wdRange(s,e>today?today:e)})();
+  const h2Wd=(()=>{const{s,e}=hRange(yr,2);return s>today?0:wdRange(s,e>today?today:e)})();
+  // 데이터 필터
+  const data=prodD.filter(r=>{
+    if(!r.completed_date)return false;
+    const d=new Date(r.completed_date);if(isNaN(d)||d.getFullYear()!==yr)return false;
+    if(kpiH===1)return d.getMonth()<6;
+    if(kpiH===2)return d.getMonth()>=6;
+    return true;
+  });
+  const workers=[...new Set(data.map(r=>r.worker).filter(Boolean))].sort();
+  // stats[worker][month] = count, workerDates[worker][month] = Set
+  const stats={},mTot={},workerDates={};
+  workers.forEach(w=>{stats[w]={};workerDates[w]={}});
+  months.forEach(m=>mTot[m]=0);
+  // 반기 합산용
+  const hStat={},hTot={1:0,2:0},hDates={};
+  workers.forEach(w=>{hStat[w]={1:0,2:0};hDates[w]={1:new Set(),2:new Set()}});
+  data.forEach(r=>{
+    if(!r.worker)return;
+    const d=new Date(r.completed_date),m=d.getMonth()+1,half=m<=6?1:2;
+    if(!stats[r.worker])stats[r.worker]={};
+    if(!workerDates[r.worker])workerDates[r.worker]={};
+    stats[r.worker][m]=(stats[r.worker][m]||0)+1;
+    mTot[m]=(mTot[m]||0)+1;
+    if(!workerDates[r.worker][m])workerDates[r.worker][m]=new Set();
+    workerDates[r.worker][m].add(r.completed_date.slice(0,10));
+    if(!hStat[r.worker])hStat[r.worker]={1:0,2:0};
+    hStat[r.worker][half]++;
+    hTot[half]++;
+    if(!hDates[r.worker])hDates[r.worker]={1:new Set(),2:new Set()};
+    hDates[r.worker][half].add(r.completed_date.slice(0,10));
+  });
+  const wTot={},wTotDays={};
+  workers.forEach(w=>{
+    wTot[w]=months.reduce((s,m)=>s+(stats[w][m]||0),0);
+    wTotDays[w]=months.reduce((s,m)=>s+(workerDates[w][m]?workerDates[w][m].size:0),0);
+  });
+  const totalCnt=Object.values(wTot).reduce((s,v)=>s+v,0);
+  const maxWt=Math.max(...Object.values(wTot),1);
+  const el=document.getElementById('kpiTotal');if(el)el.textContent=totalCnt+'건';
+  const hLabel={0:'전체',1:'상반기',2:'하반기'};
+  const mLabel={1:'1월',2:'2월',3:'3월',4:'4월',5:'5월',6:'6월',7:'7월',8:'8월',9:'9월',10:'10월',11:'11월',12:'12월'};
+
+  // ── KPI 카드 ──
+  let h='<div class="kpi-cards">';
+  h+=`<div class="kpi-card hi"><div class="kc-lbl">총 생산대수</div><div class="kc-val">${totalCnt}<span>대</span></div><div class="kc-sub">${yr}년 ${hLabel[kpiH]}</div></div>`;
+  h+=`<div class="kpi-card"><div class="kc-lbl">워킹데이</div><div class="kc-val">${totalWd}<span>일</span></div><div class="kc-sub">주말 제외 영업일</div></div>`;
+  h+=`<div class="kpi-card ok2"><div class="kc-lbl">일평균 생산</div><div class="kc-val">${totalWd?(totalCnt/totalWd).toFixed(2):'-'}<span>대/일</span></div><div class="kc-sub">전체 평균</div></div>`;
+  h+=`<div class="kpi-card"><div class="kc-lbl">작업자</div><div class="kc-val">${workers.length}<span>명</span></div><div class="kc-sub">유효 데이터 기준</div></div>`;
+  if(!kpiH){
+    h+=`<div class="kpi-card"><div class="kc-lbl">상반기</div><div class="kc-val">${hTot[1]}<span>대</span></div><div class="kc-sub">${h1Wd}영업일 · ${h1Wd?(hTot[1]/h1Wd).toFixed(2):'-'}대/일</div></div>`;
+    h+=`<div class="kpi-card"><div class="kc-lbl">하반기</div><div class="kc-val">${hTot[2]}<span>대</span></div><div class="kc-sub">${h2Wd}영업일 · ${h2Wd?(hTot[2]/h2Wd).toFixed(2):'-'}대/일</div></div>`;
+  }
+  h+='</div>';
+
+  // ── 반기별 작업자 테이블 ──
+  if(!kpiH){
+    h+='<div class="kpi-sec"><div class="kpi-sec-h">📊 반기별 작업자 생산 현황</div><table class="kt"><thead><tr>';
+    h+='<th class="tl" style="min-width:80px">작업자</th>';
+    h+=`<th>상반기 (1~6월)<br><span style="font-size:8px;font-weight:400;opacity:.7">${h1Wd}영업일</span></th>`;
+    h+=`<th>하반기 (7~12월)<br><span style="font-size:8px;font-weight:400;opacity:.7">${h2Wd}영업일</span></th>`;
+    h+='<th style="background:#1a3352">연간 합계</th>';
+    h+='</tr></thead><tbody>';
+    workers.forEach(w=>{
+      h+=`<tr><td class="wn">${w}</td>`;
+      [1,2].forEach(hf=>{
+        const c=hStat[w][hf]||0,wd=hDates[w][hf]?hDates[w][hf].size:0;
+        h+=`<td><div class="kn">${c}대</div><div class="ka">${wd&&c?(c/wd).toFixed(2):'-'}대/일</div><div style="font-size:8px;opacity:.55;margin-top:1px">실작업 ${wd}일</div></td>`;
+      });
+      const c=wTot[w],wd=wTotDays[w],avg=wd&&c?(c/wd).toFixed(2):'-';
+      h+=`<td class="tc"><div class="kn">${c}대</div><div class="ka">${avg}대/일</div><div style="font-size:8px;opacity:.55;margin-top:1px">실작업 ${wd}일</div></td>`;
+      h+='</tr>';
+    });
+    h+='<tr class="tr"><td class="wn" style="background:var(--hd);color:var(--ht)">합계</td>';
+    [1,2].forEach(hf=>{const c=hTot[hf],wd=hf===1?h1Wd:h2Wd;h+=`<td><div class="kn">${c}대</div><div class="ka">${wd&&c?(c/wd).toFixed(2):'-'}대/일</div></td>`});
+    const avg=totalWd&&totalCnt?(totalCnt/totalWd).toFixed(2):'-';
+    h+=`<td><div class="kn">${totalCnt}대</div><div class="ka">${avg}대/일</div></td>`;
+    h+='</tr></tbody></table></div>';
+  }
+
+  // ── 월별 작업자 테이블 ──
+  h+='<div class="kpi-sec"><div class="kpi-sec-h">📋 월별 작업자 생산 현황</div><div style="overflow-x:auto"><table class="kt"><thead><tr>';
+  h+='<th class="tl" style="min-width:70px;position:sticky;left:0;z-index:2;background:#2a3a52">작업자</th>';
+  months.forEach(m=>h+=`<th style="min-width:58px">${mLabel[m]}<br><span style="font-size:7px;font-weight:400;opacity:.6">${mWd[m]}일</span></th>`);
+  h+=`<th style="background:#1a3352;min-width:65px">${hLabel[kpiH]} 합계</th>`;
+  h+='</tr></thead><tbody>';
+  workers.forEach(w=>{
+    h+=`<tr><td class="wn" style="position:sticky;left:0;z-index:1">${w}</td>`;
+    months.forEach(m=>{
+      const c=stats[w][m]||0,wd=workerDates[w][m]?workerDates[w][m].size:0;
+      const bg=c===0?'':'background:rgba(59,109,224,'+(Math.min(c/8,.25)).toFixed(2)+')';
+      h+=`<td style="${bg}"><div class="kn">${c}</div><div class="ka">${wd&&c?(c/wd).toFixed(1):'-'}/일</div></td>`;
+    });
+    const c=wTot[w],wd=wTotDays[w],avg=wd&&c?(c/wd).toFixed(2):'-';
+    h+=`<td class="tc"><div class="kn">${c}대</div><div class="ka">${avg}대/일</div></td>`;
+    h+='</tr>';
+  });
+  h+='<tr class="tr"><td class="wn" style="background:var(--hd);color:var(--ht);position:sticky;left:0;z-index:1">합계</td>';
+  months.forEach(m=>{const c=mTot[m]||0,wd=mWd[m];h+=`<td><div class="kn">${c}</div><div class="ka">${wd&&c?(c/wd).toFixed(1):'-'}/일</div></td>`});
+  const avgT=totalWd&&totalCnt?(totalCnt/totalWd).toFixed(2):'-';
+  h+=`<td><div class="kn">${totalCnt}</div><div class="ka">${avgT}/일</div></td>`;
+  h+='</tr></tbody></table></div></div>';
+
+  // ── 월별 추이 바 차트 ──
+  if(months.length>1){
+    const maxM=Math.max(...months.map(m=>mTot[m]||0),1);
+    h+='<div class="kpi-sec"><div class="kpi-sec-h">📈 월별 생산 추이</div><div class="kpi-bars">';
+    months.forEach(m=>{
+      const c=mTot[m]||0,pct=Math.round(c/maxM*100),wd=mWd[m],avg=wd&&c?(c/wd).toFixed(2):'-';
+      h+=`<div class="kpi-br"><div class="kpi-bn">${mLabel[m]}</div><div class="kpi-b"><div class="kpi-bf" style="width:${pct}%"></div></div><div class="kpi-bv">${c}대 <span style="color:var(--ts);font-weight:400">(${avg}대/일)</span></div></div>`;
+    });
+    h+='</div></div>';
+  }
+
+  // ── 작업자 순위 바 차트 ──
+  if(workers.length){
+    h+='<div class="kpi-sec"><div class="kpi-sec-h">🏆 작업자별 생산 순위</div><div class="kpi-bars">';
+    [...workers].sort((a,b)=>wTot[b]-wTot[a]).forEach(w=>{
+      const c=wTot[w],wd=wTotDays[w],pct=Math.round(c/maxWt*100),avg=wd&&c?(c/wd).toFixed(2):'-';
+      h+=`<div class="kpi-br"><div class="kpi-bn">${w}</div><div class="kpi-b"><div class="kpi-bf" style="width:${pct}%"></div></div><div class="kpi-bv">${c}대 <span style="color:var(--ts);font-weight:400">(${avg}대/일, ${wd}일 작업)</span></div></div>`;
+    });
+    h+='</div></div>';
+  }
+  wrap.innerHTML=h;
+}
+
+// ═══════════════════════════════════════
+// TOOLBAR TOGGLE
+function toggleTb(btn){
+  const ex=btn.closest('.toolbar').querySelector('.toolbar-extras');
+  const open=ex.classList.toggle('open');
+  btn.textContent=open?'필터 ▲':'필터 ▼';
+}
+
+// TAB / FILTER
+// ═══════════════════════════════════════
+const scrollPos={ship:0,prod:0,merge:0};
+const TAB_IDS=['ship','prod','merge','kpi'];
+function swTab(t){
+  const curTw=document.querySelector('#v-'+curTab+' .tw');
+  if(curTw)scrollPos[curTab]=curTw.scrollTop;
+  curTab=t;
+  document.querySelectorAll('.tab').forEach((e,i)=>e.classList.toggle('on',TAB_IDS[i]===t));
+  TAB_IDS.forEach(x=>document.getElementById('v-'+x).classList.toggle('active',x===t));
+  if(t==='kpi'){renderKPI();return}
+  renderAll();
+  const newTw=document.querySelector('#v-'+t+' .tw');
+  if(newTw)newTw.scrollTop=scrollPos[t]||0;
+}
+function setF(el,f){shipFilt=f;document.querySelectorAll('#v-ship .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');R1()}
+function setW(el,w){workerFilt=w;document.querySelectorAll('#v-prod .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');R2()}
+function buildMerge(){mergeD=shipD.map(r=>({...r}));R3();swTab('merge');toast('취합본 생성 ('+mergeD.length+'건)','ok')}
+
+// ═══════════════════════════════════════
+// ADD ROW
+// ═══════════════════════════════════════
+function addRow(type){
+  if(type==='ship'){
+    const n=shipD.reduce((m,r)=>Math.max(m,r.row_no||0),0)+1;
+    const newRow={_id:'new_'+Date.now(),_new:true,row_no:n};
+    SHIP_FIELDS.forEach(f=>{if(!newRow[f])newRow[f]=null});
+    shipD.push(newRow);dirty.inserts.ship.push(newRow);
+    markDirty();markDupDirty();R1();
+  }else{
+    const w=workerFilt!=='all'?workerFilt:null;
+    const newRow={_id:'new_'+Date.now(),_new:true,worker:w};
+    PROD_FIELDS.forEach(f=>{if(!newRow[f])newRow[f]=null});
+    prodD.push(newRow);dirty.inserts.prod.push(newRow);
+    markDirty();markDupDirty();rebuildTft();R2();
+  }
+  const tbId=type==='ship'?'b1':'b2';
+  setTimeout(()=>{const tb=document.getElementById(tbId);const last=tb.lastElementChild;if(last){last.scrollIntoView({behavior:'smooth',block:'center'})}},50);
+  saveCache();toast('행 추가됨 (저장 버튼으로 DB 반영)','info');
+}
+
+// ═══════════════════════════════════════
+// ROW/COL DRAG SELECT
+// ═══════════════════════════════════════
+let rowDrag=null,colDrag=null;
+function rowDragS(e,tbId,ri){e.preventDefault();selWholeRow(tbId,ri);rowDrag={tbId,si:ri};document.addEventListener('mousemove',rowDragM);document.addEventListener('mouseup',rowDragE)}
+function rowDragM(e){if(!rowDrag)return;const tb=document.getElementById(rowDrag.tbId);[...tb.children].forEach((tr,i)=>{const r=tr.getBoundingClientRect();if(e.clientY>=r.top&&e.clientY<=r.bottom&&i!==range.r2){range.r1=Math.min(rowDrag.si,i);range.r2=Math.max(rowDrag.si,i);range.c1=0;range.c2=tr.children.length-1;paintR()}})}
+function rowDragE(){rowDrag=null;document.removeEventListener('mousemove',rowDragM);document.removeEventListener('mouseup',rowDragE)}
+function colDragS(e,tbId,ci){e.preventDefault();selWholeCol(tbId,ci);colDrag={tbId,si:ci};document.addEventListener('mousemove',colDragM);document.addEventListener('mouseup',colDragE)}
+function colDragM(e){if(!colDrag)return;const table=document.getElementById(colDrag.tbId).closest('table');const ths=[...table.querySelector('thead tr:last-child').children];ths.forEach((th,i)=>{const r=th.getBoundingClientRect();if(e.clientX>=r.left&&e.clientX<=r.right){const c1=Math.min(colDrag.si,i),c2=Math.max(colDrag.si,i);if(c1!==range.c1||c2!==range.c2){range.c1=c1;range.c2=c2;paintR()}}})}
+function colDragE(){colDrag=null;document.removeEventListener('mousemove',colDragM);document.removeEventListener('mouseup',colDragE)}
+
+// ═══════════════════════════════════════
+// COLUMN RESIZE
+// ═══════════════════════════════════════
+function autoFitCol(e,tbId,colIdx){
+  e.stopPropagation();
+  const table=document.getElementById(tbId).closest('table');
+  const th=table.querySelector('thead tr:last-child').children[colIdx];
+  if(!th)return;
+  const canvas=document.createElement('canvas'),ctx2=canvas.getContext('2d');
+  ctx2.font='10.5px "Noto Sans KR"';
+  let mw=ctx2.measureText(th.innerText).width+16;
+  table.querySelectorAll('tbody tr').forEach(tr=>{const td=tr.children[colIdx];if(!td)return;const inp=td.querySelector('input');const w=ctx2.measureText(inp?inp.value:td.innerText||'').width+20;if(w>mw)mw=w});
+  const nw=Math.max(30,Math.min(400,Math.ceil(mw)));
+  th.style.width=th.style.minWidth=th.style.maxWidth=nw+'px';
+  table.querySelectorAll('tbody tr').forEach(tr=>{const td=tr.children[colIdx];if(td)td.style.width=td.style.minWidth=td.style.maxWidth=nw+'px'});
+}
+function initResize(tbId){
+  const tb=document.getElementById(tbId);if(!tb)return;
+  tb.closest('table').querySelectorAll('thead tr:last-child th').forEach(th=>{
+    if(th.querySelector('.resizer'))return;
+    const r=document.createElement('div');r.className='resizer';th.style.position='relative';th.appendChild(r);
+    r.addEventListener('dblclick',e=>{
+      e.stopPropagation();
+      const idx=[...th.parentElement.children].indexOf(th),table=th.closest('table'),canvas=document.createElement('canvas'),ctx2=canvas.getContext('2d');
+      ctx2.font='10.5px "Noto Sans KR"';let mw=ctx2.measureText(th.innerText).width+16;
+      table.querySelectorAll('tbody tr').forEach(tr=>{const td=tr.children[idx];if(!td)return;const inp=td.querySelector('input');const w=ctx2.measureText(inp?inp.value:td.innerText||'').width+20;if(w>mw)mw=w});
+      const nw=Math.max(30,Math.min(400,Math.ceil(mw)));
+      th.style.width=th.style.minWidth=th.style.maxWidth=nw+'px';
+      table.querySelectorAll('tbody tr').forEach(tr=>{const td=tr.children[idx];if(td)td.style.width=td.style.minWidth=td.style.maxWidth=nw+'px'});
+    });
+    let sx,sw;
+    r.addEventListener('mousedown',e=>{
+      e.preventDefault();e.stopPropagation();sx=e.pageX;sw=th.offsetWidth;r.classList.add('on');
+      const onM=e2=>{const nw=Math.max(30,sw+(e2.pageX-sx));th.style.width=th.style.minWidth=th.style.maxWidth=nw+'px';
+        const idx=[...th.parentElement.children].indexOf(th),table=th.closest('table');
+        table.querySelectorAll('tbody tr').forEach(tr=>{const td=tr.children[idx];if(td)td.style.width=td.style.minWidth=td.style.maxWidth=nw+'px'})};
+      const onU=()=>{r.classList.remove('on');document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU)};
+      document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
+    });
+  });
+}
+
+// ═══════════════════════════════════════
+// MODAL (Paste / TFT Match)
+// ═══════════════════════════════════════
+let modalMode='';
+function openModal(mode){
+  modalMode=mode;
+  const titles={'paste-s':'📋 검사포장 출하이력 붙여넣기','paste-p':'📋 생산관리대장 붙여넣기','tft':'🔗 디텍터 S/N ↔ TFT S/N 매칭'};
+  const descs={'paste-s':'엑셀에서 헤더포함/데이터만 복사 후 Ctrl+V','paste-p':'엑셀에서 헤더포함/데이터만 복사 후 Ctrl+V','tft':'[디텍터S/N] [TFT S/N] 두 열 복사 후 Ctrl+V'};
+  document.getElementById('mTitle').textContent=titles[mode]||'';
+  document.getElementById('mDesc').textContent=descs[mode]||'';
+  document.getElementById('mArea').value='';
+  document.getElementById('mPrev').innerHTML='';
+  document.getElementById('mCnt').textContent='0건';
+  document.getElementById('modalBg').classList.add('show');
+  setTimeout(()=>document.getElementById('mArea').focus(),100);
+}
+function closeModal(){document.getElementById('modalBg').classList.remove('show')}
+
+document.getElementById('mArea').addEventListener('input',function(){
+  const raw=this.value.trim();if(!raw){document.getElementById('mPrev').innerHTML='';document.getElementById('mCnt').textContent='0건';return}
+  const lines=raw.split('\n').filter(l=>l.trim());
+  if(modalMode==='tft'){
+    const pairs=lines.map(l=>{const p=l.split('\t');return p.length>=2?{det:p[0].trim(),tft:p[1].trim()}:null}).filter(Boolean);
+    let h='<table><tr><th>#</th><th>디텍터 S/N</th><th>TFT S/N</th><th>상태</th></tr>';
+    pairs.forEach((p,i)=>{const found=shipD.find(r=>r.detector_sn===p.det);h+='<tr><td>'+(i+1)+'</td><td>'+p.det+'</td><td>'+p.tft+'</td><td style="color:'+(found?'var(--ok)':'var(--ts)');h+='">'+(found?'✓':'✗')+'</td></tr>'});
+    h+='</table>';document.getElementById('mPrev').innerHTML=h;
+    const matched=pairs.filter(p=>shipD.find(r=>r.detector_sn===p.det)).length;
+    document.getElementById('mCnt').textContent=pairs.length+'건 중 '+matched+'건 매칭';
+  }else{
+    const fields=modalMode==='paste-p'?PROD_FIELDS:SHIP_FIELDS;
+    const heads=modalMode==='paste-p'?PROD_HEADS:SHIP_HEADS;
+    // Detect header
+    const first=lines[0].split('\t');
+    let start=0;
+    if(first.some(c=>heads.some(h=>c.toUpperCase().replace(/\s/g,'').includes(h.replace(/\n/g,'').toUpperCase().replace(/\s/g,'').substring(0,4)))))start=1;
+    const rows=lines.slice(start).map(l=>l.split('\t'));
+    const showCols=Math.min(6,fields.length);
+    let h='<table><tr><th>#</th>';for(let i=0;i<showCols;i++)h+='<th>'+heads[i].replace(/\n/g,' ')+'</th>';h+='</tr>';
+    rows.slice(0,30).forEach((r,i)=>{h+='<tr><td>'+(i+1)+'</td>';for(let j=0;j<showCols;j++)h+='<td>'+(r[j]||'-')+'</td>';h+='</tr>'});
+    if(rows.length>30)h+='<tr><td colspan="'+(showCols+1)+'">... 외 '+(rows.length-30)+'행</td></tr>';
+    h+='</table>';document.getElementById('mPrev').innerHTML=h;
+    document.getElementById('mCnt').textContent=rows.length+'행';
+  }
+});
+
+async function confirmModal(){
+  const raw=document.getElementById('mArea').value.trim();if(!raw){toast('데이터 없음','er');return}
+  const lines=raw.split('\n').filter(l=>l.trim());
+
+  if(modalMode==='tft'){
+    const pairs=lines.map(l=>{const p=l.split('\t');return p.length>=2?{det:p[0].trim(),tft:p[1].trim()}:null}).filter(Boolean);
+    const us=[];let n=0;
+    pairs.forEach(p=>{const row=shipD.find(r=>r.detector_sn===p.det);if(row){const ov=row.tft_sn;row.tft_sn=p.tft;us.push({id:row._id,t:'s',f:'tft_sn',ov,nv:p.tft});trackUpdate('shipment',row._id,'tft_sn',p.tft);n++}});
+    if(us.length)pushU(us);R1();closeModal();saveCache();toast(n+'건 TFT 매칭 완료','ok');return;
+  }
+
+  const fields=modalMode==='paste-p'?PROD_FIELDS:SHIP_FIELDS;
+  const heads=modalMode==='paste-p'?PROD_HEADS:SHIP_HEADS;
+  const table=modalMode==='paste-p'?'production':'shipment';
+  const first=lines[0].split('\t');
+  let start=0;
+  if(first.some(c=>heads.some(h=>c.toUpperCase().replace(/\s/g,'').includes(h.replace(/\n/g,'').toUpperCase().replace(/\s/g,'').substring(0,4)))))start=1;
+
+  const bulk=lines.slice(start).map((l,idx)=>{
+    const cells=l.split('\t');
+    const obj={};
+    fields.forEach((f,i)=>{
+      let v=(cells[i]||'').trim();
+      if(v&&(f.includes('date'))){v=v.replace(/\(.+\)/,'').trim();if(/^\d{2}-\d{2}-\d{2}$/.test(v))v='20'+v}
+      obj[f]=v||null;
+    });
+    if(table==='shipment')obj.row_no=shipD.length+idx+1;
+    return obj;
+  });
+
+  const dbRows=await dbBulkInsert(table,bulk);
+  if(table==='shipment'){dbRows.forEach(r=>{r._id=r.id;shipD.push(r)});R1()}
+  else{dbRows.forEach(r=>{r._id=r.id;prodD.push(r)});rebuildTft();R2()}
+  closeModal();saveCache();toast(dbRows.length+'건 등록 완료','ok');
+}
+
+document.getElementById('modalBg').addEventListener('click',e=>{if(e.target===document.getElementById('modalBg'))closeModal()});
+
+// ═══════════════════════════════════════
+// EXCEL EXPORT
+// ═══════════════════════════════════════
+function exportAll(){
+  const wb=XLSX.utils.book_new();
+  const s1=XLSX.utils.aoa_to_sheet([SHIP_HEADS.map(h=>h.replace(/\n/g,' ')),...shipD.map(r=>SHIP_FIELDS.map(f=>r[f]))]);
+  s1['!cols']=SHIP_HEADS.map(()=>({wch:16}));XLSX.utils.book_append_sheet(wb,s1,'검사포장 출하이력');
+  const s2=XLSX.utils.aoa_to_sheet([PROD_HEADS.map(h=>h.replace(/\n/g,' ')),...prodD.map(r=>PROD_FIELDS.map(f=>r[f]))]);
+  s2['!cols']=PROD_HEADS.map(()=>({wch:16}));XLSX.utils.book_append_sheet(wb,s2,'생산관리대장');
+  // 통합
+  const mh=[...SHIP_HEADS,...['TFT S/N(생산)','Scintillator','CPU S/N','BOARD S/N','BOARD VER','중판','제작완료일','F/W(생산)','MICOM','BAT MICOM','작업자','AED S/N','비고1','비고']].map(h=>h.replace(/\n/g,' '));
+  const mr=mergeD.map(r=>{const p=tftMap[r.tft_sn]||{};return[...SHIP_FIELDS.map(f=>r[f]),p.tft_sn,p.scintillator,p.cpu_sn,p.main_board_sn,p.main_board_ver,p.panel_type,p.completed_date,p.detector_fw,p.micom_ver,p.bat_micom_ver,p.worker,p.aed_sn,p.note1,p.note2]});
+  const s3=XLSX.utils.aoa_to_sheet([mh,...mr]);s3['!cols']=mh.map(()=>({wch:14}));XLSX.utils.book_append_sheet(wb,s3,'통합취합본');
+  const d=new Date();XLSX.writeFile(wb,'출하관리_'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'.xlsx');
+  toast('엑셀 다운로드 완료','ok');
+}
+
+// ═══════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════
+function toast(m,t='info'){const c=document.getElementById('toasts');const e=document.createElement('div');e.className='toast '+t;e.textContent=m;c.appendChild(e);setTimeout(()=>e.remove(),2500)}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+// ═══ BEFOREUNLOAD WARNING ═══
+window.addEventListener('beforeunload',e=>{if(hasChanges){e.preventDefault();e.returnValue=''}});
+
+renderAll();
+// Load from cache first (instant), then background DB sync
+const cached=loadCache();
+fullReload().finally(()=>{
+  const ov=document.getElementById('loadingOverlay');
+  ov.classList.add('hide');
+  setTimeout(()=>ov.remove(),300);
+});
+</script>
+</body>
+</html>

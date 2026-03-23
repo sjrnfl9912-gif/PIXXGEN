@@ -1,0 +1,255 @@
+/* ── TABLE ── */
+.tw {
+  padding: 0 8px 8px;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  border-radius: 6px;
+  position: relative;
+}
+
+table.g {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--sf);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+table.g thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+table.g th {
+  background: var(--hd);
+  color: var(--ht);
+  padding: 5px 4px;
+  font-size: 9px;
+  font-weight: 500;
+  text-align: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  white-space: pre-line;
+  line-height: 1.3;
+  user-select: none;
+}
+
+table.g th:last-child {
+  border-right: none;
+}
+
+table.g th.al {
+  background: #2a3a52;
+  cursor: pointer;
+  font-size: 8px;
+  color: #7a8ba4;
+  padding: 3px 2px;
+}
+
+table.g th.al:hover {
+  background: #3a4f6e;
+  color: #fff;
+}
+
+table.g th.al.sel {
+  background: var(--pr);
+  color: #fff;
+}
+
+table.g th.vc {
+  background: #1a3352;
+}
+
+table.g th .sub {
+  display: block;
+  font-size: 7px;
+  opacity: 0.45;
+  margin-top: 1px;
+}
+
+table.g td {
+  padding: 2px 3px;
+  border-bottom: 1px solid #eff1f5;
+  border-right: 1px solid #f5f6f9;
+  font-size: 10.5px;
+  white-space: nowrap;
+  height: 26px;
+  position: relative;
+  user-select: none;
+}
+
+table.g tr:nth-child(even) td {
+  background: var(--ra);
+}
+
+table.g tr:hover td:not(.sel):not(.sel-r) {
+  background: var(--rh);
+}
+
+td.rn {
+  width: 30px;
+  min-width: 30px;
+  text-align: center;
+  color: var(--ts);
+  font-size: 9px;
+  font-weight: 500;
+  background: #f3f5f8 !important;
+  cursor: pointer;
+  border-right: 1px solid #dde1e9 !important;
+}
+
+td.rn:hover {
+  background: #dde5ff !important;
+  color: var(--pr);
+}
+
+td.rn.sel {
+  background: var(--pl) !important;
+  color: var(--pr);
+  font-weight: 700;
+}
+
+th.corner {
+  background: #2a3a52 !important;
+  width: 30px;
+  min-width: 30px;
+  cursor: pointer;
+}
+
+th.corner:hover {
+  background: #3a4f6e !important;
+}
+
+/* ── CELLS ── */
+.cw {
+  position: relative;
+  overflow: hidden;
+}
+
+.c {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 10.5px;
+  padding: 1px 2px;
+  color: var(--tx);
+  cursor: cell;
+  caret-color: transparent;
+}
+
+.c.edit {
+  cursor: text;
+  caret-color: var(--tx);
+  background: #fffde7;
+}
+
+.c.vl {
+  color: var(--pr);
+  font-weight: 500;
+  pointer-events: none;
+  background: rgba(59, 109, 224, 0.02);
+}
+
+.fh {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 7px;
+  height: 7px;
+  background: var(--pr);
+  border: 1px solid #fff;
+  cursor: crosshair;
+  z-index: 5;
+  opacity: 0;
+  transition: 0.1s;
+}
+
+td:hover .fh,
+td:focus-within .fh {
+  opacity: 1;
+}
+
+/* ── SELECTION ── */
+td.sel {
+  background: #b8ccff !important;
+}
+
+td.sel-r {
+  background: #c8d9ff !important;
+}
+
+td.sel-r input.c {
+  color: #1a1d26 !important;
+}
+
+.sel-box {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid #1a56db;
+  box-sizing: border-box;
+  z-index: 20;
+}
+
+td.chg {
+  animation: saved 0.6s ease-out;
+}
+
+@keyframes saved {
+  0% {
+    background: #dcfce7;
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+td.fill-r {
+  background: rgba(59, 109, 224, 0.08) !important;
+  border-bottom: 1px dashed var(--pr) !important;
+}
+
+/* ── DUPLICATE CELLS ── */
+td.dup-cell {
+  background: #fef2f2 !important;
+}
+
+td.dup-cell input.c {
+  color: var(--er) !important;
+  font-weight: 600 !important;
+}
+
+/* ── RESIZE ── */
+.resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 5;
+}
+
+.resizer:hover,
+.resizer.on {
+  background: var(--pr);
+  opacity: 0.4;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #bfc6d4;
+  border-radius: 3px;
+}
