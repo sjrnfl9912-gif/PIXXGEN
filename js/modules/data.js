@@ -17,24 +17,43 @@ export async function loadAllData() {
 
     console.log('DB에서 데이터 로드 중...');
 
-     // 타임아웃 설정 (20초 - 대용량 데이터 로드용)
+    // 타임아웃 설정 (20초)
     const timeout = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('DB 연결 타임아웃')), 20000)
     );
 
-    const shipmentPromise = supabase.from('shipment').select('*');
-    const productionPromise = supabase.from('production').select('*');
+    // 페이지네이션: 한 번에 1000개씩 로드
+    const loadAllPages = async (table) => {
+      let allData = [];
+      let page = 0;
+      let hasMore = true;
 
-    const [shipmentRes, productionRes] = await Promise.race([
-      Promise.all([shipmentPromise, productionPromise]),
+      while (hasMore) {
+        const start = page * 1000;
+        const end = start + 999;
+        const { data, error } = await table.select('*').range(start, end);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = allData.concat(data);
+          page++;
+        }
+      }
+      return allData;
+    };
+
+    const [shipmentData, productionData] = await Promise.race([
+      Promise.all([
+        loadAllPages(supabase.from('shipment')),
+        loadAllPages(supabase.from('production'))
+      ]),
       timeout
     ]);
 
-    console.log('Shipment:', shipmentRes.data?.length, 'rows');
-    console.log('Production:', productionRes.data?.length, 'rows');
-
-    const shipmentData = shipmentRes.data || [];
-    const productionData = productionRes.data || [];
+    console.log('Shipment:', shipmentData.length, 'rows');
+    console.log('Production:', productionData.length, 'rows');
 
     const shipD = shipmentData.map((r) => ({
       _id: `ship_${r.id}`,
