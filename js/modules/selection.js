@@ -2,6 +2,7 @@
 // SELECTION ENGINE
 // ═══════════════════════════════════════
 import { state } from '../state.js';
+import { endEdit } from './editing.js';
 
 // ── Helpers ──
 export function cellPos(td) {
@@ -120,10 +121,10 @@ export function selAllCells(tbId) {
   state.range = { r1: 0, c1: 0, r2: tb.children.length - 1, c2: tb.children[0].children.length - 1 }; paintRange();
 }
 
-// Lazy import to avoid circular dependency
+// 셀 전환 시 현재 편집 중인 셀의 변경사항을 즉시(동기적으로) 저장
 function endEditIfNeeded() {
   if (state.editing && state.sel) {
-    import('./editing.js').then(m => m.endEdit());
+    endEdit();
   }
 }
 
