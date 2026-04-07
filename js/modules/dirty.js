@@ -6,12 +6,18 @@ import { state, rebuildTft, markDupDirty } from '../state.js';
 import { renderAll } from './table.js';
 import { saveCache } from '../services/storage.js';
 import { toast } from '../services/ui.js';
+import { dbFetchAll } from '../db.js';
+
+let isSaving = false;
 
 export async function saveAll() {
+  // 중복 저장 방지
+  if (isSaving) { toast('저장 진행 중...', 'info'); return; }
   const { endEdit } = await import('./editing.js');
   endEdit();
   if (!state.hasChanges) { toast('변경사항 없음', 'info'); return; }
   const sb = getSupabase(); if (!sb) { toast('DB 연결 실패', 'er'); return; }
+  isSaving = true;
   const btn = document.getElementById('saveBtn');
   const status = document.getElementById('saveStatus');
   if (btn) { btn.disabled = true; btn.textContent = '💾 저장 중...'; }
@@ -83,11 +89,28 @@ export async function saveAll() {
     } else if (status) { status.textContent = '일부 실패 (' + errors.length + '건)'; status.style.color = 'var(--er)'; }
 
     saveCache(state.shipD, state.prodD); rebuildTft(); renderAll();
-    if (errors.length) toast('일부 저장 실패: ' + errors.join(', '), 'er');
-    else toast('저장 완료 (' + updCnt + '건 수정)', 'ok');
+    if (errors.length) {
+      toast('일부 저장 실패: ' + errors.join(', '), 'er');
+    } else {
+      toast('저장 완료 — DB 동기화 중...', 'ok');
+      // 저장 성공 후 DB에서 최신 데이터 다시 로드 (데이터 정합성 보장)
+      try {
+        state.isReloading = true;
+        const [sData, pData] = await Promise.all([dbFetchAll('shipment'), dbFetchAll('production')]);
+        state.shipD = sData.map(r => ({ ...r, _id: r.id }));
+        state.prodD = pData.map(r => ({ ...r, _id: r.id }));
+        rebuildTft(); markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
+        toast('저장 및 동기화 완료', 'ok');
+      } catch (re) {
+        console.warn('저장 후 동기화 실패:', re);
+      } finally {
+        state.isReloading = false;
+      }
+    }
   } catch (e) {
     console.error(e); toast('저장 실패: ' + e.message, 'er');
   } finally {
+    isSaving = false;
     if (btn) { btn.disabled = false; btn.textContent = '💾 저장'; }
   }
 }
