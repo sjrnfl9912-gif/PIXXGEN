@@ -61,17 +61,34 @@ function cleanNull(type) {
 
 // ═══ DB LOAD ═══
 async function fullReload() {
+  // 미저장 변경사항이 있으면 사용자에게 경고
+  if (state.hasChanges) {
+    const proceed = await new Promise(resolve => {
+      customConfirm('저장하지 않은 변경사항이 있습니다. DB에서 다시 불러오면 변경사항이 사라집니다.\n계속하시겠습니까?', () => resolve(true), () => resolve(false));
+    });
+    if (!proceed) { toast('동기화 취소됨', 'info'); return; }
+  }
+  state.isReloading = true;
   toast('DB 전체 동기화 중...', 'info');
   try {
     const [sData, pData] = await Promise.all([dbFetchAll('shipment'), dbFetchAll('production')]);
     state.shipD = sData.map(r => ({ ...r, _id: r.id }));
     state.prodD = pData.map(r => ({ ...r, _id: r.id }));
+    // dirty 상태 초기화 (DB 데이터로 완전 교체했으므로)
+    state.dirty = { updates: {}, inserts: { ship: [], prod: [] }, deletes: { ship: [], prod: [] } };
+    state.hasChanges = false;
+    const btn = document.getElementById('saveBtn');
+    const status = document.getElementById('saveStatus');
+    if (btn) btn.classList.remove('dirty');
+    if (status) { status.textContent = ''; status.style.color = ''; }
     rebuildTft(); markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
     document.querySelector('.sync-dot').style.background = 'var(--ok)';
     toast('DB 동기화 완료 (출하 ' + state.shipD.length + ' / 생산 ' + state.prodD.length + ')', 'ok');
   } catch (e) {
     console.error(e); toast('DB 연결 실패', 'er');
     document.querySelector('.sync-dot').style.background = 'var(--er)';
+  } finally {
+    state.isReloading = false;
   }
 }
 
@@ -203,8 +220,23 @@ async function init() {
     toast('캐시 로드 (' + ship.length + '/' + prod.length + '건)', 'info');
   }
 
-  // Then full DB sync
-  await fullReload();
+  // Then full DB sync (초기 로드 시에는 확인 없이 바로 동기화)
+  state.isReloading = true;
+  try {
+    const [sData, pData] = await Promise.all([dbFetchAll('shipment'), dbFetchAll('production')]);
+    state.shipD = sData.map(r => ({ ...r, _id: r.id }));
+    state.prodD = pData.map(r => ({ ...r, _id: r.id }));
+    state.dirty = { updates: {}, inserts: { ship: [], prod: [] }, deletes: { ship: [], prod: [] } };
+    state.hasChanges = false;
+    rebuildTft(); markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
+    document.querySelector('.sync-dot').style.background = 'var(--ok)';
+    toast('DB 동기화 완료 (출하 ' + state.shipD.length + ' / 생산 ' + state.prodD.length + ')', 'ok');
+  } catch (e) {
+    console.error(e); toast('DB 연결 실패 - 캐시 데이터 사용 중', 'er');
+    document.querySelector('.sync-dot').style.background = 'var(--er)';
+  } finally {
+    state.isReloading = false;
+  }
 
   // Init realtime after data loaded
   initRealtime();

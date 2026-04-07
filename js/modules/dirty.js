@@ -43,16 +43,36 @@ export async function saveAll() {
 
     // 3. Inserts
     if (state.dirty.inserts.ship.length) {
-      const rows = state.dirty.inserts.ship.map(r => { const o = { ...r }; delete o._id; delete o._new; return o; });
+      const localCopy = [...state.dirty.inserts.ship];
+      const rows = localCopy.map(r => { const o = { ...r }; delete o._id; delete o._new; return o; });
       const { data, error } = await sb.from('shipment').insert(rows).select();
-      if (error) errors.push('출하 추가 실패');
-      else { if (data) data.forEach((dbRow, i) => { const local = state.dirty.inserts.ship[i]; if (local) { const idx = state.shipD.findIndex(r => r._id === local._id); if (idx >= 0) state.shipD[idx] = { ...dbRow, _id: dbRow.id }; } }); state.dirty.inserts.ship = []; }
+      if (error) { console.error('출하 추가 실패:', error); errors.push('출하 추가 실패: ' + (error.message || error.code || '')); }
+      else {
+        if (data) data.forEach((dbRow, i) => {
+          const local = localCopy[i];
+          if (local) {
+            const idx = state.shipD.findIndex(r => r._id === local._id);
+            if (idx >= 0) { state.shipD[idx] = { ...dbRow, _id: dbRow.id }; }
+          }
+        });
+        state.dirty.inserts.ship = state.dirty.inserts.ship.filter(r => !localCopy.includes(r));
+      }
     }
     if (state.dirty.inserts.prod.length) {
-      const rows = state.dirty.inserts.prod.map(r => { const o = { ...r }; delete o._id; delete o._new; return o; });
+      const localCopy = [...state.dirty.inserts.prod];
+      const rows = localCopy.map(r => { const o = { ...r }; delete o._id; delete o._new; return o; });
       const { data, error } = await sb.from('production').insert(rows).select();
-      if (error) errors.push('생산 추가 실패');
-      else { if (data) data.forEach((dbRow, i) => { const local = state.dirty.inserts.prod[i]; if (local) { const idx = state.prodD.findIndex(r => r._id === local._id); if (idx >= 0) state.prodD[idx] = { ...dbRow, _id: dbRow.id }; } }); state.dirty.inserts.prod = []; }
+      if (error) { console.error('생산 추가 실패:', error); errors.push('생산 추가 실패: ' + (error.message || error.code || '')); }
+      else {
+        if (data) data.forEach((dbRow, i) => {
+          const local = localCopy[i];
+          if (local) {
+            const idx = state.prodD.findIndex(r => r._id === local._id);
+            if (idx >= 0) { state.prodD[idx] = { ...dbRow, _id: dbRow.id }; }
+          }
+        });
+        state.dirty.inserts.prod = state.dirty.inserts.prod.filter(r => !localCopy.includes(r));
+      }
     }
 
     const stillDirty = Object.keys(state.dirty.updates).length || state.dirty.inserts.ship.length || state.dirty.inserts.prod.length || state.dirty.deletes.ship.length || state.dirty.deletes.prod.length;

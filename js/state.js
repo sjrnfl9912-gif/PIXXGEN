@@ -61,6 +61,9 @@ export const state = {
 
   // KPI
   kpiH: 0, // 0=전체, 1=상반기, 2=하반기
+
+  // Reload lock (realtime 이벤트 무시용)
+  isReloading: false,
 };
 
 // ═══ TFT MAP ═══
