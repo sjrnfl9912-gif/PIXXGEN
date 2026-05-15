@@ -90,6 +90,14 @@ export function renderProductionTable() {
   if (state.workerFilt !== 'all') d = d.filter(r => r.worker === state.workerFilt);
   if (q) d = d.filter(r => Object.values(r).some(v => v && String(v).toLowerCase().includes(q)));
   if (state.dupMode.prod) d = d.filter(r => rowHasDup(r, state.prodDups, PROD_SN_FIELDS));
+  // 완제품 제작완료일 기준 자동 정렬 (오래된 순, 날짜 없는 행은 맨 뒤)
+  d = d.slice().sort((a, b) => {
+    const x = a.completed_date || '', y = b.completed_date || '';
+    if (!x && !y) return 0;
+    if (!x) return 1;
+    if (!y) return -1;
+    return x < y ? -1 : x > y ? 1 : 0;
+  });
   state.prodFiltered = d;
   const p2 = document.getElementById('p2'), cnt2 = document.getElementById('cnt2');
   if (p2) p2.textContent = d.length + '건';
