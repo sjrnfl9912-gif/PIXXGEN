@@ -20,14 +20,19 @@ export const getSupabase = () => {
 export const supabase = getSupabase();
 
 // Table schemas
-export const SHIP_FIELDS = ['row_no', 'mgmt_no', 'product_name', 'mfg_date', 'planned_ship_date', 'warranty', 'country', 'usage_type', 'company', 'detector_sn', 'cbbox_sn', 'cbbox_ver', 'detector_fw', 'manager_info', 'zview_sw', 'tft_sn'];
-export const SHIP_HEADS = ['NO', '관리\n번호', '품명', '제조\n년월일', '예상\n출하일', 'Warranty', '국가', '구분', '업체 &\n병원명', '디텍터\nS/N', 'CB BOX\nS/N', 'CB BOX\nVER.', 'DETECTOR\nF/W', 'MANAGER', 'ZVIEW\nS/W', 'TFT\nS/N'];
+// 검사포장(shipment): TFT S/N 열 제거 - O열(ZVIEW S/W)까지. 생산 매칭은 tft_match 경유.
+export const SHIP_FIELDS = ['row_no', 'mgmt_no', 'product_name', 'mfg_date', 'planned_ship_date', 'warranty', 'country', 'usage_type', 'company', 'detector_sn', 'cbbox_sn', 'cbbox_ver', 'detector_fw', 'manager_info', 'zview_sw'];
+export const SHIP_HEADS = ['NO', '관리\n번호', '품명', '제조\n년월일', '예상\n출하일', 'Warranty', '국가', '구분', '업체 &\n병원명', '디텍터\nS/N', 'CB BOX\nS/N', 'CB BOX\nVER.', 'DETECTOR\nF/W', 'MANAGER', 'ZVIEW\nS/W'];
 
 export const PROD_FIELDS = ['prod_no', 'tft_sn', 'scintillator', 'cpu_sn', 'main_board_sn', 'main_board_ver', 'panel_type', 'completed_date', 'detector_fw', 'micom_ver', 'bat_micom_ver', 'worker', 'aed_sn', 'note1', 'note2'];
 export const PROD_HEADS = ['생산번호', 'TFT\nS/N', 'Scintillator\nTYPE', 'CPU\nS/N', 'MAIN BOARD\nS/N', 'MAIN BOARD\nVER', '중판\nTYPE', '완제품\n제작완료일', 'DETECTOR\nF/W', 'MICOM\nVER.', 'BAT MICOM\nVER.', '작업자', 'AED\nS/N', '비고 1', '비고'];
 
+// TFT 매칭(tft_match): 출하완료 폴더명에서 추출한 디텍터 S/N <-> TFT S/N 매핑
+export const TFTM_FIELDS = ['ship_date', 'tft_sn', 'detector_sn'];
+export const TFTM_HEADS = ['출하일', 'TFT S/N', '디텍터 S/N'];
+
 export const MERGE_HEADS = [...SHIP_HEADS, 'TFT S/N\n(생산)', 'Scintillator\nTYPE', 'CPU\nS/N', 'BOARD\nS/N', 'BOARD\nVER', '중판\nTYPE', '제작\n완료일', 'F/W\n(생산)', 'MICOM\nVER.', 'BAT MICOM\nVER.', '작업자', 'AED\nS/N', '비고 1', '비고'];
-export const MERGE_VC_START = 16;
+export const MERGE_VC_START = SHIP_HEADS.length;
 
 export const CACHE_KEY_SHIP = 'cache_shipment';
 export const CACHE_KEY_PROD = 'cache_production';

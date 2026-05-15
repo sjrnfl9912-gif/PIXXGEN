@@ -58,7 +58,7 @@ export function exportAll() {
   // Merge sheet
   const mh = [...SHIP_HEADS, 'TFT S/N(생산)', 'Scintillator', 'CPU S/N', 'BOARD S/N', 'BOARD VER', '중판', '제작완료일', 'F/W(생산)', 'MICOM', 'BAT MICOM', '작업자', 'AED S/N', '비고1', '비고'].map(h => h.replace(/\n/g, ' '));
   const PROD_VL_FIELDS = ['tft_sn', 'scintillator', 'cpu_sn', 'main_board_sn', 'main_board_ver', 'panel_type', 'completed_date', 'detector_fw', 'micom_ver', 'bat_micom_ver', 'worker', 'aed_sn', 'note1', 'note2'];
-  const mr = state.mergeD.map(r => { const p = state.tftMap[r.tft_sn] || {}; return [...SHIP_FIELDS.map(f => r[f]), ...PROD_VL_FIELDS.map(f => p[f])]; });
+  const mr = state.mergeD.map(r => { const p = state.tftMap[state.detTftMap[r.detector_sn]] || {}; return [...SHIP_FIELDS.map(f => r[f]), ...PROD_VL_FIELDS.map(f => p[f])]; });
   const s3 = XLSX.utils.aoa_to_sheet([mh, ...mr]); s3['!cols'] = mh.map(() => ({ wch: 14 }));
   XLSX.utils.book_append_sheet(wb, s3, '통합취합본');
   const d = new Date();

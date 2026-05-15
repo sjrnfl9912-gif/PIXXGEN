@@ -37,6 +37,7 @@
       <div class="tab on" data-tab="ship">검사포장 출하이력<span class="cnt" id="cnt1">0</span></div>
       <div class="tab" data-tab="prod">생산관리대장<span class="cnt" id="cnt2">0</span></div>
       <div class="tab" data-tab="merge">통합취합본<span class="cnt" id="cnt3">0</span></div>
+      <div class="tab" data-tab="tftm">TFT 매칭<span class="cnt" id="cnt4">0</span></div>
       <div class="tab" data-tab="kpi">📊 KPI 통계</div>
       <div class="tab-right">
         <span id="saveStatus" style="font-size:10px;color:var(--ok)">저장 완료</span>
@@ -100,6 +101,16 @@
       <span class="pill" id="p3">0건</span>
     </div>
     <div class="tw"><table class="g" id="t3"><thead id="th3"></thead><tbody id="b3"></tbody></table></div>
+  </div>
+
+  <!-- ══ TAB: TFT 매칭 ══ -->
+  <div id="v-tftm" class="tab-view">
+    <div class="toolbar">
+      <div class="sbox" id="sb4"><input placeholder="검색..." id="q4" /><button class="s-clear">&times;</button></div>
+      <span class="pill" id="p4">0건</span>
+      <span style="font-size:10px;color:var(--ts)">출하완료 폴더에서 자동 수집 (디텍터 S/N ↔ TFT S/N)</span>
+    </div>
+    <div class="tw"><table class="g" id="t4"><thead id="th4"></thead><tbody id="b4"></tbody></table></div>
   </div>
 
   <!-- ══ TAB: KPI ══ -->

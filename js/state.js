@@ -13,7 +13,9 @@ export const state = {
   shipD: [],
   prodD: [],
   mergeD: [],
-  tftMap: {},
+  tftmD: [],          // tft_match: { ship_date, tft_sn, detector_sn }
+  tftMap: {},         // tft_sn → production row
+  detTftMap: {},      // detector_sn → tft_sn (from tft_match)
 
   // UI
   curTab: 'ship',
@@ -24,6 +26,7 @@ export const state = {
   shipFiltered: [],
   prodFiltered: [],
   mergeFiltered: [],
+  tftmFiltered: [],
 
   // Selection
   sel: null,       // { td, inp, r, c, tb } - anchor cell
@@ -70,6 +73,12 @@ export const state = {
 export function rebuildTft() {
   state.tftMap = {};
   state.prodD.forEach(p => { if (p.tft_sn) state.tftMap[p.tft_sn] = p; });
+}
+
+// detector_sn → tft_sn (tft_match 데이터 기반). 통합취합본 조인에 사용.
+export function rebuildDetTft() {
+  state.detTftMap = {};
+  state.tftmD.forEach(t => { if (t.detector_sn) state.detTftMap[t.detector_sn] = t.tft_sn; });
 }
 
 // ═══ DIRTY HELPERS ═══

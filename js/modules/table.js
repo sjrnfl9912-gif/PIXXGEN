@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // TABLE RENDERING (Full rewrite)
 // ═══════════════════════════════════════
-import { SHIP_FIELDS, SHIP_HEADS, PROD_FIELDS, PROD_HEADS, MERGE_HEADS, MERGE_VC_START } from '../config.js';
+import { SHIP_FIELDS, SHIP_HEADS, PROD_FIELDS, PROD_HEADS, MERGE_HEADS, MERGE_VC_START, TFTM_FIELDS, TFTM_HEADS } from '../config.js';
 import { state, markDupDirty } from '../state.js';
 
 function colL(n) { let s = ''; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; }
@@ -10,7 +10,7 @@ function ci(id, t, f, v) { const s = esc(v); return '<input class="c" type="text
 function vl(v, key) { if (!key) return '<span style="color:#ccc;font-size:9px">-</span>'; if (!v) return '<span style="color:#d97706;font-size:9px">매칭없음</span>'; return '<input class="c vl" value="' + esc(v) + '" readonly tabindex="-1">'; }
 
 // Duplicate detection
-const SHIP_SN_FIELDS = ['detector_sn', 'cbbox_sn', 'tft_sn'];
+const SHIP_SN_FIELDS = ['detector_sn', 'cbbox_sn'];
 const PROD_SN_FIELDS = ['tft_sn', 'cpu_sn', 'main_board_sn', 'aed_sn'];
 
 function findDups(arr, snFields) {
@@ -123,10 +123,13 @@ export function renderMergeTable() {
   mkHead('th3', 'b3', MERGE_HEADS, MERGE_VC_START);
   const rows = [];
   for (let i = 0; i < d.length; i++) {
-    const r = d[i], p = state.tftMap[r.tft_sn] || {};
+    const r = d[i];
+    // 통합취합본 조인: 검사포장 디텍터 S/N → tft_match → TFT S/N → 생산
+    const tftSn = state.detTftMap[r.detector_sn];
+    const p = state.tftMap[tftSn] || {};
     const cells = ['<tr><td class="rn" data-row-idx="' + i + '" data-tb="b3">' + (i + 1) + '</td>'];
     for (let j = 0; j < SHIP_FIELDS.length; j++) cells.push('<td class="cw">' + ci(r._id, 'm', SHIP_FIELDS[j], r[SHIP_FIELDS[j]]) + '</td>');
-    for (let j = 0; j < PROD_VL_FIELDS.length; j++) cells.push('<td>' + vl(p[PROD_VL_FIELDS[j]], r.tft_sn) + '</td>');
+    for (let j = 0; j < PROD_VL_FIELDS.length; j++) cells.push('<td>' + vl(p[PROD_VL_FIELDS[j]], tftSn) + '</td>');
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
@@ -134,10 +137,35 @@ export function renderMergeTable() {
   if (b3) b3.innerHTML = rows.join('');
 }
 
+// ═══ TFT 매칭 탭 (읽기 전용) ═══
+export function renderTftmTable() {
+  const q = (document.getElementById('q4')?.value || '').toLowerCase();
+  let d = state.tftmD;
+  if (q) d = d.filter(r => TFTM_FIELDS.some(f => r[f] && String(r[f]).toLowerCase().includes(q)));
+  state.tftmFiltered = d;
+  const p4 = document.getElementById('p4'), cnt4 = document.getElementById('cnt4');
+  if (p4) p4.textContent = d.length + '건';
+  if (cnt4) cnt4.textContent = state.tftmD.length;
+  mkHead('th4', 'b4', TFTM_HEADS);
+  const rows = [];
+  for (let i = 0; i < d.length; i++) {
+    const r = d[i];
+    const cells = ['<tr><td class="rn" data-row-idx="' + i + '" data-tb="b4">' + (i + 1) + '</td>'];
+    for (let j = 0; j < TFTM_FIELDS.length; j++) {
+      cells.push('<td class="cw"><input class="c vl" value="' + esc(r[TFTM_FIELDS[j]]) + '" readonly tabindex="-1"></td>');
+    }
+    cells.push('</tr>');
+    rows.push(cells.join(''));
+  }
+  const b4 = document.getElementById('b4');
+  if (b4) b4.innerHTML = rows.join('');
+}
+
 export function renderAll() {
   if (state.curTab === 'ship') renderShipmentTable();
   else if (state.curTab === 'prod') renderProductionTable();
   else if (state.curTab === 'merge') renderMergeTable();
+  else if (state.curTab === 'tftm') renderTftmTable();
   else if (state.curTab === 'kpi') {
     import('./kpi.js').then(m => m.renderKPI()).catch(() => {});
   }

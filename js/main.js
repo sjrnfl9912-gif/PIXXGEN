@@ -2,7 +2,7 @@
 // MAIN.JS - Application Orchestrator
 // ═══════════════════════════════════════
 import { SHIP_FIELDS, PROD_FIELDS } from './config.js';
-import { state, rebuildTft, markDirty, markDupDirty } from './state.js';
+import { state, rebuildTft, rebuildDetTft, markDirty, markDupDirty } from './state.js';
 import { dbFetchAll } from './db.js';
 import { renderAll, renderShipmentTable, renderProductionTable } from './modules/table.js';
 import { saveCache, loadCache } from './services/storage.js';
@@ -71,9 +71,10 @@ async function fullReload() {
   state.isReloading = true;
   toast('DB 전체 동기화 중...', 'info');
   try {
-    const [sData, pData] = await Promise.all([dbFetchAll('shipment'), dbFetchAll('production')]);
+    const [sData, pData, tData] = await Promise.all([dbFetchAll('shipment'), dbFetchAll('production'), dbFetchAll('tft_match')]);
     state.shipD = sData.map(r => ({ ...r, _id: r.id }));
     state.prodD = pData.map(r => ({ ...r, _id: r.id }));
+    state.tftmD = tData;
     // dirty 상태 초기화 (DB 데이터로 완전 교체했으므로)
     state.dirty = { updates: {}, inserts: { ship: [], prod: [] }, deletes: { ship: [], prod: [] } };
     state.hasChanges = false;
@@ -81,7 +82,7 @@ async function fullReload() {
     const status = document.getElementById('saveStatus');
     if (btn) btn.classList.remove('dirty');
     if (status) { status.textContent = ''; status.style.color = ''; }
-    rebuildTft(); markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
+    rebuildTft(); rebuildDetTft(); markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
     document.querySelector('.sync-dot').style.background = 'var(--ok)';
     toast('DB 동기화 완료 (출하 ' + state.shipD.length + ' / 생산 ' + state.prodD.length + ')', 'ok');
   } catch (e) {
@@ -134,9 +135,11 @@ async function init() {
   const dR1 = debounce(() => renderShipmentTable(), 200);
   const dR2 = debounce(() => renderProductionTable(), 200);
   const dR3 = debounce(() => { import('./modules/table.js').then(t => t.renderAll()); }, 200);
+  const dR4 = debounce(() => renderAll(), 200);
   document.getElementById('q1')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR1(); });
   document.getElementById('q2')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR2(); });
   document.getElementById('q3')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR3(); });
+  document.getElementById('q4')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR4(); });
 
   // Clear buttons
   document.querySelectorAll('.s-clear').forEach(btn => {
@@ -223,12 +226,13 @@ async function init() {
   // Then full DB sync (초기 로드 시에는 확인 없이 바로 동기화)
   state.isReloading = true;
   try {
-    const [sData, pData] = await Promise.all([dbFetchAll('shipment'), dbFetchAll('production')]);
+    const [sData, pData, tData] = await Promise.all([dbFetchAll('shipment'), dbFetchAll('production'), dbFetchAll('tft_match')]);
     state.shipD = sData.map(r => ({ ...r, _id: r.id }));
     state.prodD = pData.map(r => ({ ...r, _id: r.id }));
+    state.tftmD = tData;
     state.dirty = { updates: {}, inserts: { ship: [], prod: [] }, deletes: { ship: [], prod: [] } };
     state.hasChanges = false;
-    rebuildTft(); markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
+    rebuildTft(); rebuildDetTft(); markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
     document.querySelector('.sync-dot').style.background = 'var(--ok)';
     toast('DB 동기화 완료 (출하 ' + state.shipD.length + ' / 생산 ' + state.prodD.length + ')', 'ok');
   } catch (e) {
@@ -242,7 +246,7 @@ async function init() {
   initRealtime();
 
   // Post-render: init resize on visible tables
-  setTimeout(() => { initResize('b1'); initResize('b2'); initResize('b3'); }, 100);
+  setTimeout(() => { initResize('b1'); initResize('b2'); initResize('b3'); initResize('b4'); }, 100);
 
   // Hide loading
   showLoading(false);
