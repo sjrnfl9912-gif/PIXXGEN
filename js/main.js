@@ -203,6 +203,12 @@ async function init() {
   document.getElementById('modalCloseBtn')?.addEventListener('click', () => document.getElementById('modalBg')?.classList.remove('show'));
   document.getElementById('modalBg')?.addEventListener('click', e => { if (e.target === document.getElementById('modalBg')) document.getElementById('modalBg').classList.remove('show'); });
 
+  // Help modal (사용 설명서)
+  const helpBg = document.getElementById('helpBg');
+  document.getElementById('helpBtn')?.addEventListener('click', () => helpBg?.classList.add('show'));
+  document.getElementById('helpClose')?.addEventListener('click', () => helpBg?.classList.remove('show'));
+  helpBg?.addEventListener('click', e => { if (e.target === helpBg) helpBg.classList.remove('show'); });
+
   // TFT match button
   document.getElementById('tftMatchBtn')?.addEventListener('click', () => { /* TODO: TFT modal */ toast('TFT 매칭 모달 (준비 중)', 'info'); });
 

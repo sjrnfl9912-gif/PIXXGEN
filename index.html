@@ -37,6 +37,7 @@
       <div class="tab" data-tab="merge">통합취합본<span class="cnt" id="cnt3">0</span></div>
       <div class="tab" data-tab="kpi">📊 KPI 통계</div>
       <div class="tab-right">
+        <button class="btn" id="helpBtn" title="사용 설명서">❓ 사용법</button>
         <span id="saveStatus" style="font-size:10px;color:var(--ok)">저장 완료</span>
         <button class="btn btn-pr" id="saveBtn" style="font-weight:600">💾 저장</button>
         <button class="btn btn-hide-m" id="backupBtn">📥 백업</button>
@@ -145,6 +146,61 @@
         <span class="cnt" id="mCnt">0건</span>
         <button class="btn" id="modalCloseBtn">취소</button>
         <button class="btn btn-pr" id="modalConfirmBtn">적용</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help / 사용 설명서 -->
+  <div class="help-bg" id="helpBg">
+    <div class="help">
+      <div class="help-h">
+        <h3>📖 사용 설명서</h3>
+        <button class="help-x" id="helpClose" title="닫기">&times;</button>
+      </div>
+      <div class="help-b">
+        <h4>화면 구성</h4>
+        <ul>
+          <li><b>검사포장 출하이력</b> — 회사 엑셀에서 <b>자동으로 들어옵니다.</b> 직접 입력하지 않습니다.</li>
+          <li><b>생산관리대장</b> — 생산 담당자가 <b>직접 작성</b>하는 탭입니다.</li>
+          <li><b>TFT 매칭</b> — 출하완료 폴더에서 자동 수집됩니다. (보기 전용)</li>
+          <li><b>통합취합본</b> — <b>🔄 출하+생산 취합</b> 버튼으로 두 데이터를 합쳐서 봅니다.</li>
+          <li><b>📊 KPI 통계</b> — 생산 실적이 작업자별·월별로 자동 집계됩니다.</li>
+        </ul>
+
+        <h4>생산관리대장 작성법 (엑셀과 거의 같음)</h4>
+        <table>
+          <thead><tr><th>할 일</th><th>방법</th></tr></thead>
+          <tbody>
+            <tr><td>새 행 추가</td><td>맨 아래 <b>+ 새 행 추가</b> 클릭 (또는 <kbd>Ctrl+Enter</kbd>)</td></tr>
+            <tr><td>셀 수정</td><td>셀을 더블클릭하거나 바로 입력</td></tr>
+            <tr><td>칸 이동</td><td>방향키 · <kbd>Tab</kbd> · <kbd>Enter</kbd></td></tr>
+            <tr><td>엑셀에서 복사해 넣기</td><td>셀 선택 후 <kbd>Ctrl+V</kbd> (여러 칸 한번에)</td></tr>
+            <tr><td>되돌리기</td><td><kbd>Ctrl+Z</kbd></td></tr>
+            <tr><td>행 삭제</td><td>행에서 우클릭 → 🗑 행 삭제</td></tr>
+          </tbody>
+        </table>
+
+        <h4>⚠️ 저장 — 가장 중요</h4>
+        <div class="help-note">
+          입력·수정해도 <strong>자동 저장되지 않습니다.</strong> 반드시 우측 상단
+          <strong>💾 저장</strong> (또는 <kbd>Ctrl+S</kbd>) 을 눌러야 서버에 반영됩니다.
+        </div>
+        <ul>
+          <li>저장 전에는 빨간 <b>저장 안 됨</b> 표시가 뜨고, 페이지를 닫으면 경고가 나옵니다.</li>
+          <li>저장하면 다른 사람 화면에도 <b>실시간으로 반영</b>됩니다.</li>
+          <li>같은 S/N이 중복되면 <b>중복 S/N</b>으로 빨갛게 표시됩니다.</li>
+        </ul>
+
+        <h4>백업</h4>
+        <ul>
+          <li><b>📥 백업</b> — 현재 데이터를 JSON 파일로 내려받습니다.</li>
+          <li><b>📤 복원</b> — 백업 파일로 데이터를 되돌립니다.</li>
+          <li>중요한 작업 전후에는 <b>📥 백업을 직접 눌러</b> 파일을 보관하세요.</li>
+        </ul>
+        <div class="help-note">
+          <strong>※ 자동 백업은 없습니다.</strong> 백업은 사람이 직접 눌러야 하며,
+          데이터 원본은 서버(Supabase)에 보관됩니다.
+        </div>
       </div>
     </div>
   </div>

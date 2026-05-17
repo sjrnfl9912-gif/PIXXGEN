@@ -13,6 +13,9 @@ export function init() {
 
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'TEXTAREA' || e.target.closest?.('.sbox')) return;
+    if (e.key === 'Escape' && document.getElementById('helpBg')?.classList.contains('show')) {
+      document.getElementById('helpBg').classList.remove('show'); return;
+    }
     if (e.key === 'Escape' && document.getElementById('modalBg')?.classList.contains('show')) {
       document.getElementById('modalBg').classList.remove('show'); return;
     }

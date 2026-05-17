@@ -206,6 +206,126 @@
   justify-content: center;
 }
 
+/* ── HELP MODAL (사용 설명서) ── */
+.help-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.help-bg.show {
+  display: flex;
+}
+
+.help {
+  background: var(--sf);
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  width: 580px;
+  max-width: 94vw;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.help-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--bd);
+}
+
+.help-h h3 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.help-x {
+  border: none;
+  background: none;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ts);
+  padding: 0 4px;
+}
+
+.help-x:hover {
+  color: var(--er);
+}
+
+.help-b {
+  padding: 16px 18px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--tx);
+}
+
+.help-b h4 {
+  font-size: 12.5px;
+  font-weight: 700;
+  margin: 16px 0 6px;
+  color: var(--pr);
+}
+
+.help-b h4:first-child {
+  margin-top: 0;
+}
+
+.help-b ul {
+  margin: 0 0 4px 18px;
+}
+
+.help-b li {
+  margin: 3px 0;
+}
+
+.help-b table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0 8px;
+}
+
+.help-b th,
+.help-b td {
+  border: 1px solid var(--bd);
+  padding: 5px 8px;
+  text-align: left;
+  font-size: 11.5px;
+}
+
+.help-b th {
+  background: var(--ra);
+  font-weight: 600;
+}
+
+.help-b kbd {
+  background: var(--ra);
+  border: 1px solid var(--bd);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: Consolas, monospace;
+}
+
+.help-note {
+  background: #fff7ed;
+  border-left: 3px solid var(--wn);
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.help-note strong {
+  color: #b45309;
+}
+
 /* ── LOADING OVERLAY ── */
 .loading-overlay {
   position: fixed;
