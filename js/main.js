@@ -96,6 +96,24 @@ async function fullReload() {
 // ═══ DEBOUNCE ═══
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
+// ═══ TAB SWITCHING ═══
+const TB_BY_TAB = { ship: 'b1', prod: 'b2', merge: 'b3', tftm: 'b4' };
+
+function switchTab(t, skipRender) {
+  state.curTab = t;
+  // 탭이 바뀌면 이전 탭의 선택/편집 상태는 무효 (사라질 DOM을 가리킴)
+  state.sel = null; state.range = null; state.editing = false;
+  document.querySelectorAll('.tab').forEach(e => e.classList.remove('on'));
+  document.querySelector('.tab[data-tab="' + t + '"]')?.classList.add('on');
+  document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('v-' + t)?.classList.add('active');
+  // 비활성 탭의 테이블 DOM 비우기 — 4개 탭 DOM이 동시에 메모리에 쌓이는 것 방지
+  Object.entries(TB_BY_TAB).forEach(([tab, id]) => {
+    if (tab !== t) { const tb = document.getElementById(id); if (tb && tb.childElementCount) tb.innerHTML = ''; }
+  });
+  if (!skipRender) renderAll();
+}
+
 // ═══ PASTE FROM CLIPBOARD (toolbar button) ═══
 function pasteFromClipboard(type) {
   if (state.curTab !== type) { toast('해당 탭에서 셀을 먼저 선택하세요', 'info'); return; }
@@ -122,15 +140,7 @@ function pasteFromClipboard(type) {
 async function init() {
   // Tab navigation
   document.querySelectorAll('.tab[data-tab]').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const t = tab.dataset.tab;
-      state.curTab = t;
-      document.querySelectorAll('.tab').forEach(e => e.classList.remove('on'));
-      tab.classList.add('on');
-      document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
-      document.getElementById('v-' + t)?.classList.add('active');
-      renderAll();
-    });
+    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
   });
 
   // Filters (ship)
@@ -187,7 +197,7 @@ async function init() {
   document.getElementById('restoreFile')?.addEventListener('change', e => restoreJSON(e.target));
   document.getElementById('reloadBtn')?.addEventListener('click', fullReload);
   document.getElementById('exportBtn')?.addEventListener('click', exportAll);
-  document.getElementById('buildMergeBtn')?.addEventListener('click', () => { buildMerge(); state.curTab = 'merge'; document.querySelectorAll('.tab').forEach(e => e.classList.remove('on')); document.querySelector('[data-tab="merge"]')?.classList.add('on'); document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active')); document.getElementById('v-merge')?.classList.add('active'); });
+  document.getElementById('buildMergeBtn')?.addEventListener('click', () => { switchTab('merge', true); buildMerge(); });
 
   // Modal buttons
   document.getElementById('modalCloseBtn')?.addEventListener('click', () => document.getElementById('modalBg')?.classList.remove('show'));

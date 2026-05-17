@@ -80,6 +80,13 @@ table.g td {
   user-select: none;
 }
 
+/* 화면 밖 행은 브라우저가 레이아웃/페인트를 건너뜀
+   — 1천행 이상에서 메모리·스크롤 부담을 크게 줄임 (행 높이 26px 고정) */
+table.g tbody tr {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 30px;
+}
+
 table.g tr:nth-child(even) td {
   background: var(--ra);
 }
