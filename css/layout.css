@@ -189,3 +189,14 @@
 .toolbar-extras {
   display: contents;
 }
+
+.filt-lbl {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ts);
+  margin-left: 4px;
+}
+
+.chip-group {
+  display: contents;
+}

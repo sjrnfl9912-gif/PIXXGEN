@@ -21,6 +21,7 @@ export const state = {
   curTab: 'ship',
   shipFilt: 'all',
   workerFilt: 'all',
+  prodYearFilt: 'all',   // 생산관리대장 연도 필터 (completed_date 앞 4자리)
 
   // Filtered data (after search/filter, used by selection to map row index → data)
   shipFiltered: [],

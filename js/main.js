@@ -163,6 +163,15 @@ async function init() {
     });
   });
 
+  // Year filter (prod) — 칩이 데이터 기준으로 동적 생성되므로 이벤트 위임
+  document.getElementById('prodYearChips')?.addEventListener('click', e => {
+    const chip = e.target.closest('[data-yearfilter]');
+    if (!chip) return;
+    state.prodYearFilt = chip.dataset.yearfilter;
+    document.querySelectorAll('#prodYearChips .chip').forEach(c => c.classList.toggle('on', c === chip));
+    renderProductionTable();
+  });
+
   // Search boxes
   const dR1 = debounce(() => renderShipmentTable(), 200);
   const dR2 = debounce(() => renderProductionTable(), 200);

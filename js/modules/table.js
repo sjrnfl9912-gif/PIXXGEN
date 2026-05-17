@@ -83,11 +83,34 @@ export function renderShipmentTable() {
   if (b1) b1.innerHTML = rows.join('');
 }
 
+// 완제품 제작완료일에서 연도(앞 4자리)를 뽑음. "2025", "2025-03-14" 모두 → "2025"
+function prodYear(r) {
+  const y = String(r.completed_date || '').trim().slice(0, 4);
+  return /^\d{4}$/.test(y) ? y : '';
+}
+
+// 생산관리대장 연도 필터 칩을 데이터 기준으로 자동 생성 (연도 집합이 바뀔 때만 DOM 갱신)
+function refreshProdYearChips() {
+  const box = document.getElementById('prodYearChips');
+  if (!box) return;
+  const years = [...new Set(state.prodD.map(prodYear).filter(Boolean))].sort().reverse();
+  const sig = years.join(',');
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  // 선택돼 있던 연도가 더 이상 존재하지 않으면 '전체'로 되돌림
+  if (state.prodYearFilt !== 'all' && !years.includes(state.prodYearFilt)) state.prodYearFilt = 'all';
+  let h = '<div class="chip' + (state.prodYearFilt === 'all' ? ' on' : '') + '" data-yearfilter="all">전체</div>';
+  years.forEach(y => { h += '<div class="chip' + (state.prodYearFilt === y ? ' on' : '') + '" data-yearfilter="' + y + '">' + y + '</div>'; });
+  box.innerHTML = h;
+}
+
 export function renderProductionTable() {
   updateDupCounts();
+  refreshProdYearChips();
   const q = (document.getElementById('q2')?.value || '').toLowerCase();
   let d = state.prodD;
   if (state.workerFilt !== 'all') d = d.filter(r => r.worker === state.workerFilt);
+  if (state.prodYearFilt !== 'all') d = d.filter(r => prodYear(r) === state.prodYearFilt);
   if (q) d = d.filter(r => Object.values(r).some(v => v && String(v).toLowerCase().includes(q)));
   if (state.dupMode.prod) d = d.filter(r => rowHasDup(r, state.prodDups, PROD_SN_FIELDS));
   // 완제품 제작완료일 기준 자동 정렬 (오래된 순, 날짜 없는 행은 맨 뒤)

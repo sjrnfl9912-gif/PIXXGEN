@@ -77,11 +77,14 @@
       <button class="btn toolbar-toggle">필터 ▼</button>
       <span class="pill" id="p2">0건</span>
       <div class="toolbar-extras">
+        <label class="filt-lbl">작업자</label>
         <div class="chip on" data-filter="all" data-table="prod">전체</div>
         <div class="chip" data-filter="홍승범" data-table="prod">홍승범</div>
         <div class="chip" data-filter="김남식" data-table="prod">김남식</div>
         <div class="chip" data-filter="이다니엘" data-table="prod">이다니엘</div>
         <div class="chip" data-filter="방정완" data-table="prod">방정완</div>
+        <label class="filt-lbl">연도</label>
+        <div id="prodYearChips" class="chip-group"></div>
         <div class="chip dup" id="dupChip2">중복 S/N<span class="dup-badge" id="dupCnt2" style="display:none">0</span></div>
         <button class="btn" id="pasteProdBtn">📋 붙여넣기</button>
         <button class="btn" id="cleanProdBtn" title="빈 행 정리">🧹 빈행 삭제</button>
