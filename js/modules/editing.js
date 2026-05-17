@@ -2,7 +2,7 @@
 // CELL EDITING
 // ═══════════════════════════════════════
 import { state, pushUndo, trackUpdate, markDupDirty, rebuildTft } from '../state.js';
-import { saveCache } from '../services/storage.js';
+import { saveCacheDebounced } from '../services/storage.js';
 
 export function startEdit(inp, clear) {
   if (!inp || inp.classList.contains('vl')) return;
@@ -35,6 +35,6 @@ export function endEdit() {
     markDupDirty();
     const td = inp.closest('td');
     if (td) { td.classList.add('chg'); setTimeout(() => td.classList.remove('chg'), 600); }
-    saveCache(state.shipD, state.prodD);
+    saveCacheDebounced(state.shipD, state.prodD);
   }
 }

@@ -96,6 +96,28 @@ async function fullReload() {
 // ═══ DEBOUNCE ═══
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
+// ═══ PASTE FROM CLIPBOARD (toolbar button) ═══
+function pasteFromClipboard(type) {
+  if (state.curTab !== type) { toast('해당 탭에서 셀을 먼저 선택하세요', 'info'); return; }
+  if (!state.sel) { toast('붙여넣을 셀을 먼저 클릭하세요', 'info'); return; }
+  const apply = txt => {
+    if (!txt) { toast('클립보드가 비어 있습니다', 'info'); return; }
+    import('./modules/clipboard.js').then(c => c.pasteGrid(txt));
+  };
+  if (navigator.clipboard?.readText) {
+    navigator.clipboard.readText()
+      .then(apply)
+      .catch(() => {
+        if (state.internalClip) apply(state.internalClip);
+        else toast('클립보드 접근 거부됨 — Ctrl+V를 사용하세요', 'info');
+      });
+  } else if (state.internalClip) {
+    apply(state.internalClip);
+  } else {
+    toast('이 브라우저는 클립보드 읽기를 지원하지 않습니다 — Ctrl+V를 사용하세요', 'info');
+  }
+}
+
 // ═══ INIT ═══
 async function init() {
   // Tab navigation
@@ -174,9 +196,9 @@ async function init() {
   // TFT match button
   document.getElementById('tftMatchBtn')?.addEventListener('click', () => { /* TODO: TFT modal */ toast('TFT 매칭 모달 (준비 중)', 'info'); });
 
-  // Paste buttons (modal paste)
-  document.getElementById('pasteShipBtn')?.addEventListener('click', () => { /* TODO: Paste modal */ toast('붙여넣기 모달 (준비 중)', 'info'); });
-  document.getElementById('pasteProdBtn')?.addEventListener('click', () => { /* TODO: Paste modal */ toast('붙여넣기 모달 (준비 중)', 'info'); });
+  // Paste buttons — 클립보드를 읽어 선택 셀부터 붙여넣기
+  document.getElementById('pasteShipBtn')?.addEventListener('click', () => pasteFromClipboard('ship'));
+  document.getElementById('pasteProdBtn')?.addEventListener('click', () => pasteFromClipboard('prod'));
 
   // Clean null buttons
   document.getElementById('cleanShipBtn')?.addEventListener('click', () => cleanNull('ship'));

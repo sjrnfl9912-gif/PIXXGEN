@@ -4,11 +4,15 @@
   "description": "출하 관리 시스템",
   "type": "module",
   "scripts": {
-    "test": "node --experimental-modules node_modules/jest/bin/jest.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "dev": "python -m http.server 8000"
   },
+  "jest": {
+    "testEnvironment": "jsdom"
+  },
   "devDependencies": {
-    "jest": "^29.0.0"
+    "jest": "^29.0.0",
+    "jest-environment-jsdom": "^29.0.0"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0"

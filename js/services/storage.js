@@ -10,6 +10,13 @@ export function saveCache(shipD, prodD) {
   }
 }
 
+// 셀 편집처럼 연속 호출되는 경로용 — 마지막 호출 기준 400ms 뒤 1회만 직렬화
+let _cacheTimer = null;
+export function saveCacheDebounced(shipD, prodD) {
+  clearTimeout(_cacheTimer);
+  _cacheTimer = setTimeout(() => saveCache(shipD, prodD), 400);
+}
+
 export function loadCache() {
   try {
     const s = localStorage.getItem(CACHE_KEY_SHIP);

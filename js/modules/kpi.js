@@ -20,7 +20,13 @@ export function renderKPI() {
   const wrap = document.getElementById('kpiWrap'); if (!wrap) return;
   const yrs = [...new Set(state.prodD.filter(r => r.completed_date).map(r => new Date(r.completed_date).getFullYear()).filter(y => !isNaN(y)))].sort((a, b) => b - a);
   const ySel = document.getElementById('kpiYear'); if (!ySel) return;
-  if (ySel.options.length !== yrs.length) ySel.innerHTML = yrs.map(y => `<option value="${y}">${y}년</option>`).join('');
+  // 연도 집합이 바뀌면(개수가 같아도) 옵션 갱신 — 기존 선택값은 유효하면 유지
+  const curOpts = [...ySel.options].map(o => o.value).join(',');
+  if (curOpts !== yrs.join(',')) {
+    const prev = ySel.value;
+    ySel.innerHTML = yrs.map(y => `<option value="${y}">${y}년</option>`).join('');
+    if (yrs.map(String).includes(prev)) ySel.value = prev;
+  }
   const yr = parseInt(ySel.value) || yrs[0];
   if (!yr) { wrap.innerHTML = '<div class="kpi-empty">생산 데이터가 없습니다</div>'; return; }
   const today = new Date();

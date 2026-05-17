@@ -76,7 +76,9 @@ export function moveSel(dr, dc, shift) {
     state.range.c2 = Math.max(0, state.range.c2 + dc);
     paintRange();
   } else {
-    const c = cellAt(state.sel.tb, state.sel.r + dr, state.sel.c + dc);
+    const nc = state.sel.c + dc;
+    if (nc < 1) return; // 0번 열은 행번호 셀 — 데이터 셀이 아니므로 이동 금지
+    const c = cellAt(state.sel.tb, state.sel.r + dr, nc);
     if (c) selCell(c.td, c.inp);
   }
 }
