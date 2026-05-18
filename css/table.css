@@ -229,19 +229,9 @@ td.dup-cell input.c {
   font-weight: 600 !important;
 }
 
-/* 중복 S/N 그룹: 그룹 안에서 값이 엇갈리는 칸 (어디를 고쳐야 하는지 표시) */
-td.diff-cell {
-  background: #fef9c3 !important;
-}
-
-td.diff-cell input.c {
-  color: #a16207 !important;
-  font-weight: 600 !important;
-}
-
-/* 중복 S/N 그룹 구분선 — 새 그룹 첫 행 위에 굵은 선 */
+/* 중복 S/N 그룹 구분선 — 같은 S/N 묶음 사이에 굵은 선 */
 tr.grp-start td {
-  border-top: 2px solid #94a3b8;
+  border-top: 3px solid #475569 !important;
 }
 
 /* ── RESIZE ── */

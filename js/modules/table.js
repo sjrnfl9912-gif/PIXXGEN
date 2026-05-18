@@ -25,11 +25,10 @@ function findDups(arr, snFields) {
 function rowHasDup(row, dups, snFields) { return snFields.some(f => row[f] && dups[f] && dups[f].has(String(row[f]).trim())); }
 function isDupCell(f, v, dups) { return v && dups[f] && dups[f].has(String(v).trim()); }
 
-// 중복 S/N 행을 같은 S/N끼리 묶어 정렬하고, 그룹 경계 + 그룹 안에서 값이 다른 셀을 계산.
+// 중복 S/N 행을 같은 S/N끼리 묶어 정렬하고, 각 그룹의 시작 위치를 표시.
 //  - sorted     : 같은 S/N끼리 인접하도록 정렬된 행 배열
-//  - groupStart : 새 그룹이 시작되는 정렬 인덱스 집합
-//  - diffCells  : "정렬인덱스:필드" 형태, 그룹 내에서 값이 엇갈리는 셀
-function groupDupRows(rows, snFields, dups, fields, idField) {
+//  - groupStart : 새 그룹이 시작되는 정렬 인덱스 집합 (그룹 사이 구분선용)
+function groupDupRows(rows, snFields, dups) {
   const keyOf = r => {
     for (const f of snFields) {
       const v = r[f];
@@ -42,24 +41,15 @@ function groupDupRows(rows, snFields, dups, fields, idField) {
     return ka < kb ? -1 : ka > kb ? 1 : 0;
   });
   const groupStart = new Set();
-  const diffCells = new Set();
   let i = 0;
   while (i < sorted.length) {
-    const k = keyOf(sorted[i]);
-    let j = i;
-    while (j < sorted.length && keyOf(sorted[j]) === k) j++;
     groupStart.add(i);
-    if (j - i > 1) {
-      for (const f of fields) {
-        if (f === idField) continue;            // NO/생산번호처럼 행마다 다른 칸은 비교 제외
-        const vals = new Set();
-        for (let g = i; g < j; g++) vals.add(String(sorted[g][f] ?? '').trim());
-        if (vals.size > 1) for (let g = i; g < j; g++) diffCells.add(g + ':' + f);
-      }
-    }
+    const k = keyOf(sorted[i]);
+    let j = i + 1;
+    while (j < sorted.length && keyOf(sorted[j]) === k) j++;
     i = j;
   }
-  return { sorted, groupStart, diffCells };
+  return { sorted, groupStart };
 }
 
 export function updateDupCounts() {
@@ -102,7 +92,7 @@ export function renderShipmentTable() {
   let groupInfo = null;
   if (state.dupMode.ship) {
     d = d.filter(r => rowHasDup(r, state.shipDups, SHIP_SN_FIELDS));
-    groupInfo = groupDupRows(d, SHIP_SN_FIELDS, state.shipDups, SHIP_FIELDS, 'row_no');
+    groupInfo = groupDupRows(d, SHIP_SN_FIELDS, state.shipDups);
     d = groupInfo.sorted;
   }
   state.shipFiltered = d;
@@ -117,8 +107,7 @@ export function renderShipmentTable() {
     const cells = ['<tr' + trCls + '><td class="rn" data-row-idx="' + i + '" data-tb="b1">' + (i + 1) + '</td>'];
     for (let j = 0; j < SHIP_FIELDS.length; j++) {
       const f = SHIP_FIELDS[j], dup = isDupCell(f, r[f], state.shipDups);
-      const diff = groupInfo && groupInfo.diffCells.has(i + ':' + f);
-      cells.push('<td class="cw' + (dup ? ' dup-cell' : '') + (diff ? ' diff-cell' : '') + '">' + ci(r._id, 's', f, r[f]) + '</td>');
+      cells.push('<td class="cw' + (dup ? ' dup-cell' : '') + '">' + ci(r._id, 's', f, r[f]) + '</td>');
     }
     cells.push('</tr>');
     rows.push(cells.join(''));
@@ -159,7 +148,7 @@ export function renderProductionTable() {
   let groupInfo = null;
   if (state.dupMode.prod) {
     d = d.filter(r => rowHasDup(r, state.prodDups, PROD_SN_FIELDS));
-    groupInfo = groupDupRows(d, PROD_SN_FIELDS, state.prodDups, PROD_FIELDS, 'prod_no');
+    groupInfo = groupDupRows(d, PROD_SN_FIELDS, state.prodDups);
     d = groupInfo.sorted;
   } else {
     // 완제품 제작완료일 기준 자동 정렬 (오래된 순, 날짜 없는 행은 맨 뒤)
@@ -183,8 +172,7 @@ export function renderProductionTable() {
     const cells = ['<tr' + trCls + '><td class="rn" data-row-idx="' + i + '" data-tb="b2">' + (i + 1) + '</td>'];
     for (let j = 0; j < PROD_FIELDS.length; j++) {
       const f = PROD_FIELDS[j], dup = isDupCell(f, r[f], state.prodDups);
-      const diff = groupInfo && groupInfo.diffCells.has(i + ':' + f);
-      cells.push('<td class="cw' + (dup ? ' dup-cell' : '') + (diff ? ' diff-cell' : '') + '">' + ci(r._id, 'p', f, r[f]) + '</td>');
+      cells.push('<td class="cw' + (dup ? ' dup-cell' : '') + '">' + ci(r._id, 'p', f, r[f]) + '</td>');
     }
     cells.push('</tr>');
     rows.push(cells.join(''));
