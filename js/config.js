@@ -36,4 +36,5 @@ export const MERGE_VC_START = SHIP_HEADS.length;
 
 export const CACHE_KEY_SHIP = 'cache_shipment';
 export const CACHE_KEY_PROD = 'cache_production';
+export const CACHE_KEY_TFTM = 'cache_tftmatch';
 export const CACHE_KEY_TS = 'cache_timestamp';

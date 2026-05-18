@@ -234,6 +234,138 @@ tr.grp-start td {
   border-top: 3px solid #475569 !important;
 }
 
+/* ── 이력 필요 탭 ── */
+/* 고정 레이아웃 — 표가 폼(colspan) 너비에 끌려 넓어지지 않게, 폼은 표 안에서 줄바꿈 */
+#t5 {
+  width: 100%;
+  table-layout: fixed;
+}
+#t5 th.hn-th {
+  background: var(--hd);
+  color: var(--ht);
+  padding: 7px 8px;
+  font-size: 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+#t5 td.hn-c,
+#t5 td.hn-rn {
+  padding: 5px 8px;
+  font-size: 11px;
+  height: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#t5 td.hn-rn {
+  text-align: center;
+  color: var(--ts);
+  background: #f3f5f8;
+}
+.hn-mono {
+  font-family: ui-monospace, Consolas, monospace;
+}
+.hn-empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--ts);
+  font-size: 13px;
+}
+.hn-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.hn-noprod {
+  background: #fef3c7;
+  color: #b45309;
+}
+.hn-notft {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.hn-write {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--pr);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.hn-write:hover {
+  filter: brightness(1.12);
+}
+
+/* 인라인 작성 폼 */
+.hn-formrow td {
+  padding: 0 !important;
+  background: #eef3ff !important;
+}
+.hn-form {
+  padding: 12px 16px;
+}
+.hn-form-h {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pr);
+  margin-bottom: 10px;
+}
+.hn-form-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hn-fld {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 150px;
+}
+.hn-fld span {
+  font-size: 9px;
+  color: var(--ts);
+  font-weight: 600;
+}
+.hn-fld input {
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 11px;
+  font-family: inherit;
+}
+.hn-fld input:focus {
+  outline: none;
+  border-color: var(--pr);
+}
+.hn-form-f {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.hn-form-f button {
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+}
+.hn-save {
+  background: var(--pr) !important;
+  color: #fff;
+  border-color: var(--pr) !important;
+}
+.hn-save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* ── RESIZE ── */
 .resizer {
   position: absolute;

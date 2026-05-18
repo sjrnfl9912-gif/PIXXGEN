@@ -1,4 +1,4 @@
-import { CACHE_KEY_SHIP, CACHE_KEY_PROD, CACHE_KEY_TS } from '../config.js';
+import { CACHE_KEY_SHIP, CACHE_KEY_PROD, CACHE_KEY_TFTM, CACHE_KEY_TS } from '../config.js';
 
 export function saveCache(shipD, prodD) {
   try {
@@ -17,21 +17,33 @@ export function saveCacheDebounced(shipD, prodD) {
   _cacheTimer = setTimeout(() => saveCache(shipD, prodD), 400);
 }
 
+// tft_match는 세션 중 안 바뀌므로(폴더 동기화로만 갱신) DB 로드 후 1회만 캐시
+export function saveTftmCache(tftmD) {
+  try {
+    localStorage.setItem(CACHE_KEY_TFTM, JSON.stringify(tftmD));
+  } catch (e) {
+    console.warn('TFT cache save failed:', e);
+  }
+}
+
 export function loadCache() {
   try {
     const s = localStorage.getItem(CACHE_KEY_SHIP);
     const p = localStorage.getItem(CACHE_KEY_PROD);
+    const t = localStorage.getItem(CACHE_KEY_TFTM);
     const ship = s ? JSON.parse(s) : [];
     const prod = p ? JSON.parse(p) : [];
-    return { ship, prod };
+    const tftm = t ? JSON.parse(t) : [];
+    return { ship, prod, tftm };
   } catch (e) {
     console.warn('Cache load failed:', e);
-    return { ship: [], prod: [] };
+    return { ship: [], prod: [], tftm: [] };
   }
 }
 
 export function clearCache() {
   localStorage.removeItem(CACHE_KEY_SHIP);
   localStorage.removeItem(CACHE_KEY_PROD);
+  localStorage.removeItem(CACHE_KEY_TFTM);
   localStorage.removeItem(CACHE_KEY_TS);
 }

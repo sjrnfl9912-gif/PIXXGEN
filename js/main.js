@@ -4,8 +4,8 @@
 import { SHIP_FIELDS, PROD_FIELDS } from './config.js';
 import { state, rebuildTft, rebuildDetTft, markDirty, markDupDirty } from './state.js';
 import { dbFetchAll } from './db.js';
-import { renderAll, renderShipmentTable, renderProductionTable } from './modules/table.js';
-import { saveCache, loadCache } from './services/storage.js';
+import { renderAll, renderShipmentTable, renderProductionTable, initHistNeed } from './modules/table.js';
+import { saveCache, saveTftmCache, loadCache } from './services/storage.js';
 import { toast, showLoading, customConfirm } from './services/ui.js';
 import { init as initSelection } from './modules/selection.js';
 import { init as initFill } from './modules/fill.js';
@@ -82,7 +82,8 @@ async function fullReload() {
     const status = document.getElementById('saveStatus');
     if (btn) btn.classList.remove('dirty');
     if (status) { status.textContent = ''; status.style.color = ''; }
-    rebuildTft(); rebuildDetTft(); markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
+    rebuildTft(); rebuildDetTft(); markDupDirty(); renderAll();
+    saveCache(state.shipD, state.prodD); saveTftmCache(state.tftmD);
     document.querySelector('.sync-dot').style.background = 'var(--ok)';
     toast('DB 동기화 완료 (출하 ' + state.shipD.length + ' / 생산 ' + state.prodD.length + ')', 'ok');
   } catch (e) {
@@ -97,7 +98,7 @@ async function fullReload() {
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
 // ═══ TAB SWITCHING ═══
-const TB_BY_TAB = { ship: 'b1', prod: 'b2', merge: 'b3', tftm: 'b4' };
+const TB_BY_TAB = { ship: 'b1', prod: 'b2', merge: 'b3', tftm: 'b4', histneed: 'b5' };
 
 function switchTab(t, skipRender) {
   state.curTab = t;
@@ -107,11 +108,14 @@ function switchTab(t, skipRender) {
   document.querySelector('.tab[data-tab="' + t + '"]')?.classList.add('on');
   document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
   document.getElementById('v-' + t)?.classList.add('active');
-  // 비활성 탭의 테이블 DOM 비우기 — 4개 탭 DOM이 동시에 메모리에 쌓이는 것 방지
+  // 비활성 탭의 테이블 DOM 비우기 — 탭 DOM이 동시에 메모리에 쌓이는 것 방지
   Object.entries(TB_BY_TAB).forEach(([tab, id]) => {
     if (tab !== t) { const tb = document.getElementById(id); if (tb && tb.childElementCount) tb.innerHTML = ''; }
   });
-  if (!skipRender) renderAll();
+  if (skipRender) return;
+  // 통합취합본은 탭 들어갈 때마다 자동 취합 (수동 버튼 없이 최신 상태)
+  if (t === 'merge') buildMerge();
+  else renderAll();
 }
 
 // ═══ PASTE FROM CLIPBOARD (toolbar button) ═══
@@ -181,6 +185,7 @@ async function init() {
   document.getElementById('q2')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR2(); });
   document.getElementById('q3')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR3(); });
   document.getElementById('q4')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR4(); });
+  document.getElementById('q5')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR4(); });
 
   // Clear buttons
   document.querySelectorAll('.s-clear').forEach(btn => {
@@ -260,14 +265,19 @@ async function init() {
   initKeyboard();
   initMobile();
   initKPI();
+  initHistNeed();
 
   // ═══ LOAD DATA ═══
   // Try cache first for instant display
-  const { ship, prod } = loadCache();
-  if (ship.length || prod.length) {
-    state.shipD = ship; state.prodD = prod;
-    rebuildTft(); markDupDirty(); renderAll();
+  const { ship, prod, tftm } = loadCache();
+  if (ship.length || prod.length || tftm.length) {
+    state.shipD = ship; state.prodD = prod; state.tftmD = tftm;
+    rebuildTft(); rebuildDetTft(); markDupDirty(); renderAll();
     toast('캐시 로드 (' + ship.length + '/' + prod.length + '건)', 'info');
+    // 캐시로 화면이 이미 채워졌으니 로딩 오버레이 즉시 제거 (DB 동기화는 백그라운드 진행)
+    showLoading(false);
+    const ov = document.getElementById('loadingOverlay');
+    if (ov) ov.remove();
   }
 
   // Then full DB sync (초기 로드 시에는 확인 없이 바로 동기화)
@@ -279,7 +289,8 @@ async function init() {
     state.tftmD = tData;
     state.dirty = { updates: {}, inserts: { ship: [], prod: [] }, deletes: { ship: [], prod: [] } };
     state.hasChanges = false;
-    rebuildTft(); rebuildDetTft(); markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
+    rebuildTft(); rebuildDetTft(); markDupDirty(); renderAll();
+    saveCache(state.shipD, state.prodD); saveTftmCache(state.tftmD);
     document.querySelector('.sync-dot').style.background = 'var(--ok)';
     toast('DB 동기화 완료 (출하 ' + state.shipD.length + ' / 생산 ' + state.prodD.length + ')', 'ok');
   } catch (e) {

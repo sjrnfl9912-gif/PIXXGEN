@@ -35,6 +35,7 @@
       <div class="tab" data-tab="prod">생산관리대장<span class="cnt" id="cnt2">0</span></div>
       <div class="tab" data-tab="tftm">TFT 매칭<span class="cnt" id="cnt4">0</span></div>
       <div class="tab" data-tab="merge">통합취합본<span class="cnt" id="cnt3">0</span></div>
+      <div class="tab" data-tab="histneed">이력 필요<span class="cnt" id="cnt5">0</span></div>
       <div class="tab" data-tab="kpi">📊 KPI 통계</div>
       <div class="tab-right">
         <button class="btn" id="helpBtn" title="사용 설명서">❓ 사용법</button>
@@ -112,6 +113,16 @@
       <span style="font-size:10px;color:var(--ts)">출하완료 폴더에서 자동 수집 (디텍터 S/N ↔ TFT S/N)</span>
     </div>
     <div class="tw"><table class="g" id="t4"><thead id="th4"></thead><tbody id="b4"></tbody></table></div>
+  </div>
+
+  <!-- ══ TAB: 이력 필요 ══ -->
+  <div id="v-histneed" class="tab-view">
+    <div class="toolbar">
+      <div class="sbox" id="sb5"><input placeholder="검색..." id="q5" /><button class="s-clear">&times;</button></div>
+      <span class="pill" id="p5">0건</span>
+      <span style="font-size:10px;color:var(--ts)">통합취합본에서 생산기록이 연동 안 된 출하건 — [✏ 작성]으로 생산이력 추가</span>
+    </div>
+    <div class="tw"><table class="g" id="t5"><thead id="th5"></thead><tbody id="b5"></tbody></table></div>
   </div>
 
   <!-- ══ TAB: KPI ══ -->
