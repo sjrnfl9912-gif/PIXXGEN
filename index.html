@@ -264,18 +264,18 @@
             <p class="hg-lead" style="font-size:11px;color:#888">「경로 복사」를 누르면 클립보드에 복사됩니다. 파일 탐색기 주소창에 붙여넣기(Ctrl+V) 하세요. (브라우저는 보안상 파일을 직접 못 엽니다)</p>
             <div class="hg-path">
               <div class="hg-pt">📊 검사포장 출하이력 원본 엑셀</div>
-              <div class="hg-pp">\\192.168.50.203\Fab_Sync\1. 재고\2026년 출하이력\2026년 통합 출하 이력.xlsx</div>
-              <button class="hg-copy" data-path="\\192.168.50.203\Fab_Sync\1. 재고\2026년 출하이력\2026년 통합 출하 이력.xlsx">📋 경로 복사</button>
+              <div class="hg-pp">\\SERVER03\Fab_Sync\1. 재고\2026년 출하이력\2026년 통합 출하 이력.xlsx</div>
+              <button class="hg-copy" data-path="\\SERVER03\Fab_Sync\1. 재고\2026년 출하이력\2026년 통합 출하 이력.xlsx">📋 경로 복사</button>
             </div>
             <div class="hg-path">
               <div class="hg-pt">🕗 자동 백업 위치 (매일 오후 5시 30분)</div>
-              <div class="hg-pp">\\192.168.50.203\Fab_Sync\99. 기타 - 팀원 임시 폴더\홍승범\PIXXGEN\snapshots\</div>
-              <button class="hg-copy" data-path="\\192.168.50.203\Fab_Sync\99. 기타 - 팀원 임시 폴더\홍승범\PIXXGEN\snapshots\">📋 경로 복사</button>
+              <div class="hg-pp">\\SERVER03\Fab_Sync\99. 기타 - 팀원 임시 폴더\홍승범\PIXXGEN\snapshots\</div>
+              <button class="hg-copy" data-path="\\SERVER03\Fab_Sync\99. 기타 - 팀원 임시 폴더\홍승범\PIXXGEN\snapshots\">📋 경로 복사</button>
             </div>
             <div class="hg-path">
               <div class="hg-pt">📁 TFT 매칭 원본 — 출하완료 폴더</div>
-              <div class="hg-pp">\\192.168.50.203\Fab_Sync\0.0 TFT 정보 관리\4. (임시)출하공정\3. 출하완료\월간출하정보\</div>
-              <button class="hg-copy" data-path="\\192.168.50.203\Fab_Sync\0.0 TFT 정보 관리\4. (임시)출하공정\3. 출하완료\월간출하정보\">📋 경로 복사</button>
+              <div class="hg-pp">\\SERVER03\Fab_Sync\0.0 TFT 정보 관리\4. (임시)출하공정\3. 출하완료\월간출하정보\</div>
+              <button class="hg-copy" data-path="\\SERVER03\Fab_Sync\0.0 TFT 정보 관리\4. (임시)출하공정\3. 출하완료\월간출하정보\">📋 경로 복사</button>
             </div>
           </div>
         </div>
@@ -326,13 +326,14 @@
               <li><b>매일 17:30</b> — DB(검사포장·생산·TFT 매칭) → 서버 공유폴더로 백업</li>
             </ul>
             <div class="hg-path" style="margin-top:10px">
-              <div class="hg-pt">📁 스크립트 위치</div>
-              <div class="hg-pp">C:\Users\ADMIN\PIXXGEN-sync\</div>
-              <button class="hg-copy" data-path="C:\Users\ADMIN\PIXXGEN-sync\">📋 경로 복사</button>
+              <div class="hg-pt">📁 스크립트 위치 (공용 서버 — 누구나 열람 가능)</div>
+              <div class="hg-pp">\\SERVER03\Fab_Sync\99. 기타 - 팀원 임시 폴더\홍승범\PIXXGEN\PIXXGEN-sync\</div>
+              <button class="hg-copy" data-path="\\SERVER03\Fab_Sync\99. 기타 - 팀원 임시 폴더\홍승범\PIXXGEN\PIXXGEN-sync\">📋 경로 복사</button>
             </div>
+            <div class="hg-tip">※ 폴더 안 README.txt 에 설치·작업 스케줄러 등록 방법이 정리돼 있습니다.</div>
             <div class="hg-warn" style="margin-top:12px">
               <span class="hg-big">💡 다른 PC에서도 백업 가능</span>
-              위 <b>PIXXGEN-sync 폴더를 다른 PC에 복사</b>하고 작업 스케줄러에 등록하면, 그 PC에서도 백업·동기화가 됩니다.
+              위 공용 서버의 <b>PIXXGEN-sync 폴더를 다른 PC에 복사</b>하고 작업 스케줄러에 등록하면, 그 PC에서도 백업·동기화가 됩니다.
               스크립트가 특정 PC 경로에 묶여 있지 않아 <b>복사만 하면 바로 동작</b>합니다 —
               회사 PC가 꺼져 있어도 다른 PC로 백업을 이어갈 수 있습니다.
             </div>
