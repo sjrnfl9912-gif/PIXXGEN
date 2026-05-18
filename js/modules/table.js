@@ -539,6 +539,16 @@ export function initHistNeed() {
   });
 }
 
+// 모든 탭의 카운트 배지를 한 번에 갱신 (탭을 클릭하지 않아도 숫자가 보이도록)
+export function updateTabCounts() {
+  const set = (id, n) => { const e = document.getElementById(id); if (e) e.textContent = n; };
+  set('cnt1', state.shipD.length);
+  set('cnt2', state.prodD.length);
+  set('cnt3', state.shipD.length);   // 통합취합본 = 검사포장 행 수만큼
+  set('cnt4', state.tftmD.length);
+  set('cnt5', histNeedList().filter(x => !x.pending).length);
+}
+
 export function renderAll() {
   if (state.curTab === 'ship') renderShipmentTable();
   else if (state.curTab === 'prod') renderProductionTable();
