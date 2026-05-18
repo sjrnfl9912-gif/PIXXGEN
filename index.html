@@ -187,46 +187,136 @@
         <button class="help-x" id="helpClose" title="닫기">&times;</button>
       </div>
       <div class="help-b">
-        <h4>화면 구성</h4>
-        <ul>
-          <li><b>검사포장 출하이력</b> — 회사 엑셀에서 <b>자동으로 들어옵니다.</b> 직접 입력하지 않습니다.</li>
-          <li><b>생산관리대장</b> — 생산 담당자가 <b>직접 작성</b>하는 탭입니다.</li>
-          <li><b>TFT 매칭</b> — 출하완료 폴더에서 자동 수집됩니다. (보기 전용)</li>
-          <li><b>통합취합본</b> — <b>🔄 출하+생산 취합</b> 버튼으로 두 데이터를 합쳐서 봅니다.</li>
-          <li><b>📊 KPI 통계</b> — 생산 실적이 작업자별·월별로 자동 집계됩니다.</li>
-        </ul>
+       <div class="help-guide">
 
-        <h4>생산관리대장 작성법 (엑셀과 거의 같음)</h4>
-        <table>
-          <thead><tr><th>할 일</th><th>방법</th></tr></thead>
-          <tbody>
-            <tr><td>새 행 추가</td><td>맨 아래 <b>+ 새 행 추가</b> 클릭 (또는 <kbd>Ctrl+Enter</kbd>)</td></tr>
-            <tr><td>셀 수정</td><td>셀을 더블클릭하거나 바로 입력</td></tr>
-            <tr><td>칸 이동</td><td>방향키 · <kbd>Tab</kbd> · <kbd>Enter</kbd></td></tr>
-            <tr><td>엑셀에서 복사해 넣기</td><td>셀 선택 후 <kbd>Ctrl+V</kbd> (여러 칸 한번에)</td></tr>
-            <tr><td>되돌리기</td><td><kbd>Ctrl+Z</kbd></td></tr>
-            <tr><td>행 삭제</td><td>행에서 우클릭 → 🗑 행 삭제</td></tr>
-          </tbody>
-        </table>
-
-        <h4>⚠️ 저장 — 가장 중요</h4>
-        <div class="help-note">
-          입력·수정해도 <strong>자동 저장되지 않습니다.</strong> 반드시 우측 상단
-          <strong>💾 저장</strong> (또는 <kbd>Ctrl+S</kbd>) 을 눌러야 서버에 반영됩니다.
+        <div class="hg-sec">
+          <div class="hg-sh">🔄 1. 데이터가 어디서 와서 어디로 가나</div>
+          <div class="hg-sb">
+            <div class="hg-flow">
+              <div class="hg-frow"><span class="hg-fbox hg-src">회사 엑셀 (통합 출하 이력)</span><span class="hg-arr">── 매일 자동 ▶</span><span class="hg-fbox hg-tab">검사포장 출하이력</span></div>
+              <div class="hg-frow"><span class="hg-fbox hg-src">출하완료 폴더 (서버)</span><span class="hg-arr">── 매일 자동 ▶</span><span class="hg-fbox hg-tab">TFT 매칭</span></div>
+              <div class="hg-frow"><span class="hg-fbox hg-src">생산 담당자 직접 입력</span><span class="hg-arr">────────▶</span><span class="hg-fbox hg-tab">생산관리대장</span></div>
+              <div class="hg-frow"><span class="hg-arr">위 3가지가 자동으로 합쳐져 ▶</span><span class="hg-fbox hg-out">통합취합본</span><span class="hg-fbox hg-out">KPI 통계</span></div>
+            </div>
+            <div class="hg-note">※ 검사포장·TFT 매칭은 손댈 필요 없이 자동입니다. 사람이 작성하는 건 <b>생산관리대장</b>과 <b>이력 필요</b>뿐입니다.</div>
+          </div>
         </div>
-        <ul>
-          <li>저장 전에는 빨간 <b>저장 안 됨</b> 표시가 뜨고, 페이지를 닫으면 경고가 나옵니다.</li>
-          <li>저장하면 다른 사람 화면에도 <b>실시간으로 반영</b>됩니다.</li>
-          <li>같은 S/N이 중복되면 <b>중복 S/N</b>으로 빨갛게 표시됩니다.</li>
-        </ul>
 
-        <h4>백업</h4>
-        <ul>
-          <li><b>자동 백업</b> — 회사 PC에서 매일 오후 5시 30분에 자동으로 백업됩니다. (회사 PC가 켜져 있을 때 실행)</li>
-          <li><b>📥 백업</b> 버튼 — 지금 즉시 데이터를 JSON 파일로 내려받습니다.</li>
-          <li><b>📤 복원</b> 버튼 — 백업 파일로 데이터를 되돌립니다.</li>
-          <li>데이터 원본은 서버에 보관됩니다. 중요한 작업 전후엔 <b>📥 백업</b>을 직접 눌러 파일도 따로 받아두면 더 안전합니다.</li>
-        </ul>
+        <div class="hg-sec">
+          <div class="hg-sh">📑 2. 탭마다 무엇을 하나</div>
+          <div class="hg-sb">
+            <div class="hg-tabrow">
+              <div class="hg-info"><h3>검사포장 출하이력 <span class="hg-bdg hg-view">보기 전용</span></h3><p>회사 엑셀에서 매일 자동으로 들어옵니다. 직접 입력하지 않습니다.</p></div>
+              <div class="hg-mini"><table><tr><th>NO</th><th>품명</th><th>디텍터 S/N</th></tr><tr><td>1</td><td>PRUDENT_O_1717W</td><td>K120260A1</td></tr><tr><td>2</td><td>PIXX1826N</td><td>P330260E1</td></tr></table><div class="hg-cap">회사 엑셀 그대로 — 매일 자동 갱신</div></div>
+            </div>
+            <div class="hg-tabrow">
+              <div class="hg-info"><h3>생산관리대장 <span class="hg-bdg hg-man">직접 작성</span></h3><p>생산 담당자가 제품 만들면서 직접 작성·수정합니다. 셀 더블클릭으로 입력.</p></div>
+              <div class="hg-mini"><table><tr><th>생산번호</th><th>TFT S/N</th><th>작업자</th></tr><tr><td>26K546</td><td>CJ519121HAAA</td><td>홍승범</td></tr><tr><td>26K547</td><td>CJ51B1V4TAAA</td><td>김남식</td></tr></table><div class="hg-cap">사람이 입력 — 입력 후 꼭 💾 저장</div></div>
+            </div>
+            <div class="hg-tabrow">
+              <div class="hg-info"><h3>TFT 매칭 <span class="hg-bdg hg-auto">자동 수집</span></h3><p>출하완료 폴더 이름에서 디텍터 S/N ↔ TFT S/N을 자동 수집합니다.</p></div>
+              <div class="hg-mini"><table><tr><th>출하일</th><th>TFT S/N</th><th>디텍터 S/N</th></tr><tr><td>2026-05-11</td><td>T241P356NE02</td><td>A710260E1</td></tr><tr><td>2026-05-08</td><td>T24AN332NB02</td><td>P330260E1</td></tr></table><div class="hg-cap">검사포장 ↔ 생산을 잇는 다리</div></div>
+            </div>
+            <div class="hg-tabrow">
+              <div class="hg-info"><h3>통합취합본 <span class="hg-bdg hg-auto">자동 취합</span></h3><p>탭에 들어가면 검사포장 + 생산 데이터를 자동으로 합쳐서 보여줍니다.</p></div>
+              <div class="hg-mini"><table><tr><th>품명</th><th>디텍터</th><th>TFT</th><th>작업자</th></tr><tr><td>PRUDENT</td><td>K120260A1</td><td class="hg-ro">CJ51…</td><td class="hg-ro">홍승범</td></tr></table><div class="hg-cap">회색 칸 = 생산쪽에서 자동으로 붙음</div></div>
+            </div>
+            <div class="hg-tabrow">
+              <div class="hg-info"><h3>이력 필요 <span class="hg-bdg hg-man">직접 작성</span></h3><p>옛 재고가 출하될 때 생산이력을 입력하는 곳. 아래 3번에서 자세히 설명합니다.</p></div>
+              <div class="hg-mini hg-pad"><div class="hg-vscan"><span>📷</span><div class="hg-vbox">S/N 스캔…</div></div><div class="hg-vq"><span class="hg-vchip on">PRUDENT·K120…</span><span class="hg-vchip">PIXX·P330…</span></div></div>
+            </div>
+            <div class="hg-tabrow">
+              <div class="hg-info"><h3>KPI 통계 <span class="hg-bdg hg-auto">자동 집계</span></h3><p>생산 실적이 작업자별·월별로 자동 집계됩니다.</p></div>
+              <div class="hg-mini hg-pad" style="display:flex;gap:8px"><div class="hg-kpi"><b>1,322</b><span>총 생산</span></div><div class="hg-kpi hg-kpi2"><b>홍승범</b><span>최다 작업자</span></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hg-sec">
+          <div class="hg-sh">📝 3. 이력카드 입력하기 — 「이력 필요」 탭</div>
+          <div class="hg-sb">
+            <p class="hg-lead">옛 재고(2023~2025년 제작분)는 출하될 때 디텍터 S/N이 정해져, 출하 후 생산이력을 새로 적어야 합니다. 이력카드는 무작위로 오므로 <b>S/N으로 찾아</b> 입력합니다.</p>
+            <div class="hg-steps">
+              <div class="hg-step"><div class="hg-sn">1</div><div class="hg-stb">
+                <h4>S/N 스캔 / 입력</h4><p>이력카드의 TFT S/N 또는 디텍터 S/N을 상단 스캔창에 입력하거나 바코드로 스캔 → Enter.</p>
+                <div class="hg-vscan"><span>📷</span><div class="hg-vbox">QJ415092KAAA  ← 입력 후 Enter</div></div>
+              </div></div>
+              <div class="hg-step"><div class="hg-sn">2</div><div class="hg-stb">
+                <h4>작업 큐에 쌓기</h4><p>스캔한 카드가 큐에 칩으로 쌓입니다. 여러 장 먼저 스캔해두고 한 번에 입력해도 됩니다.</p>
+                <div class="hg-vq"><span class="hg-vchip on">PRUDENT·K120260A1</span><span class="hg-vchip">PIXX·P330260E1</span><span class="hg-vchip">OPTIMUM·A720261B2</span></div>
+              </div></div>
+              <div class="hg-step"><div class="hg-sn">3</div><div class="hg-stb">
+                <h4>생산이력 입력</h4><p>큐 칩을 클릭하면 입력 폼이 열립니다. TFT S/N은 자동으로 채워져 있고, <span class="hg-kbd">Tab</span>으로 칸을 이동하며 채웁니다.</p>
+                <div class="hg-vform"><div class="hg-vfld"><span>생산번호</span><i></i></div><div class="hg-vfld"><span>TFT S/N</span><i class="pre"></i></div><div class="hg-vfld"><span>CPU S/N</span><i></i></div><div class="hg-vfld"><span>작업자</span><i></i></div></div>
+              </div></div>
+              <div class="hg-step"><div class="hg-sn">4</div><div class="hg-stb">
+                <h4>저장하고 다음</h4><p>저장 버튼을 누르면 생산관리대장에 추가되고, 자동으로 큐의 다음 카드로 넘어갑니다.</p>
+                <span class="hg-vsave">💾 저장하고 다음</span>
+              </div></div>
+            </div>
+            <div class="hg-tip">※ 「이력 필요」 목록엔 실제 작업 대상만 표시됩니다. 아직 출하 안 된 건은 「출하 예정」 목록에 따로 있습니다.</div>
+          </div>
+        </div>
+
+        <div class="hg-sec">
+          <div class="hg-sh">📂 4. 원본 데이터 · 백업 위치</div>
+          <div class="hg-sb">
+            <p class="hg-lead" style="font-size:11px;color:#888">「경로 복사」를 누르면 클립보드에 복사됩니다. 파일 탐색기 주소창에 붙여넣기(Ctrl+V) 하세요. (브라우저는 보안상 파일을 직접 못 엽니다)</p>
+            <div class="hg-path">
+              <div class="hg-pt">📊 검사포장 출하이력 원본 엑셀</div>
+              <div class="hg-pp">\\192.168.50.203\Fab_Sync\1. 재고\2026년 출하이력\2026년 통합 출하 이력.xlsx</div>
+              <button class="hg-copy" data-path="\\192.168.50.203\Fab_Sync\1. 재고\2026년 출하이력\2026년 통합 출하 이력.xlsx">📋 경로 복사</button>
+            </div>
+            <div class="hg-path">
+              <div class="hg-pt">🕗 자동 백업 위치 (매일 오후 5시 30분)</div>
+              <div class="hg-pp">\\192.168.50.203\Fab_Sync\99. 기타 - 팀원 임시 폴더\홍승범\PIXXGEN\snapshots\</div>
+              <button class="hg-copy" data-path="\\192.168.50.203\Fab_Sync\99. 기타 - 팀원 임시 폴더\홍승범\PIXXGEN\snapshots\">📋 경로 복사</button>
+            </div>
+            <div class="hg-path">
+              <div class="hg-pt">📁 TFT 매칭 원본 — 출하완료 폴더</div>
+              <div class="hg-pp">\\192.168.50.203\Fab_Sync\0.0 TFT 정보 관리\4. (임시)출하공정\3. 출하완료\월간출하정보\</div>
+              <button class="hg-copy" data-path="\\192.168.50.203\Fab_Sync\0.0 TFT 정보 관리\4. (임시)출하공정\3. 출하완료\월간출하정보\">📋 경로 복사</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="hg-sec">
+          <div class="hg-sh">💾 5. 저장 — 가장 중요</div>
+          <div class="hg-sb">
+            <div class="hg-warn">
+              <span class="hg-big">⚠️ 입력·수정해도 자동 저장되지 않습니다.</span>
+              반드시 우측 상단 <b>💾 저장</b> 버튼(또는 <span class="hg-kbd">Ctrl+S</span>)을 눌러야 서버에 반영됩니다.
+              <ul class="hg-ul">
+                <li>저장 전에는 <b>빨간 「저장 안 됨」</b> 표시가 뜹니다.</li>
+                <li>저장 안 하고 페이지를 닫으면 경고가 나옵니다.</li>
+                <li>저장하면 다른 사람 화면에도 실시간 반영됩니다.</li>
+                <li>같은 S/N이 중복되면 <b>「중복 S/N」</b>으로 빨갛게 표시됩니다.</li>
+              </ul>
+            </div>
+            <div class="hg-tip">※ 「이력 필요」 탭의 [저장하고 다음]은 누르는 즉시 저장됩니다 (별도 저장 불필요).</div>
+          </div>
+        </div>
+
+        <div class="hg-sec">
+          <div class="hg-sh">🛟 6. 백업 · 단축키</div>
+          <div class="hg-sb">
+            <ul class="hg-ul" style="margin-bottom:14px">
+              <li><b>자동 백업</b> — 매일 오후 5:30, 위 4번의 백업 위치로 자동 저장 (회사 PC가 켜져 있을 때).</li>
+              <li><b>📥 백업</b> 버튼 — 지금 즉시 JSON 파일로 내려받기 (중요 작업 전후 권장).</li>
+              <li><b>📤 복원</b> — 백업 JSON으로 되돌리기 · <b>📊 엑셀 추출</b> — 엑셀로 내보내기.</li>
+            </ul>
+            <table class="hg-kt">
+              <tr><td><span class="hg-kbd">Ctrl+S</span></td><td>저장</td></tr>
+              <tr><td><span class="hg-kbd">Ctrl+Z</span></td><td>되돌리기</td></tr>
+              <tr><td><span class="hg-kbd">Ctrl+C</span> / <span class="hg-kbd">Ctrl+V</span></td><td>복사 / 붙여넣기 (엑셀과 호환)</td></tr>
+              <tr><td><span class="hg-kbd">Tab</span> · 방향키</td><td>칸 이동</td></tr>
+              <tr><td><span class="hg-kbd">Ctrl+Enter</span></td><td>새 행 추가</td></tr>
+              <tr><td><span class="hg-kbd">셀 더블클릭</span></td><td>해당 칸 바로 편집</td></tr>
+            </table>
+          </div>
+        </div>
+
+       </div>
       </div>
     </div>
   </div>

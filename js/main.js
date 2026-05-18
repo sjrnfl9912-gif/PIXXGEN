@@ -222,7 +222,14 @@ async function init() {
   const helpBg = document.getElementById('helpBg');
   document.getElementById('helpBtn')?.addEventListener('click', () => helpBg?.classList.add('show'));
   document.getElementById('helpClose')?.addEventListener('click', () => helpBg?.classList.remove('show'));
-  helpBg?.addEventListener('click', e => { if (e.target === helpBg) helpBg.classList.remove('show'); });
+  helpBg?.addEventListener('click', e => {
+    if (e.target === helpBg) { helpBg.classList.remove('show'); return; }
+    const cp = e.target.closest('.hg-copy');
+    if (cp) {
+      navigator.clipboard?.writeText(cp.dataset.path);
+      toast('경로 복사됨 — 파일 탐색기 주소창에 붙여넣기(Ctrl+V)', 'ok');
+    }
+  });
 
   // TFT match button
   document.getElementById('tftMatchBtn')?.addEventListener('click', () => { /* TODO: TFT modal */ toast('TFT 매칭 모달 (준비 중)', 'info'); });
