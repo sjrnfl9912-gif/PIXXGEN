@@ -115,14 +115,25 @@
     <div class="tw"><table class="g" id="t4"><thead id="th4"></thead><tbody id="b4"></tbody></table></div>
   </div>
 
-  <!-- ══ TAB: 이력 필요 ══ -->
+  <!-- ══ TAB: 이력 필요 (스캔 큐) ══ -->
   <div id="v-histneed" class="tab-view">
-    <div class="toolbar">
-      <div class="sbox" id="sb5"><input placeholder="검색..." id="q5" /><button class="s-clear">&times;</button></div>
-      <span class="pill" id="p5">0건</span>
-      <span style="font-size:10px;color:var(--ts)">통합취합본에서 생산기록이 연동 안 된 출하건 — [✏ 작성]으로 생산이력 추가</span>
+    <div class="hn-scanbar">
+      <span class="hn-scan-lbl">📷 S/N 스캔 / 입력</span>
+      <input id="hnScan" placeholder="이력카드의 TFT S/N 또는 디텍터 S/N — 스캔하거나 입력 후 Enter" autocomplete="off" spellcheck="false">
+      <button class="btn" id="hnQueueClear">큐 비우기</button>
     </div>
-    <div class="tw"><table class="g" id="t5"><thead id="th5"></thead><tbody id="b5"></tbody></table></div>
+    <div class="hn-queue-wrap">
+      <div class="hn-queue-h">📋 작업 큐<span id="hnQueueCnt" class="hn-qcnt">0건 대기</span></div>
+      <div class="hn-queue" id="hnQueue"></div>
+    </div>
+    <div id="hnFormArea"></div>
+    <details class="hn-list-d">
+      <summary>📂 전체 이력 필요 목록 <span id="p5">0건</span> — 펼치기 / 검색</summary>
+      <div class="toolbar" style="margin-top:8px">
+        <div class="sbox" id="sb5"><input placeholder="검색..." id="q5" /><button class="s-clear">&times;</button></div>
+      </div>
+      <div class="tw hn-list-tw"><table class="g" id="t5"><thead id="th5"></thead><tbody id="b5"></tbody></table></div>
+    </details>
   </div>
 
   <!-- ══ TAB: KPI ══ -->

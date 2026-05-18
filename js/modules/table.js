@@ -235,15 +235,8 @@ export function renderTftmTable() {
   if (b4) b4.innerHTML = rows.join('');
 }
 
-// ═══ 이력 필요 탭 (생산기록 연동 안 된 출하건 + 인라인 작성) ═══
-// 표시 컬럼 (검사포장 행에서 뽑음. _tft 는 tft_match 경유 TFT S/N)
-const HN_COLS = [
-  { f: 'product_name',      h: '품명' },
-  { f: 'detector_sn',       h: '디텍터 S/N' },
-  { f: '_tft',              h: 'TFT S/N' },
-  { f: 'planned_ship_date', h: '예상 출하일' },
-  { f: 'company',           h: '업체 & 병원명' },
-];
+// ═══ 이력 필요 탭 (스캔 큐 방식) ═══
+// 무작위로 오는 이력카드를 S/N으로 스캔 → 작업 큐에 쌓고 → 차례로 생산이력 입력.
 
 // 연동 안 된 출하건 목록 계산
 //  no-prod : TFT는 찾았으나 생산기록 없음 (작성하면 바로 연동)
@@ -263,6 +256,144 @@ function histNeedList() {
   return out;
 }
 
+// ── 작업 큐 (스캔한 이력카드들) ──
+let hnQueue = [];   // [{ det, tft, done }]
+let hnSel = -1;     // 선택된 큐 인덱스
+function hnQueueLoad() {
+  try { hnQueue = JSON.parse(localStorage.getItem('hist_queue') || '[]'); }
+  catch { hnQueue = []; }
+  if (!Array.isArray(hnQueue)) hnQueue = [];
+}
+function hnQueueSave() {
+  try { localStorage.setItem('hist_queue', JSON.stringify(hnQueue)); } catch (e) {}
+}
+const hnShipByDet = det => state.shipD.find(s => String(s.detector_sn || '').trim() === det) || {};
+
+// S/N(디텍터 또는 TFT)으로 큐에 추가. 성공 시 그 항목 선택.
+function hnAddToQueue(det, tft) {
+  det = String(det || '').trim();
+  if (!det) return;
+  let qi = hnQueue.findIndex(q => q.det === det);
+  if (qi < 0) {
+    hnQueue.push({ det, tft: tft || '', done: false });
+    qi = hnQueue.length - 1;
+    hnQueueSave();
+  } else if (hnQueue[qi].done) {
+    toast('이미 작성 완료된 건입니다', 'info');
+  }
+  hnSel = qi;
+}
+
+// 스캔/입력한 S/N 처리
+function hnScan(raw) {
+  const sn = String(raw || '').trim();
+  if (!sn) return false;
+  const up = sn.toUpperCase();
+  const hit = histNeedList().find(x =>
+    String(x.ship.detector_sn || '').trim().toUpperCase() === up ||
+    String(x.tft || '').trim().toUpperCase() === up);
+  if (!hit) {
+    const inShip = state.shipD.some(s => String(s.detector_sn || '').trim().toUpperCase() === up);
+    toast(inShip ? '이미 생산이력이 연동된 출하건입니다' : 'S/N을 출하 목록에서 찾지 못했습니다: ' + sn,
+      inShip ? 'info' : 'er');
+    return false;
+  }
+  hnAddToQueue(hit.ship.detector_sn, hit.tft);
+  return true;
+}
+
+// 작업 큐 칩 렌더링
+function renderQueue() {
+  const box = document.getElementById('hnQueue');
+  const cntEl = document.getElementById('hnQueueCnt');
+  const pending = hnQueue.filter(q => !q.done).length;
+  const done = hnQueue.length - pending;
+  if (cntEl) cntEl.textContent = pending + '건 대기' + (done ? ' · ' + done + '건 완료' : '');
+  if (!box) return;
+  if (!hnQueue.length) {
+    box.innerHTML = '<span class="hn-q-empty">S/N을 스캔하면 여기에 쌓입니다</span>';
+    return;
+  }
+  box.innerHTML = hnQueue.map((q, i) => {
+    const ship = hnShipByDet(q.det);
+    return '<div class="hn-qchip' + (q.done ? ' done' : '') + (i === hnSel ? ' on' : '') + '" data-qi="' + i + '">'
+      + (q.done ? '✓ ' : '') + '<b>' + esc(ship.product_name || '?') + '</b> · ' + esc(q.det)
+      + '<span class="hn-qx" data-qx="' + i + '" title="큐에서 제거">×</span></div>';
+  }).join('');
+}
+
+// 선택된 큐 항목의 생산이력 입력 폼 렌더링
+function renderHnForm() {
+  const area = document.getElementById('hnFormArea');
+  if (!area) return;
+  const q = (hnSel >= 0) ? hnQueue[hnSel] : null;
+  if (!q) { area.innerHTML = ''; return; }
+  const ship = hnShipByDet(q.det);
+  if (q.done) {
+    area.innerHTML = '<div class="hn-form hn-form-done">✓ ' + esc(ship.product_name || '')
+      + ' / 디텍터 ' + esc(q.det) + ' — 생산이력 작성 완료</div>';
+    return;
+  }
+  const prefill = { tft_sn: q.tft, detector_fw: ship.detector_fw || '' };
+  let fields = '';
+  for (let j = 0; j < PROD_FIELDS.length; j++) {
+    const f = PROD_FIELDS[j], hh = PROD_HEADS[j].replace(/\n/g, ' ');
+    fields += '<label class="hn-fld"><span>' + esc(hh) + '</span>'
+      + '<input data-pf="' + f + '" value="' + esc(prefill[f] || '') + '"></label>';
+  }
+  area.innerHTML = '<div class="hn-form">'
+    + '<div class="hn-form-h">📝 ' + esc(ship.product_name || '') + ' / 디텍터 ' + esc(q.det)
+    + ' · TFT ' + esc(q.tft || '(없음 — 직접 입력)')
+    + '<span class="hn-form-pos">큐 ' + (hnSel + 1) + ' / ' + hnQueue.length + '</span></div>'
+    + '<div class="hn-form-grid">' + fields + '</div>'
+    + '<div class="hn-form-f"><button class="hn-skip">건너뛰기 ▶</button>'
+    + '<button class="hn-save">💾 저장하고 다음</button></div>'
+    + '</div>';
+  const fi = area.querySelector('input[data-pf]');
+  if (fi) fi.focus();
+}
+
+// 폼 저장 → production 테이블에 직접 추가
+async function saveHnForm() {
+  const area = document.getElementById('hnFormArea');
+  const q = (hnSel >= 0) ? hnQueue[hnSel] : null;
+  if (!area || !q) return;
+  const obj = {};
+  area.querySelectorAll('input[data-pf]').forEach(inp => {
+    const v = inp.value.trim();
+    obj[inp.dataset.pf] = v === '' ? null : v;
+  });
+  if (!obj.tft_sn) { toast('TFT S/N은 반드시 입력해야 합니다', 'er'); return; }
+  const btn = area.querySelector('.hn-save');
+  if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+  const row = await dbInsert('production', obj);
+  if (!row) {
+    toast('저장 실패 — 다시 시도해주세요', 'er');
+    if (btn) { btn.disabled = false; btn.textContent = '💾 저장하고 다음'; }
+    return;
+  }
+  state.prodD.push({ ...row, _id: row.id });
+  rebuildTft();
+  markDupDirty();
+  saveCache(state.shipD, state.prodD);
+  q.done = true;
+  hnQueueSave();
+  toast('생산이력 추가 — ' + obj.tft_sn, 'ok');
+  hnSel = hnQueue.findIndex(x => !x.done);   // 다음 미완료 큐로 이동
+  renderHistNeed();
+}
+
+// 저장 없이 다음 미완료 큐로
+function hnSkip() {
+  let next = -1;
+  for (let i = hnSel + 1; i < hnQueue.length; i++) if (!hnQueue[i].done) { next = i; break; }
+  if (next < 0) next = hnQueue.findIndex(q => !q.done);
+  hnSel = next;
+  renderQueue();
+  renderHnForm();
+}
+
+// 전체 이력 필요 목록 (하단 접이식 참고용)
 export function renderHistNeedTable() {
   const q = (document.getElementById('q5')?.value || '').toLowerCase();
   let list = histNeedList();
@@ -271,14 +402,14 @@ export function renderHistNeedTable() {
   state.histNeedList = list;
   const p5 = document.getElementById('p5'), cnt5 = document.getElementById('cnt5');
   if (p5) p5.textContent = list.length + '건';
-  if (cnt5) cnt5.textContent = list.length;
+  if (cnt5) cnt5.textContent = histNeedList().length;   // 탭 배지는 검색과 무관하게 전체
 
   const th5 = document.getElementById('th5');
   if (th5 && !th5.childElementCount) {
     th5.innerHTML = '<tr><th class="hn-th" style="width:36px">#</th>'
-      + HN_COLS.map(c => '<th class="hn-th">' + c.h + '</th>').join('')
-      + '<th class="hn-th" style="width:110px">상태</th>'
-      + '<th class="hn-th" style="width:90px">이력</th></tr>';
+      + '<th class="hn-th">품명</th><th class="hn-th">디텍터 S/N</th><th class="hn-th">TFT S/N</th>'
+      + '<th class="hn-th">예상 출하일</th><th class="hn-th">업체 &amp; 병원명</th>'
+      + '<th class="hn-th" style="width:104px">상태</th><th class="hn-th" style="width:96px">작업</th></tr>';
   }
   const b5 = document.getElementById('b5');
   if (!b5) return;
@@ -292,7 +423,7 @@ export function renderHistNeedTable() {
     const badge = x.status === 'no-prod'
       ? '<span class="hn-badge hn-noprod">생산기록 없음</span>'
       : '<span class="hn-badge hn-notft">TFT매칭 없음</span>';
-    rows.push('<tr data-hn="' + i + '">'
+    rows.push('<tr>'
       + '<td class="hn-rn">' + (i + 1) + '</td>'
       + '<td class="hn-c">' + esc(s.product_name) + '</td>'
       + '<td class="hn-c hn-mono">' + esc(s.detector_sn) + '</td>'
@@ -300,81 +431,74 @@ export function renderHistNeedTable() {
       + '<td class="hn-c">' + esc(s.planned_ship_date) + '</td>'
       + '<td class="hn-c">' + esc(s.company) + '</td>'
       + '<td class="hn-c">' + badge + '</td>'
-      + '<td class="hn-c"><button class="hn-write" data-idx="' + i + '">✏ 작성</button></td>'
+      + '<td class="hn-c"><button class="hn-write" data-det="' + esc(s.detector_sn)
+      + '" data-tft="' + esc(x.tft) + '">＋ 큐에</button></td>'
       + '</tr>');
   }
   b5.innerHTML = rows.join('');
 }
 
-// [작성] 클릭 → 해당 행 아래에 생산이력 입력 폼 펼침
-function openHnForm(idx) {
-  const x = state.histNeedList && state.histNeedList[idx];
-  if (!x) return;
-  const tr = document.querySelector('#b5 tr[data-hn="' + idx + '"]');
-  if (!tr) return;
-  // 이미 열려있으면 닫기 (토글)
-  if (tr.nextElementSibling && tr.nextElementSibling.classList.contains('hn-formrow')) {
-    tr.nextElementSibling.remove();
-    return;
-  }
-  document.querySelectorAll('#b5 .hn-formrow').forEach(e => e.remove());
-  const s = x.ship;
-  const prefill = { tft_sn: x.tft, detector_fw: s.detector_fw || '' };
-  let fields = '';
-  for (let j = 0; j < PROD_FIELDS.length; j++) {
-    const f = PROD_FIELDS[j], hh = PROD_HEADS[j].replace(/\n/g, ' ');
-    fields += '<label class="hn-fld"><span>' + esc(hh) + '</span>'
-      + '<input data-pf="' + f + '" value="' + esc(prefill[f] || '') + '"></label>';
-  }
-  const formTr = document.createElement('tr');
-  formTr.className = 'hn-formrow';
-  formTr.innerHTML = '<td colspan="8"><div class="hn-form">'
-    + '<div class="hn-form-h">📝 ' + esc(s.product_name || '') + '  /  디텍터 ' + esc(s.detector_sn || '')
-    + '  — 생산이력 작성</div>'
-    + '<div class="hn-form-grid">' + fields + '</div>'
-    + '<div class="hn-form-f"><button class="hn-cancel">취소</button>'
-    + '<button class="hn-save" data-idx="' + idx + '">💾 생산관리대장에 추가</button></div>'
-    + '</div></td>';
-  tr.after(formTr);
-  const first = formTr.querySelector('input[data-pf]');
-  if (first) first.focus();
-}
-
-// 폼 저장 → production 테이블에 직접 추가
-async function saveHnForm(idx, formTr) {
-  if (!formTr) return;
-  const obj = {};
-  formTr.querySelectorAll('input[data-pf]').forEach(inp => {
-    const v = inp.value.trim();
-    obj[inp.dataset.pf] = v === '' ? null : v;
-  });
-  if (!obj.tft_sn) { toast('TFT S/N은 반드시 입력해야 합니다', 'er'); return; }
-  const saveBtn = formTr.querySelector('.hn-save');
-  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
-  const row = await dbInsert('production', obj);
-  if (!row) {
-    toast('저장 실패 — 다시 시도해주세요', 'er');
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 생산관리대장에 추가'; }
-    return;
-  }
-  state.prodD.push({ ...row, _id: row.id });
-  rebuildTft();
-  markDupDirty();
-  saveCache(state.shipD, state.prodD);
-  toast('생산이력 추가 완료 — ' + obj.tft_sn, 'ok');
-  renderHistNeedTable();   // 방금 채운 건은 목록에서 사라짐
+// 이력 필요 탭 전체 렌더 (목록 + 큐 + 폼)
+export function renderHistNeed() {
+  renderHistNeedTable();
+  renderQueue();
+  renderHnForm();
 }
 
 export function initHistNeed() {
-  const b5 = document.getElementById('b5');
-  if (!b5) return;
-  b5.addEventListener('click', e => {
+  hnQueueLoad();
+
+  // 스캔 박스 — Enter(또는 바코드 스캐너)로 큐에 추가
+  const scan = document.getElementById('hnScan');
+  if (scan) {
+    scan.addEventListener('keydown', e => {
+      e.stopPropagation();                     // 그리드 키보드 핸들러 간섭 방지
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const ok = hnScan(scan.value);
+        scan.value = '';
+        if (ok) renderHistNeed();
+        scan.focus();
+      }
+    });
+  }
+
+  // 큐 비우기
+  document.getElementById('hnQueueClear')?.addEventListener('click', () => {
+    if (!hnQueue.length) return;
+    hnQueue = []; hnSel = -1; hnQueueSave(); renderHistNeed();
+  });
+
+  // 큐 칩 — 클릭 선택 / × 제거
+  document.getElementById('hnQueue')?.addEventListener('click', e => {
+    const x = e.target.closest('.hn-qx');
+    if (x) {
+      hnQueue.splice(+x.dataset.qx, 1);
+      hnSel = hnQueue.findIndex(q => !q.done);
+      hnQueueSave(); renderHistNeed();
+      return;
+    }
+    const chip = e.target.closest('.hn-qchip');
+    if (chip) { hnSel = +chip.dataset.qi; renderQueue(); renderHnForm(); }
+  });
+
+  // 폼 영역 — 저장 / 건너뛰기, Tab 등 키보드는 그리드 핸들러로 전파 차단
+  const area = document.getElementById('hnFormArea');
+  if (area) {
+    area.addEventListener('keydown', e => e.stopPropagation());
+    area.addEventListener('click', e => {
+      if (e.target.closest('.hn-save')) saveHnForm();
+      else if (e.target.closest('.hn-skip')) hnSkip();
+    });
+  }
+
+  // 하단 목록의 [＋ 큐에] 버튼
+  document.getElementById('b5')?.addEventListener('click', e => {
     const w = e.target.closest('.hn-write');
-    if (w) { openHnForm(+w.dataset.idx); return; }
-    const c = e.target.closest('.hn-cancel');
-    if (c) { const fr = c.closest('.hn-formrow'); if (fr) fr.remove(); return; }
-    const sv = e.target.closest('.hn-save');
-    if (sv) { saveHnForm(+sv.dataset.idx, sv.closest('.hn-formrow')); return; }
+    if (!w) return;
+    hnAddToQueue(w.dataset.det, w.dataset.tft);
+    renderHistNeed();
+    document.getElementById('hnFormArea')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 }
 
@@ -383,7 +507,7 @@ export function renderAll() {
   else if (state.curTab === 'prod') renderProductionTable();
   else if (state.curTab === 'merge') renderMergeTable();
   else if (state.curTab === 'tftm') renderTftmTable();
-  else if (state.curTab === 'histneed') renderHistNeedTable();
+  else if (state.curTab === 'histneed') renderHistNeed();
   else if (state.curTab === 'kpi') {
     import('./kpi.js').then(m => m.renderKPI()).catch(() => {});
   }

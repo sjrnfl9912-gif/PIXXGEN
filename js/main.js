@@ -4,7 +4,7 @@
 import { SHIP_FIELDS, PROD_FIELDS } from './config.js';
 import { state, rebuildTft, rebuildDetTft, markDirty, markDupDirty } from './state.js';
 import { dbFetchAll } from './db.js';
-import { renderAll, renderShipmentTable, renderProductionTable, initHistNeed } from './modules/table.js';
+import { renderAll, renderShipmentTable, renderProductionTable, renderHistNeedTable, initHistNeed } from './modules/table.js';
 import { saveCache, saveTftmCache, loadCache } from './services/storage.js';
 import { toast, showLoading, customConfirm } from './services/ui.js';
 import { init as initSelection } from './modules/selection.js';
@@ -181,11 +181,12 @@ async function init() {
   const dR2 = debounce(() => renderProductionTable(), 200);
   const dR3 = debounce(() => { import('./modules/table.js').then(t => t.renderAll()); }, 200);
   const dR4 = debounce(() => renderAll(), 200);
+  const dR5 = debounce(() => renderHistNeedTable(), 200);   // 이력 필요 목록만 (큐·폼 포커스 보존)
   document.getElementById('q1')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR1(); });
   document.getElementById('q2')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR2(); });
   document.getElementById('q3')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR3(); });
   document.getElementById('q4')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR4(); });
-  document.getElementById('q5')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR4(); });
+  document.getElementById('q5')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR5(); });
 
   // Clear buttons
   document.querySelectorAll('.s-clear').forEach(btn => {

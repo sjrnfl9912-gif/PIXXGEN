@@ -300,13 +300,12 @@ tr.grp-start td {
   filter: brightness(1.12);
 }
 
-/* 인라인 작성 폼 */
-.hn-formrow td {
-  padding: 0 !important;
-  background: #eef3ff !important;
-}
+/* 생산이력 작성 폼 (카드) */
 .hn-form {
-  padding: 12px 16px;
+  padding: 14px 16px;
+  background: #eef3ff;
+  border: 1px solid #d3dbe8;
+  border-radius: 8px;
 }
 .hn-form-h {
   font-size: 12px;
@@ -365,6 +364,70 @@ tr.grp-start td {
   opacity: 0.6;
   cursor: default;
 }
+
+/* 이력 필요 탭 — 스캔 큐 UI */
+.hn-scanbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 4px;
+}
+.hn-scan-lbl {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2d4d;
+  white-space: nowrap;
+}
+#hnScan {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 10px 14px;
+  border: 2px solid var(--pr);
+  border-radius: 9px;
+  font-family: inherit;
+  letter-spacing: .3px;
+}
+#hnScan:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(59, 109, 224, .16);
+}
+.hn-queue-wrap { padding: 10px 16px 4px; }
+.hn-queue-h { font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 6px; }
+.hn-qcnt { font-weight: 500; color: #888; margin-left: 8px; font-size: 11px; }
+.hn-queue { display: flex; flex-wrap: wrap; gap: 7px; min-height: 30px; }
+.hn-q-empty { font-size: 11px; color: #aab; padding: 6px 2px; }
+.hn-qchip {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  padding: 6px 8px 6px 11px;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.hn-qchip:hover { border-color: var(--pr); }
+.hn-qchip.on { border-color: var(--pr); background: #eef3ff; box-shadow: 0 0 0 2px rgba(59, 109, 224, .15); }
+.hn-qchip.done { opacity: .5; }
+.hn-qchip b { color: #1f2d4d; }
+.hn-qx { color: #b91c1c; font-weight: 700; cursor: pointer; padding: 0 3px; }
+.hn-qx:hover { color: #fff; background: #b91c1c; border-radius: 3px; }
+#hnFormArea { padding: 8px 16px 4px; }
+.hn-form-pos { float: right; font-size: 11px; color: #888; font-weight: 500; }
+.hn-form-done { background: #e7f6ec; color: #16794a; font-weight: 700; font-size: 13px; }
+.hn-list-d { margin: 10px 16px 16px; }
+.hn-list-d > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  padding: 8px 11px;
+  background: #eef0f4;
+  border-radius: 6px;
+}
+.hn-list-tw { max-height: 340px; }
 
 /* ── RESIZE ── */
 .resizer {
