@@ -241,7 +241,9 @@ export function renderTftmTable() {
 // 연동 안 된 출하건 목록 계산
 //  no-prod : TFT는 찾았으나 생산기록 없음 (작성하면 바로 연동)
 //  no-tft  : 디텍터 S/N이 tft_match에 없음 (출하완료 폴더도 확인 필요)
+//  pending : no-tft 인데 예상출하일이 아직 안 지남 → 미출하, 작업 대상 아님 (따로 분리)
 function histNeedList() {
+  const today = new Date().toISOString().slice(0, 10);   // yyyy-MM-dd
   const out = [];
   for (const s of state.shipD) {
     const det = s.detector_sn;
@@ -251,7 +253,9 @@ function histNeedList() {
     if (!tft) status = 'no-tft';
     else if (!state.tftMap[tft]) status = 'no-prod';
     else continue;                       // 정상 연동 → 목록에서 제외
-    out.push({ ship: s, tft: tft || '', status });
+    const psd = String(s.planned_ship_date || '').trim();
+    const pending = (status === 'no-tft') && psd && psd > today;   // 미출하 (예상출하일 미래)
+    out.push({ ship: s, tft: tft || '', status, pending });
   }
   return out;
 }
@@ -393,16 +397,17 @@ function hnSkip() {
   renderHnForm();
 }
 
-// 전체 이력 필요 목록 (하단 접이식 참고용)
+// 전체 이력 필요 목록 (하단 접이식 참고용) — 미출하(pending) 건은 제외
 export function renderHistNeedTable() {
   const q = (document.getElementById('q5')?.value || '').toLowerCase();
-  let list = histNeedList();
+  const work = histNeedList().filter(x => !x.pending);   // 작업 대상만
+  let list = work;
   if (q) list = list.filter(x => [x.ship.product_name, x.ship.detector_sn, x.tft, x.ship.company]
     .some(v => v && String(v).toLowerCase().includes(q)));
   state.histNeedList = list;
   const p5 = document.getElementById('p5'), cnt5 = document.getElementById('cnt5');
   if (p5) p5.textContent = list.length + '건';
-  if (cnt5) cnt5.textContent = histNeedList().length;   // 탭 배지는 검색과 무관하게 전체
+  if (cnt5) cnt5.textContent = work.length;   // 탭 배지 = 작업 대상 수 (미출하 제외)
 
   const th5 = document.getElementById('th5');
   if (th5 && !th5.childElementCount) {
@@ -438,9 +443,41 @@ export function renderHistNeedTable() {
   b5.innerHTML = rows.join('');
 }
 
-// 이력 필요 탭 전체 렌더 (목록 + 큐 + 폼)
+// 출하 예정 목록 (미출하 — 예상출하일이 아직 안 지난 건, 작업 대상 아님)
+function renderHistPending() {
+  const list = histNeedList().filter(x => x.pending)
+    .sort((a, b) => String(a.ship.planned_ship_date) < String(b.ship.planned_ship_date) ? -1 : 1);
+  const p6 = document.getElementById('p6');
+  if (p6) p6.textContent = list.length + '건';
+  const th6 = document.getElementById('th6');
+  if (th6 && !th6.childElementCount) {
+    th6.innerHTML = '<tr><th class="hn-th" style="width:36px">#</th>'
+      + '<th class="hn-th">품명</th><th class="hn-th">디텍터 S/N</th>'
+      + '<th class="hn-th">예상 출하일</th><th class="hn-th">국가</th><th class="hn-th">업체 &amp; 병원명</th></tr>';
+  }
+  const b6 = document.getElementById('b6');
+  if (!b6) return;
+  if (!list.length) {
+    b6.innerHTML = '<tr><td colspan="6" class="hn-empty">출하 예정 대기 건이 없습니다</td></tr>';
+    return;
+  }
+  b6.innerHTML = list.map((x, i) => {
+    const s = x.ship;
+    return '<tr>'
+      + '<td class="hn-rn">' + (i + 1) + '</td>'
+      + '<td class="hn-c">' + esc(s.product_name) + '</td>'
+      + '<td class="hn-c hn-mono">' + esc(s.detector_sn) + '</td>'
+      + '<td class="hn-c">' + esc(s.planned_ship_date) + '</td>'
+      + '<td class="hn-c">' + esc(s.country) + '</td>'
+      + '<td class="hn-c">' + esc(s.company) + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+// 이력 필요 탭 전체 렌더 (목록 + 출하예정 + 큐 + 폼)
 export function renderHistNeed() {
   renderHistNeedTable();
+  renderHistPending();
   renderQueue();
   renderHnForm();
 }

@@ -235,12 +235,12 @@ tr.grp-start td {
 }
 
 /* ── 이력 필요 탭 ── */
-/* 고정 레이아웃 — 표가 폼(colspan) 너비에 끌려 넓어지지 않게, 폼은 표 안에서 줄바꿈 */
-#t5 {
+/* 고정 레이아웃 — 표가 내용 너비에 끌려 넓어지지 않게 */
+#t5, #t6 {
   width: 100%;
   table-layout: fixed;
 }
-#t5 th.hn-th {
+#t5 th.hn-th, #t6 th.hn-th {
   background: var(--hd);
   color: var(--ht);
   padding: 7px 8px;
@@ -248,8 +248,8 @@ tr.grp-start td {
   text-align: left;
   white-space: nowrap;
 }
-#t5 td.hn-c,
-#t5 td.hn-rn {
+#t5 td.hn-c, #t5 td.hn-rn,
+#t6 td.hn-c, #t6 td.hn-rn {
   padding: 5px 8px;
   font-size: 11px;
   height: auto;
@@ -257,10 +257,15 @@ tr.grp-start td {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-#t5 td.hn-rn {
+#t5 td.hn-rn, #t6 td.hn-rn {
   text-align: center;
   color: var(--ts);
   background: #f3f5f8;
+}
+.hn-sub-note {
+  font-weight: 400;
+  color: #999;
+  font-size: 10px;
 }
 .hn-mono {
   font-family: ui-monospace, Consolas, monospace;
