@@ -8,26 +8,32 @@ import { toast } from '../services/ui.js';
 
 function escH(s) { return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+// 레거시 복사 (execCommand) — 성공 여부를 반환
+function legacyCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (state.sel?.inp) state.sel.inp.focus();
+    return ok;            // execCommand는 실패해도 throw하지 않고 false 반환 → 꼭 확인
+  } catch (e) { return false; }
+}
+
 export function doCopy() {
   const v = getSelVals(); if (!v) return;
   const tsv = v.map(r => r.join('\t')).join('\n');
-  state.internalClip = tsv;
-  try {
-    const ta = document.createElement('textarea');
-    ta.value = tsv; ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
-    document.body.appendChild(ta); ta.focus(); ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    if (state.sel?.inp) state.sel.inp.focus();
-    toast('복사됨', 'info'); return;
-  } catch (e) {}
-  try {
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(tsv).then(() => toast('복사됨', 'info')).catch(() => toast('내부 복사됨', 'info'));
-      return;
-    }
-  } catch (e) {}
-  toast('내부 복사됨', 'info');
+  state.internalClip = tsv;          // 앱 내부 붙여넣기용 (항상 보관)
+  // 1순위: 표준 Clipboard API — HTTPS + 사용자 제스처에서 신뢰성 높음 (엑셀 등 외부 붙여넣기 가능)
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(tsv)
+      .then(() => toast('복사됨', 'info'))
+      .catch(() => toast(legacyCopy(tsv) ? '복사됨' : '앱 안에서만 붙여넣기 가능', 'info'));
+    return;
+  }
+  // 2순위: 레거시 execCommand (반환값 확인)
+  toast(legacyCopy(tsv) ? '복사됨' : '앱 안에서만 붙여넣기 가능', 'info');
 }
 
 export function pasteGrid(text) {

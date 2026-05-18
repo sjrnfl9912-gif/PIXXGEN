@@ -315,7 +315,7 @@ function renderQueue() {
   if (cntEl) cntEl.textContent = pending + '건 대기' + (done ? ' · ' + done + '건 완료' : '');
   if (!box) return;
   if (!hnQueue.length) {
-    box.innerHTML = '<span class="hn-q-empty">S/N을 스캔하면 여기에 쌓입니다</span>';
+    box.innerHTML = '<span class="hn-q-empty">S/N을 입력하면 여기에 쌓입니다</span>';
     return;
   }
   box.innerHTML = hnQueue.map((q, i) => {
@@ -368,6 +368,14 @@ async function saveHnForm() {
     obj[inp.dataset.pf] = v === '' ? null : v;
   });
   if (!obj.tft_sn) { toast('TFT S/N은 반드시 입력해야 합니다', 'er'); return; }
+  // 동시 작업 가드 — 그 사이 다른 사람이 같은 TFT 생산기록을 이미 만들었으면 중복 저장 방지
+  if (state.tftMap[obj.tft_sn]) {
+    toast('이미 생산기록이 있습니다 — 다른 사람이 먼저 작성한 것 같습니다', 'info');
+    q.done = true; hnQueueSave();
+    hnSel = hnQueue.findIndex(x => !x.done);
+    renderHistNeed();
+    return;
+  }
   const btn = area.querySelector('.hn-save');
   if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
   const row = await dbInsert('production', obj);
