@@ -316,6 +316,29 @@
           </div>
         </div>
 
+        <div class="hg-sec">
+          <div class="hg-sh">🤖 7. 자동화 스크립트 (관리자용)</div>
+          <div class="hg-sb">
+            <p class="hg-lead">회사 PC에서 PowerShell 스크립트가 <b>작업 스케줄러로 매일 자동 실행</b>됩니다.</p>
+            <ul class="hg-ul">
+              <li><b>매일 17:00</b> — 통합 출하 이력 엑셀 → 검사포장(DB) 업로드</li>
+              <li><b>매일 17:10</b> — 출하완료 폴더 → TFT 매칭(DB) 동기화</li>
+              <li><b>매일 17:30</b> — DB(검사포장·생산·TFT 매칭) → 서버 공유폴더로 백업</li>
+            </ul>
+            <div class="hg-path" style="margin-top:10px">
+              <div class="hg-pt">📁 스크립트 위치</div>
+              <div class="hg-pp">C:\Users\ADMIN\PIXXGEN-sync\</div>
+              <button class="hg-copy" data-path="C:\Users\ADMIN\PIXXGEN-sync\">📋 경로 복사</button>
+            </div>
+            <div class="hg-warn" style="margin-top:12px">
+              <span class="hg-big">💡 다른 PC에서도 백업 가능</span>
+              위 <b>PIXXGEN-sync 폴더를 다른 PC에 복사</b>하고 작업 스케줄러에 등록하면, 그 PC에서도 백업·동기화가 됩니다.
+              스크립트가 특정 PC 경로에 묶여 있지 않아 <b>복사만 하면 바로 동작</b>합니다 —
+              회사 PC가 꺼져 있어도 다른 PC로 백업을 이어갈 수 있습니다.
+            </div>
+          </div>
+        </div>
+
        </div>
       </div>
     </div>
