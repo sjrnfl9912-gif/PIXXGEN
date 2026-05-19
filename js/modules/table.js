@@ -10,6 +10,24 @@ import { saveCache } from '../services/storage.js';
 function colL(n) { let s = ''; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; }
 function esc(v) { if (v == null) return ''; return String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function ci(id, t, f, v) { const s = esc(v); return '<input class="c" type="text" value="' + s + '" data-id="' + id + '" data-t="' + t + '" data-f="' + f + '" data-o="' + s + '" readonly>'; }
+
+// S/N 셀 클릭 → 클립보드 복사 (파일 탐색기 등 다른 창에 붙여넣기용)
+function legacyCopyText(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    const r = document.execCommand('copy'); document.body.removeChild(ta); return r;
+  } catch (e) { return false; }
+}
+function copyCellText(text) {
+  text = String(text || '').trim();
+  if (!text) return;
+  const ok = () => toast('복사됨: ' + text, 'ok');
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(ok).catch(() => { if (legacyCopyText(text)) ok(); });
+  } else if (legacyCopyText(text)) { ok(); }
+}
 function vl(v, key) { if (!key) return '<span style="color:#ccc;font-size:9px">-</span>'; if (!v) return '<span style="color:#d97706;font-size:9px">매칭없음</span>'; return '<input class="c vl" value="' + esc(v) + '" readonly tabindex="-1">'; }
 
 // Duplicate detection
@@ -439,8 +457,8 @@ export function renderHistNeedTable() {
     rows.push('<tr>'
       + '<td class="hn-rn">' + (i + 1) + '</td>'
       + '<td class="hn-c">' + esc(s.product_name) + '</td>'
-      + '<td class="hn-c hn-mono">' + esc(s.detector_sn) + '</td>'
-      + '<td class="hn-c hn-mono">' + esc(x.tft) + '</td>'
+      + '<td class="hn-c hn-mono hn-copy" data-copy="' + esc(s.detector_sn) + '" title="클릭하면 S/N 복사">' + esc(s.detector_sn) + '</td>'
+      + '<td class="hn-c hn-mono hn-copy" data-copy="' + esc(x.tft) + '" title="클릭하면 S/N 복사">' + esc(x.tft) + '</td>'
       + '<td class="hn-c">' + esc(s.planned_ship_date) + '</td>'
       + '<td class="hn-c">' + esc(s.company) + '</td>'
       + '<td class="hn-c">' + badge + '</td>'
@@ -474,7 +492,7 @@ function renderHistPending() {
     return '<tr>'
       + '<td class="hn-rn">' + (i + 1) + '</td>'
       + '<td class="hn-c">' + esc(s.product_name) + '</td>'
-      + '<td class="hn-c hn-mono">' + esc(s.detector_sn) + '</td>'
+      + '<td class="hn-c hn-mono hn-copy" data-copy="' + esc(s.detector_sn) + '" title="클릭하면 S/N 복사">' + esc(s.detector_sn) + '</td>'
       + '<td class="hn-c">' + esc(s.planned_ship_date) + '</td>'
       + '<td class="hn-c">' + esc(s.country) + '</td>'
       + '<td class="hn-c">' + esc(s.company) + '</td>'
@@ -537,13 +555,21 @@ export function initHistNeed() {
     });
   }
 
-  // 하단 목록의 [＋ 큐에] 버튼
+  // 하단 목록 — S/N 셀 클릭 복사 / [＋ 큐에] 버튼
   document.getElementById('b5')?.addEventListener('click', e => {
+    const cp = e.target.closest('.hn-copy');
+    if (cp) { copyCellText(cp.dataset.copy); return; }
     const w = e.target.closest('.hn-write');
     if (!w) return;
     hnAddToQueue(w.dataset.det, w.dataset.tft);
     renderHistNeed();
     document.getElementById('hnFormArea')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  // 출하 예정 목록 — S/N 셀 클릭 복사
+  document.getElementById('b6')?.addEventListener('click', e => {
+    const cp = e.target.closest('.hn-copy');
+    if (cp) copyCellText(cp.dataset.copy);
   });
 }
 

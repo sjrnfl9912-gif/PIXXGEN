@@ -262,6 +262,15 @@ tr.grp-start td {
   color: var(--ts);
   background: #f3f5f8;
 }
+/* S/N 칸 — 클릭하면 복사 */
+#t5 td.hn-copy, #t6 td.hn-copy { cursor: pointer; }
+#t5 td.hn-copy:hover, #t6 td.hn-copy:hover {
+  background: #eef4ff;
+  box-shadow: inset 0 0 0 1px #b9d0ff;
+}
+#t5 td.hn-copy:active, #t6 td.hn-copy:active {
+  background: #dbe7ff;
+}
 .hn-sub-note {
   font-weight: 400;
   color: #999;
