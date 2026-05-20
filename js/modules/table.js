@@ -345,23 +345,40 @@ function renderQueue() {
 }
 
 // 선택된 큐 항목의 생산이력 입력 폼 렌더링
+//  ※ 다른 사용자가 저장해서 DB 새로고침이 일어나면 이 함수가 다시 호출되며
+//     innerHTML을 통째로 갈아끼우는데, 사용자가 입력 중이던 값이 함께 날아가지
+//     않도록 같은 큐 항목(detector 동일)일 때는 입력값·포커스·캐럿을 스냅샷 후 복원.
 function renderHnForm() {
   const area = document.getElementById('hnFormArea');
   if (!area) return;
   const q = (hnSel >= 0) ? hnQueue[hnSel] : null;
-  if (!q) { area.innerHTML = ''; return; }
+  if (!q) { area.innerHTML = ''; area.dataset.formDet = ''; return; }
   const ship = hnShipByDet(q.det);
   if (q.done) {
     area.innerHTML = '<div class="hn-form hn-form-done">✓ ' + esc(ship.product_name || '')
       + ' / 디텍터 ' + esc(q.det) + ' — 생산이력 작성 완료</div>';
+    area.dataset.formDet = '';
     return;
+  }
+  // 같은 큐 항목을 다시 그리는 경우 입력 중이던 값/포커스 스냅샷
+  const sameItem = area.dataset.formDet === q.det;
+  const snap = {};
+  let focusedField = null, caret = null;
+  if (sameItem) {
+    area.querySelectorAll('input[data-pf]').forEach(inp => { snap[inp.dataset.pf] = inp.value; });
+    const act = document.activeElement;
+    if (act?.dataset?.pf && area.contains(act)) {
+      focusedField = act.dataset.pf;
+      try { caret = act.selectionStart; } catch (e) {}
+    }
   }
   const prefill = { tft_sn: q.tft, detector_fw: ship.detector_fw || '' };
   let fields = '';
   for (let j = 0; j < PROD_FIELDS.length; j++) {
     const f = PROD_FIELDS[j], hh = PROD_HEADS[j].replace(/\n/g, ' ');
+    const v = (f in snap) ? snap[f] : (prefill[f] || '');
     fields += '<label class="hn-fld"><span>' + esc(hh) + '</span>'
-      + '<input data-pf="' + f + '" value="' + esc(prefill[f] || '') + '"></label>';
+      + '<input data-pf="' + f + '" value="' + esc(v) + '"></label>';
   }
   area.innerHTML = '<div class="hn-form">'
     + '<div class="hn-form-h">📝 ' + esc(ship.product_name || '') + ' / 디텍터 ' + esc(q.det)
@@ -371,8 +388,18 @@ function renderHnForm() {
     + '<div class="hn-form-f"><button class="hn-skip">건너뛰기 ▶</button>'
     + '<button class="hn-save">💾 저장하고 다음</button></div>'
     + '</div>';
-  const fi = area.querySelector('input[data-pf]');
-  if (fi) fi.focus();
+  area.dataset.formDet = q.det;
+  // 포커스/캐럿 복원 — 입력 흐름을 깨지 않음. 첫 진입이면 첫 입력칸에 포커스.
+  if (focusedField) {
+    const fi = area.querySelector('input[data-pf="' + focusedField + '"]');
+    if (fi) {
+      fi.focus();
+      if (caret != null) { try { fi.setSelectionRange(caret, caret); } catch (e) {} }
+    }
+  } else if (!sameItem) {
+    const fi = area.querySelector('input[data-pf]');
+    if (fi) fi.focus();
+  }
 }
 
 // 폼 저장 → production 테이블에 직접 추가
