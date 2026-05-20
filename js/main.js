@@ -29,8 +29,10 @@ export function addRow(type) {
     markDirty(); markDupDirty(); renderShipmentTable();
   } else {
     const w = state.workerFilt !== 'all' ? state.workerFilt : null;
-    const newRow = { _id: 'new_' + Date.now(), _new: true, worker: w };
-    PROD_FIELDS.forEach(f => { if (!newRow[f]) newRow[f] = null; });
+    // 제작완료일은 오늘 날짜로 프리필 — 현재 연도 필터에 들어와서 새 행이 바로 보임.
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const newRow = { _id: 'new_' + Date.now(), _new: true, worker: w, completed_date: todayStr };
+    PROD_FIELDS.forEach(f => { if (!(f in newRow)) newRow[f] = null; });
     state.prodD.push(newRow); state.dirty.inserts.prod.push(newRow);
     markDirty(); markDupDirty(); rebuildTft(); renderProductionTable();
   }
