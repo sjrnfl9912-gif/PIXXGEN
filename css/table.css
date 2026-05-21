@@ -16,6 +16,8 @@ table.g {
   background: var(--sf);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
+/* 화면 밖 행은 페인트 생략 — TFT 매칭(5천+행) 같은 큰 표 첫 표시·스크롤 가속 */
+table.g tbody tr { content-visibility: auto; contain-intrinsic-size: 22px; }
 
 table.g thead {
   position: sticky;

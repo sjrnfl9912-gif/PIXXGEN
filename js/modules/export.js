@@ -32,7 +32,7 @@ export function restoreJSON(input) {
         ui.customConfirm('백업 복원 (' + data.date + ')\n출하 ' + data.shipment.length + '건 / 생산 ' + data.production.length + '건\n현재 데이터를 덮어씁니다.', () => {
           state.shipD = data.shipment.map((r, i) => ({ ...r, _id: 'restore_' + i }));
           state.prodD = data.production.map((r, i) => ({ ...r, _id: 'restore_prod_' + i }));
-          import('../state.js').then(s => s.rebuildTft());
+          import('../state.js').then(s => { s.rebuildTft(); s.invalidateAllTabs(); });
           import('./table.js').then(t => t.renderAll());
           import('../services/storage.js').then(st => st.saveCache(state.shipD, state.prodD));
           toast('복원 완료', 'ok');

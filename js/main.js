@@ -2,7 +2,7 @@
 // MAIN.JS - Application Orchestrator
 // ═══════════════════════════════════════
 import { SHIP_FIELDS, PROD_FIELDS } from './config.js';
-import { state, rebuildTft, rebuildDetTft, markDirty, markDupDirty } from './state.js';
+import { state, rebuildTft, rebuildDetTft, markDirty, markDupDirty, invalidateOtherTabs, invalidateAllTabs } from './state.js';
 import { dbFetchAll } from './db.js';
 import { renderAll, renderShipmentTable, renderProductionTable, renderHistNeedTable, updateTabCounts, initHistNeed } from './modules/table.js';
 import { saveCache, saveTftmCache, loadCache } from './services/storage.js';
@@ -26,7 +26,7 @@ export function addRow(type) {
     const newRow = { _id: 'new_' + Date.now(), _new: true, row_no: n };
     SHIP_FIELDS.forEach(f => { if (!newRow[f]) newRow[f] = null; });
     state.shipD.push(newRow); state.dirty.inserts.ship.push(newRow);
-    markDirty(); markDupDirty(); renderShipmentTable();
+    markDirty(); markDupDirty(); invalidateOtherTabs(); renderShipmentTable();
   } else {
     const w = state.workerFilt !== 'all' ? state.workerFilt : null;
     // 제작완료일은 오늘 날짜로 프리필 — 현재 연도 필터에 들어와서 새 행이 바로 보임.
@@ -34,7 +34,7 @@ export function addRow(type) {
     const newRow = { _id: 'new_' + Date.now(), _new: true, worker: w, completed_date: todayStr };
     PROD_FIELDS.forEach(f => { if (!(f in newRow)) newRow[f] = null; });
     state.prodD.push(newRow); state.dirty.inserts.prod.push(newRow);
-    markDirty(); markDupDirty(); rebuildTft(); renderProductionTable();
+    markDirty(); markDupDirty(); rebuildTft(); invalidateOtherTabs(); renderProductionTable();
   }
   const tbId = type === 'ship' ? 'b1' : 'b2';
   setTimeout(() => { const tb = document.getElementById(tbId); const last = tb?.lastElementChild; if (last) last.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50);
@@ -56,7 +56,7 @@ function cleanNull(type) {
       const i = arr.findIndex(x => x._id === r._id); if (i >= 0) arr.splice(i, 1);
     });
     markDirty(); if (type === 'prod') rebuildTft();
-    markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
+    markDupDirty(); invalidateOtherTabs(); renderAll(); saveCache(state.shipD, state.prodD);
     toast(nullRows.length + '개 빈 행 삭제 (저장 시 DB 반영)', 'info');
   });
 }
@@ -84,7 +84,7 @@ async function fullReload() {
     const status = document.getElementById('saveStatus');
     if (btn) btn.classList.remove('dirty');
     if (status) { status.textContent = ''; status.style.color = ''; }
-    rebuildTft(); rebuildDetTft(); markDupDirty(); renderAll(); updateTabCounts();
+    rebuildTft(); rebuildDetTft(); markDupDirty(); invalidateAllTabs(); renderAll(); updateTabCounts();
     saveCache(state.shipD, state.prodD); saveTftmCache(state.tftmD);
     document.querySelector('.sync-dot').style.background = 'var(--ok)';
     toast('DB 동기화 완료 (출하 ' + state.shipD.length + ' / 생산 ' + state.prodD.length + ')', 'ok');
@@ -110,11 +110,10 @@ function switchTab(t, skipRender) {
   document.querySelector('.tab[data-tab="' + t + '"]')?.classList.add('on');
   document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
   document.getElementById('v-' + t)?.classList.add('active');
-  // 비활성 탭의 테이블 DOM 비우기 — 탭 DOM이 동시에 메모리에 쌓이는 것 방지
-  Object.entries(TB_BY_TAB).forEach(([tab, id]) => {
-    if (tab !== t) { const tb = document.getElementById(id); if (tb && tb.childElementCount) tb.innerHTML = ''; }
-  });
+  // 다른 탭 DOM은 유지 — 재방문 시 재렌더 없이 즉시 표시. 데이터 변경 시 invalidateOtherTabs로 stale 표시됨.
   if (skipRender) return;
+  // 이미 렌더된 적 있고 stale 아님 → 재렌더 생략 (탭 전환 즉시)
+  if (state.tabRendered[t]) return;
   // 통합취합본은 탭 들어갈 때마다 자동 취합 (수동 버튼 없이 최신 상태)
   if (t === 'merge') buildMerge();
   else renderAll();
@@ -282,7 +281,7 @@ async function init() {
   const { ship, prod, tftm } = loadCache();
   if (ship.length || prod.length || tftm.length) {
     state.shipD = ship; state.prodD = prod; state.tftmD = tftm;
-    rebuildTft(); rebuildDetTft(); markDupDirty(); renderAll(); updateTabCounts();
+    rebuildTft(); rebuildDetTft(); markDupDirty(); invalidateAllTabs(); renderAll(); updateTabCounts();
     toast('캐시 로드 (' + ship.length + '/' + prod.length + '건)', 'info');
     // 캐시로 화면이 이미 채워졌으니 로딩 오버레이 즉시 제거 (DB 동기화는 백그라운드 진행)
     showLoading(false);
@@ -299,7 +298,7 @@ async function init() {
     state.tftmD = tData;
     state.dirty = { updates: {}, inserts: { ship: [], prod: [] }, deletes: { ship: [], prod: [] } };
     state.hasChanges = false;
-    rebuildTft(); rebuildDetTft(); markDupDirty(); renderAll(); updateTabCounts();
+    rebuildTft(); rebuildDetTft(); markDupDirty(); invalidateAllTabs(); renderAll(); updateTabCounts();
     saveCache(state.shipD, state.prodD); saveTftmCache(state.tftmD);
     document.querySelector('.sync-dot').style.background = 'var(--ok)';
     toast('DB 동기화 완료 (출하 ' + state.shipD.length + ' / 생산 ' + state.prodD.length + ')', 'ok');

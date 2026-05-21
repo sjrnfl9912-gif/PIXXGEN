@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // UNDO / REDO
 // ═══════════════════════════════════════
-import { state, trackUpdate, rebuildTft } from '../state.js';
+import { state, trackUpdate, rebuildTft, invalidateOtherTabs } from '../state.js';
 import { renderAll } from './table.js';
 import { saveCache } from '../services/storage.js';
 import { toast } from '../services/ui.js';
@@ -15,7 +15,7 @@ function applyUndo(entries, undo) {
     const dbt = e.t === 's' ? 'shipment' : e.t === 'p' ? 'production' : null;
     if (dbt) trackUpdate(dbt, e.id, e.f, v);
   });
-  rebuildTft(); renderAll(); saveCache(state.shipD, state.prodD);
+  rebuildTft(); invalidateOtherTabs(); renderAll(); saveCache(state.shipD, state.prodD);
 }
 
 export function undo() {

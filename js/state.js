@@ -68,7 +68,19 @@ export const state = {
 
   // Reload lock (realtime 이벤트 무시용)
   isReloading: false,
+
+  // 탭별 DOM 렌더 캐시 — 데이터 변경 없으면 재방문 시 재렌더 생략 (전환 빠르게)
+  tabRendered: { ship: false, prod: false, merge: false, tftm: false, histneed: false },
 };
+
+// 현재 탭 제외 다른 탭들의 캐시 무효화 — 데이터가 바뀌어서 다른 탭이 stale일 때 호출
+export function invalidateOtherTabs() {
+  for (const k in state.tabRendered) if (k !== state.curTab) state.tabRendered[k] = false;
+}
+// 모든 탭 무효화 — 데이터 전체 교체(fullReload 등)
+export function invalidateAllTabs() {
+  for (const k in state.tabRendered) state.tabRendered[k] = false;
+}
 
 // ═══ TFT MAP ═══
 export function rebuildTft() {

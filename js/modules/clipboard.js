@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // CLIPBOARD (Copy/Cut/Paste)
 // ═══════════════════════════════════════
-import { state, pushUndo, trackUpdate, markDupDirty, rebuildTft } from '../state.js';
+import { state, pushUndo, trackUpdate, markDupDirty, rebuildTft, invalidateOtherTabs } from '../state.js';
 import { getSelVals } from './selection.js';
 import { saveCache } from '../services/storage.js';
 import { toast } from '../services/ui.js';
@@ -69,7 +69,7 @@ export function pasteGrid(text) {
     }
   }
   if (us.length) { pushUndo(us); batchTrack(us); }
-  rebuildTft(); markDupDirty(); saveCache(state.shipD, state.prodD);
+  rebuildTft(); markDupDirty(); invalidateOtherTabs(); saveCache(state.shipD, state.prodD);
   toast(n + '셀 붙여넣기', 'ok');
 }
 
@@ -92,7 +92,7 @@ export function deleteRange() {
     }
   }
   if (us.length) { pushUndo(us); batchTrack(us); }
-  rebuildTft(); markDupDirty(); saveCache(state.shipD, state.prodD);
+  rebuildTft(); markDupDirty(); invalidateOtherTabs(); saveCache(state.shipD, state.prodD);
   if (n) toast(n + '셀 삭제', 'info');
 }
 
@@ -119,7 +119,7 @@ export function fillDown() {
     }
   }
   if (us.length) { pushUndo(us); batchTrack(us); }
-  rebuildTft(); markDupDirty(); saveCache(state.shipD, state.prodD);
+  rebuildTft(); markDupDirty(); invalidateOtherTabs(); saveCache(state.shipD, state.prodD);
   if (n) toast(n + '셀 아래로 채우기', 'ok');
 }
 
@@ -145,7 +145,7 @@ export function fillRight() {
     }
   }
   if (us.length) { pushUndo(us); batchTrack(us); }
-  rebuildTft(); markDupDirty(); saveCache(state.shipD, state.prodD);
+  rebuildTft(); markDupDirty(); invalidateOtherTabs(); saveCache(state.shipD, state.prodD);
   if (n) toast(n + '셀 오른쪽으로 채우기', 'ok');
 }
 

@@ -2,7 +2,7 @@
 // SUPABASE REALTIME SYNC
 // ═══════════════════════════════════════
 import { getSupabase } from '../config.js';
-import { state, markDupDirty } from '../state.js';
+import { state, markDupDirty, invalidateAllTabs } from '../state.js';
 import { renderAll } from '../modules/table.js';
 import { saveCache } from './storage.js';
 
@@ -45,8 +45,8 @@ export function initRealtime() {
   const sb = getSupabase(); if (!sb) return;
   try {
     sb.channel('rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shipment' }, p => { rtHandle(state.shipD, 'shipment', p); renderAll(); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'production' }, p => { rtHandle(state.prodD, 'production', p); import('../state.js').then(s => s.rebuildTft()); renderAll(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shipment' }, p => { rtHandle(state.shipD, 'shipment', p); invalidateAllTabs(); renderAll(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'production' }, p => { rtHandle(state.prodD, 'production', p); import('../state.js').then(s => s.rebuildTft()); invalidateAllTabs(); renderAll(); })
       .subscribe();
   } catch (e) {
     console.warn('Realtime subscription failed:', e);

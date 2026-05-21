@@ -2,7 +2,7 @@
 // TABLE RENDERING (Full rewrite)
 // ═══════════════════════════════════════
 import { SHIP_FIELDS, SHIP_HEADS, PROD_FIELDS, PROD_HEADS, MERGE_HEADS, MERGE_VC_START, TFTM_FIELDS, TFTM_HEADS } from '../config.js';
-import { state, markDupDirty, rebuildTft } from '../state.js';
+import { state, markDupDirty, rebuildTft, invalidateOtherTabs } from '../state.js';
 import { dbInsert } from '../db.js';
 import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
@@ -135,6 +135,7 @@ export function renderShipmentTable() {
   }
   const b1 = document.getElementById('b1');
   if (b1) b1.innerHTML = rows.join('');
+  state.tabRendered.ship = true;
 }
 
 // 완제품 제작완료일에서 연도(앞 4자리)를 뽑음. "2025", "2025-03-14" 모두 → "2025"
@@ -200,6 +201,7 @@ export function renderProductionTable() {
   }
   const b2 = document.getElementById('b2');
   if (b2) b2.innerHTML = rows.join('');
+  state.tabRendered.prod = true;
 }
 
 const PROD_VL_FIELDS = ['tft_sn', 'scintillator', 'cpu_sn', 'main_board_sn', 'main_board_ver', 'panel_type', 'completed_date', 'detector_fw', 'micom_ver', 'bat_micom_ver', 'worker', 'aed_sn', 'note1', 'note2'];
@@ -245,6 +247,7 @@ export function renderMergeTable() {
   }
   const b3 = document.getElementById('b3');
   if (b3) b3.innerHTML = rows.join('');
+  state.tabRendered.merge = true;
 }
 
 // ═══ TFT 매칭 탭 (읽기 전용) ═══
@@ -269,6 +272,7 @@ export function renderTftmTable() {
   }
   const b4 = document.getElementById('b4');
   if (b4) b4.innerHTML = rows.join('');
+  state.tabRendered.tftm = true;
 }
 
 // ═══ 이력 필요 탭 (스캔 큐 방식) ═══
@@ -461,6 +465,7 @@ async function saveHnForm() {
   state.prodD.push({ ...row, _id: row.id });
   rebuildTft();
   markDupDirty();
+  invalidateOtherTabs();
   saveCache(state.shipD, state.prodD);
   q.done = true;
   hnQueueSave();
@@ -641,6 +646,7 @@ export function renderHistNeed() {
   renderHistPending();
   renderQueue();
   renderHnForm();
+  state.tabRendered.histneed = true;
 }
 
 export function initHistNeed() {

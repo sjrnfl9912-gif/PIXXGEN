@@ -2,7 +2,7 @@
 // DIRTY TRACKING + BATCH SAVE
 // ═══════════════════════════════════════
 import { getSupabase } from '../config.js';
-import { state, rebuildTft, rebuildDetTft, markDupDirty } from '../state.js';
+import { state, rebuildTft, rebuildDetTft, markDupDirty, invalidateAllTabs, invalidateOtherTabs } from '../state.js';
 import { renderAll } from './table.js';
 import { saveCache } from '../services/storage.js';
 import { toast } from '../services/ui.js';
@@ -104,7 +104,7 @@ export async function saveAll() {
 
     // 로컬 state가 이미 정확함(insert는 DB 반환 id로 교체, update/delete는 반영 완료).
     // 전체 재로드 없이 로컬 상태를 신뢰 — realtime 구독이 외부 변경을 따라잡음.
-    rebuildTft(); rebuildDetTft(); markDupDirty(); saveCache(state.shipD, state.prodD); renderAll();
+    rebuildTft(); rebuildDetTft(); markDupDirty(); invalidateAllTabs(); saveCache(state.shipD, state.prodD); renderAll();
     if (errors.length) {
       toast('일부 저장 실패: ' + errors.join(', '), 'er');
     } else {
@@ -138,7 +138,7 @@ export function deleteRows() {
       import('./selection.js').then(sel => { sel.clearSelection(); });
       state.sel = null; state.range = null;
       import('../state.js').then(s => s.markDirty());
-      rebuildTft(); markDupDirty(); renderAll(); saveCache(state.shipD, state.prodD);
+      rebuildTft(); markDupDirty(); invalidateOtherTabs(); renderAll(); saveCache(state.shipD, state.prodD);
       toast(cnt + '행 삭제 (저장 시 DB 반영)', 'info');
     });
   });
