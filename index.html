@@ -115,25 +115,23 @@
     <div class="tw"><table class="g" id="t4"><thead id="th4"></thead><tbody id="b4"></tbody></table></div>
   </div>
 
-  <!-- ══ TAB: 이력 필요 (스캔 큐) ══ -->
+  <!-- ══ TAB: 이력 필요 (통합 검색) ══ -->
   <div id="v-histneed" class="tab-view">
     <div class="hn-scanbar">
-      <span class="hn-scan-lbl">🔍 S/N 입력</span>
-      <input id="hnScan" placeholder="이력카드의 TFT S/N 또는 디텍터 S/N 입력 후 Enter" autocomplete="off" spellcheck="false">
+      <span class="hn-scan-lbl">🔍 S/N 검색</span>
+      <input id="hnScan" placeholder="TFT S/N 또는 디텍터 S/N — 입력하면 실시간 검색 · Enter로 큐에 추가" autocomplete="off" spellcheck="false">
       <button class="btn" id="hnQueueClear">큐 비우기</button>
     </div>
+    <div id="hnDiag" class="hn-diag muted"></div>
     <div class="hn-queue-wrap">
       <div class="hn-queue-h">📋 작업 큐<span id="hnQueueCnt" class="hn-qcnt">0건 대기</span></div>
       <div class="hn-queue" id="hnQueue"></div>
     </div>
     <div id="hnFormArea"></div>
-    <details class="hn-list-d">
-      <summary>📂 전체 이력 필요 목록 <span id="p5">0건</span> — 펼치기 / 검색</summary>
-      <div class="toolbar" style="margin-top:8px">
-        <div class="sbox" id="sb5"><input placeholder="검색..." id="q5" /><button class="s-clear">&times;</button></div>
-      </div>
+    <div class="hn-list-section">
+      <div class="hn-list-h">📂 전체 이력 필요 목록 <span id="p5">0건</span></div>
       <div class="tw hn-list-tw"><table class="g" id="t5"><thead id="th5"></thead><tbody id="b5"></tbody></table></div>
-    </details>
+    </div>
     <details class="hn-list-d">
       <summary>🕗 출하 예정 — 아직 작업 불필요 <span id="p6">0건</span> <span class="hn-sub-note">예상출하일이 안 지난 건 · 예상출하일 지나면 위 목록으로 이동</span></summary>
       <div class="tw hn-list-tw"><table class="g" id="t6"><thead id="th6"></thead><tbody id="b6"></tbody></table></div>

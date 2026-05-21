@@ -372,7 +372,17 @@ function renderHnForm() {
       try { caret = act.selectionStart; } catch (e) {}
     }
   }
-  const prefill = { tft_sn: q.tft, detector_fw: ship.detector_fw || '' };
+  // 작업자 + 제작완료일 자동 프리필 — 비어있는 채로 저장돼 생산관리대장 필터에서 가려지던 문제 방지.
+  //  작업자: 화면에서 선택된 작업자 필터값(state.workerFilt)
+  //  제작완료일: 오늘 날짜
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const workerPre = (state.workerFilt && state.workerFilt !== 'all') ? state.workerFilt : '';
+  const prefill = {
+    tft_sn: q.tft,
+    detector_fw: ship.detector_fw || '',
+    worker: workerPre,
+    completed_date: todayStr,
+  };
   let fields = '';
   for (let j = 0; j < PROD_FIELDS.length; j++) {
     const f = PROD_FIELDS[j], hh = PROD_HEADS[j].replace(/\n/g, ' ');
@@ -413,6 +423,7 @@ async function saveHnForm() {
     obj[inp.dataset.pf] = v === '' ? null : v;
   });
   if (!obj.tft_sn) { toast('TFT S/N은 반드시 입력해야 합니다', 'er'); return; }
+  if (!obj.worker) { toast('작업자를 반드시 입력해야 합니다 — 생산관리대장 필터에서 가려지지 않게', 'er'); return; }
   // 동시 작업 가드 — 그 사이 다른 사람이 같은 TFT 생산기록을 이미 만들었으면 중복 저장 방지
   if (state.tftMap[obj.tft_sn]) {
     toast('이미 생산기록이 있습니다 — 다른 사람이 먼저 작성한 것 같습니다', 'info');
@@ -452,7 +463,8 @@ function hnSkip() {
 
 // 전체 이력 필요 목록 (하단 접이식 참고용) — 미출하(pending) 건은 제외
 export function renderHistNeedTable() {
-  const q = (document.getElementById('q5')?.value || '').toLowerCase();
+  // 통합 검색 — 상단 S/N 입력창 하나가 곧 「전체 이력 필요 목록」의 필터.
+  const q = (document.getElementById('hnScan')?.value || '').trim().toLowerCase();
   const work = histNeedList().filter(x => !x.pending);   // 작업 대상만
   let list = work;
   if (q) list = list.filter(x => [x.ship.product_name, x.ship.detector_sn, x.tft, x.ship.company]
@@ -528,8 +540,86 @@ function renderHistPending() {
 }
 
 // 이력 필요 탭 전체 렌더 (목록 + 출하예정 + 큐 + 폼)
+// 진단 바 — 입력 S/N의 실제 상태(생산기록 있음/없음/오기입 의심)를 한 줄로 표시.
+//  ※ 「전체 이력 필요 목록에는 없는데 알고보니 오기입이라 아예 작성 안 됨」 케이스 방지가 목적.
+function renderHnDiag() {
+  const diag = document.getElementById('hnDiag');
+  if (!diag) return;
+  const raw = (document.getElementById('hnScan')?.value || '').trim();
+  const q = raw.toLowerCase();
+  const work = histNeedList().filter(x => !x.pending);
+
+  if (!q) {
+    diag.className = 'hn-diag muted';
+    diag.innerHTML = '<span class="hnd-ic">📋</span><b>전체 이력 필요 목록 ' + work.length + '건</b>'
+      + '<span class="hnd-sep">·</span><span class="hnd-meta">S/N을 입력하면 실시간으로 좁아집니다</span>';
+    return;
+  }
+
+  // 1) 이력 필요 목록에서 부분 매칭?
+  const matches = work.filter(x => [x.ship.product_name, x.ship.detector_sn, x.tft, x.ship.company]
+    .some(v => v && String(v).toLowerCase().includes(q)));
+  if (matches.length > 0) {
+    const s = matches[0];
+    let extra;
+    if (matches.length === 1) {
+      extra = '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">디텍터</span>' + esc(s.ship.detector_sn) + '</span>'
+        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">품명</span>' + esc(s.ship.product_name) + '</span>';
+    } else {
+      extra = '<span class="hnd-sep">·</span><span class="hnd-meta">아래 목록에서 확인하거나 검색어를 더 좁히세요</span>';
+    }
+    diag.className = 'hn-diag warn';
+    diag.innerHTML = '<span class="hnd-ic">📝</span><b>' + matches.length + '건 매칭 — 이력 작성 대상</b>' + extra;
+    return;
+  }
+
+  // 2) 매칭 없음 → production / tft_match / shipment 부분 검색으로 진단
+  const inProd = state.prodD.filter(p => p.tft_sn && String(p.tft_sn).toLowerCase().includes(q));
+  const inTftm = state.tftmD.filter(t =>
+    (t.tft_sn && String(t.tft_sn).toLowerCase().includes(q)) ||
+    (t.detector_sn && String(t.detector_sn).toLowerCase().includes(q)));
+  const inShip = state.shipD.filter(s => s.detector_sn && String(s.detector_sn).toLowerCase().includes(q));
+
+  if (inProd.length > 0) {
+    const p = inProd[0];
+    let detail;
+    if (inProd.length === 1) {
+      detail = '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">TFT</span>' + esc(p.tft_sn) + '</span>'
+        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">작업자</span>' + esc(p.worker || '-') + '</span>'
+        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">완료일</span>' + esc(p.completed_date || '-') + '</span>';
+    } else {
+      detail = '<span class="hnd-sep">·</span><span class="hnd-meta">' + inProd.length + '건 일치 — 모두 작성 완료</span>';
+    }
+    diag.className = 'hn-diag ok';
+    diag.innerHTML = '<span class="hnd-ic">✓</span><b>이미 입력됨 (생산기록 있음)</b>' + detail;
+    return;
+  }
+
+  if (inShip.length > 0 || inTftm.length > 0) {
+    let msg;
+    if (inShip.length > 0 && inTftm.length === 0) {
+      msg = '검사포장엔 있지만 출하완료 폴더에 매칭 없음 — 출하 예정이거나 폴더 미작성';
+    } else if (inTftm.length > 0 && inShip.length === 0) {
+      msg = '출하완료 폴더엔 있으나 검사포장 출하건에 없음 — 검사포장 데이터 확인';
+    } else {
+      msg = '검사포장·폴더에 일부 있음 (이력 필요 조건은 미충족)';
+    }
+    diag.className = 'hn-diag warn';
+    diag.innerHTML = '<span class="hnd-ic">⚠</span><b>부분 매칭</b>'
+      + '<span class="hnd-sep">·</span><span class="hnd-meta">' + msg + '</span>';
+    return;
+  }
+
+  // 3) 어디에도 없음 — 오기입 의심
+  diag.className = 'hn-diag err';
+  diag.innerHTML = '<span class="hnd-ic">⚠</span><b>매칭 없음 — 오기입 의심</b>'
+    + '<span class="hnd-sep">·</span><span class="hnd-meta">생산기록 ✗ &nbsp; 출하완료 폴더 ✗ &nbsp; 검사포장 ✗</span>'
+    + '<span class="hnd-sep">·</span><span class="hnd-errmsg">이력카드 TFT를 다시 확인하거나 디텍터 S/N으로 검색</span>';
+}
+
 export function renderHistNeed() {
   renderHistNeedTable();
+  renderHnDiag();
   renderHistPending();
   renderQueue();
   renderHnForm();
@@ -538,7 +628,8 @@ export function renderHistNeed() {
 export function initHistNeed() {
   hnQueueLoad();
 
-  // 스캔 박스 — Enter(또는 바코드 스캐너)로 큐에 추가
+  // 검색 박스 — 타이핑/붙여넣기 즉시 하단 목록 + 진단 바 실시간 갱신.
+  //  Enter는 큐에 추가하고 입력칸 비우는 「스캔」 동작 유지.
   const scan = document.getElementById('hnScan');
   if (scan) {
     scan.addEventListener('keydown', e => {
@@ -547,10 +638,14 @@ export function initHistNeed() {
         e.preventDefault();
         const ok = hnScan(scan.value);
         scan.value = '';
-        if (ok) renderHistNeed();
+        renderHistNeed();                      // Enter 후엔 입력 비워졌으니 전체 목록·진단 리셋
         scan.focus();
       }
     });
+    // 입력/붙여넣기 → 즉시 필터 + 진단
+    scan.addEventListener('input', () => { renderHistNeedTable(); renderHnDiag(); });
+    // 전역 paste 핸들러(그리드용)가 가로채지 못하게 정지 — 네이티브 붙여넣기 보장
+    scan.addEventListener('paste', e => e.stopPropagation());
   }
 
   // 큐 비우기

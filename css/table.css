@@ -262,6 +262,39 @@ tr.grp-start td {
   color: var(--ts);
   background: #f3f5f8;
 }
+/* 진단 바 — 입력 상태별 (없음/매칭/이미입력/오기입의심) */
+.hn-diag {
+  margin: 8px 0 4px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  flex-wrap: wrap;
+  line-height: 1.4;
+}
+.hn-diag .hnd-ic { font-size: 15px; }
+.hn-diag .hnd-sep { color: #bbb; }
+.hn-diag .hnd-meta { color: #444; font-weight: 500; }
+.hn-diag .hnd-meta .k { color: #777; font-weight: 400; margin-right: 3px; }
+.hn-diag.muted { background: #f4f6fa; color: #445; border-left: 3px solid #aab4c5; }
+.hn-diag.ok    { background: #e6f7ec; color: #1d6b3a; border-left: 3px solid #2e9d50; }
+.hn-diag.warn  { background: #fff5e1; color: #7a4a00; border-left: 3px solid #d9821a; }
+.hn-diag.err   { background: #fde7e7; color: #8a1f1f; border-left: 3px solid #d12c2c; }
+.hn-diag .hnd-errmsg { color: #8a1f1f; }
+/* 전체 이력 필요 목록 — 항상 펼친 섹션 (이전 details 대체) */
+.hn-list-section { margin: 10px 16px 16px; }
+.hn-list-h {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ts);
+  padding: 6px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hn-list-h #p5 { color: #999; font-weight: 500; }
 /* S/N 칸 — 클릭하면 복사 */
 #t5 td.hn-copy, #t6 td.hn-copy { cursor: pointer; }
 #t5 td.hn-copy:hover, #t6 td.hn-copy:hover {

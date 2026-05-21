@@ -163,6 +163,8 @@ export function initPasteHandler() {
     try {
       if (e.target.tagName === 'TEXTAREA') return;
       if (e.target.closest?.('.sbox')) return;
+      // 그리드 외 입력칸(검색 박스, 폼 입력 등)은 네이티브 붙여넣기를 그대로 사용
+      if (e.target.tagName === 'INPUT' && !e.target.classList.contains('c')) return;
       if (!state.sel) return;
       state.pasteHandled = true;
       const cd = e.clipboardData || window.clipboardData;
