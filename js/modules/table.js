@@ -207,7 +207,25 @@ const PROD_VL_FIELDS = ['tft_sn', 'scintillator', 'cpu_sn', 'main_board_sn', 'ma
 export function renderMergeTable() {
   const q = (document.getElementById('q3')?.value || '').toLowerCase();
   let d = state.mergeD;
-  if (q) d = d.filter(r => Object.values(r).some(v => v && String(v).toLowerCase().includes(q)));
+  if (q) {
+    // 검사포장 자체 필드 + 조인된 TFT/생산 필드 모두에서 검색
+    //  (TFT S/N·작업자·완제품 제작완료일 등 통합취합본 화면에 보이는 칸도 검색 대상)
+    d = d.filter(r => {
+      for (const v of Object.values(r)) {
+        if (v && String(v).toLowerCase().includes(q)) return true;
+      }
+      const tftSn = state.detTftMap[r.detector_sn];
+      if (tftSn && String(tftSn).toLowerCase().includes(q)) return true;
+      const p = state.tftMap[tftSn];
+      if (p) {
+        for (let j = 0; j < PROD_VL_FIELDS.length; j++) {
+          const v = p[PROD_VL_FIELDS[j]];
+          if (v && String(v).toLowerCase().includes(q)) return true;
+        }
+      }
+      return false;
+    });
+  }
   state.mergeFiltered = d;
   const p3 = document.getElementById('p3'), cnt3 = document.getElementById('cnt3');
   if (p3) p3.textContent = d.length + '건';
