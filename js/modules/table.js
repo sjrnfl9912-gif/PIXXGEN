@@ -603,6 +603,7 @@ function renderHnDiag() {
     (t.detector_sn && String(t.detector_sn).toLowerCase().includes(q)));
   const inShip = state.shipD.filter(s => s.detector_sn && String(s.detector_sn).toLowerCase().includes(q));
 
+  // 2a) TFT로 production 직접 조회 (입력이 TFT일 때)
   if (inProd.length > 0) {
     const p = inProd[0];
     let detail;
@@ -618,6 +619,36 @@ function renderHnDiag() {
     return;
   }
 
+  // 2b) 디텍터로 검색 → tft_match로 TFT 찾고 → production 있는지 확인 (조인 따라가기)
+  //     (입력이 디텍터일 때도 "이미 입력됨" 판정이 되도록)
+  for (const t of inTftm) {
+    if (t.tft_sn && state.tftMap[t.tft_sn]) {
+      const p = state.tftMap[t.tft_sn];
+      diag.className = 'hn-diag ok';
+      diag.innerHTML = '<span class="hnd-ic">✓</span><b>이미 입력됨 (생산기록 있음)</b>'
+        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">디텍터</span>' + esc(t.detector_sn) + '</span>'
+        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">TFT</span>' + esc(t.tft_sn) + '</span>'
+        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">작업자</span>' + esc(p.worker || '-') + '</span>'
+        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">완료일</span>' + esc(p.completed_date || '-') + '</span>';
+      return;
+    }
+  }
+  // 2c) 검사포장 디텍터 → detTftMap → tftMap 경로 (위에서 못 잡힌 경우 보강)
+  for (const s of inShip) {
+    const tft = state.detTftMap[s.detector_sn];
+    const p = tft && state.tftMap[tft];
+    if (p) {
+      diag.className = 'hn-diag ok';
+      diag.innerHTML = '<span class="hnd-ic">✓</span><b>이미 입력됨 (생산기록 있음)</b>'
+        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">디텍터</span>' + esc(s.detector_sn) + '</span>'
+        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">TFT</span>' + esc(tft) + '</span>'
+        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">작업자</span>' + esc(p.worker || '-') + '</span>'
+        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">완료일</span>' + esc(p.completed_date || '-') + '</span>';
+      return;
+    }
+  }
+
+  // 2d) 검사포장/폴더에 일부만 있고 조인 미완성 (실제 부분 매칭)
   if (inShip.length > 0 || inTftm.length > 0) {
     let msg;
     if (inShip.length > 0 && inTftm.length === 0) {
