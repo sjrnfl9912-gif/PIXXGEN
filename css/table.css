@@ -285,6 +285,46 @@ tr.grp-start td {
 .hn-diag.warn  { background: #fff5e1; color: #7a4a00; border-left: 3px solid #d9821a; }
 .hn-diag.err   { background: #fde7e7; color: #8a1f1f; border-left: 3px solid #d12c2c; }
 .hn-diag .hnd-errmsg { color: #8a1f1f; }
+/* 4분할 카드 모드 — 입력값의 시스템별 상태를 한눈에 (생산기록/폴더/검사포장/종합) */
+.hn-diag.hn-diag-cards {
+  background: transparent;
+  border-left: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.hn-diag.hn-diag-cards .dcard {
+  background: #fafbfd;
+  border: 1px solid #e3e8ef;
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.hn-diag.hn-diag-cards .dcard.ok   { background: #eaf6ee; border-color: #bce5c9; }
+.hn-diag.hn-diag-cards .dcard.no   { background: #fdecec; border-color: #f3c2c2; }
+.hn-diag.hn-diag-cards .dcard.warn { background: #fff5e1; border-color: #ecd9a8; }
+.hn-diag.hn-diag-cards .dt {
+  font-size: 11px; color: #677; margin-bottom: 4px;
+  display: flex; align-items: center; gap: 5px;
+}
+.hn-diag.hn-diag-cards .dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+}
+.hn-diag.hn-diag-cards .dcard.ok   .dot { background: #2e9d50; }
+.hn-diag.hn-diag-cards .dcard.no   .dot { background: #d12c2c; }
+.hn-diag.hn-diag-cards .dcard.warn .dot { background: #d9821a; }
+.hn-diag.hn-diag-cards .dv { font-size: 13px; font-weight: 600; color: #1a1f2e; }
+.hn-diag.hn-diag-cards .dcard.ok   .dv { color: #1d6b3a; }
+.hn-diag.hn-diag-cards .dcard.no   .dv { color: #8a1f1f; }
+.hn-diag.hn-diag-cards .dcard.warn .dv { color: #7a4a00; }
+.hn-diag.hn-diag-cards .dm {
+  font-size: 11px; color: #555; margin-top: 4px; line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 720px) {
+  .hn-diag.hn-diag-cards { grid-template-columns: repeat(2, 1fr); }
+}
 /* 전체 이력 필요 목록 — 항상 펼친 섹션 (이전 details 대체) */
 .hn-list-section { margin: 10px 16px 16px; }
 .hn-list-h {

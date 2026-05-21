@@ -563,8 +563,9 @@ function renderHistPending() {
 }
 
 // 이력 필요 탭 전체 렌더 (목록 + 출하예정 + 큐 + 폼)
-// 진단 바 — 입력 S/N의 실제 상태(생산기록 있음/없음/오기입 의심)를 한 줄로 표시.
-//  ※ 「전체 이력 필요 목록에는 없는데 알고보니 오기입이라 아예 작성 안 됨」 케이스 방지가 목적.
+// 진단 바 — 입력 S/N의 실제 상태를 4분할 카드로 표시.
+//  생산기록 / 출하완료 폴더 / 검사포장 / 종합 — 어느 시스템에 데이터가 있고 어디서 끊겼는지 한눈에.
+//  「전체 이력 필요 목록에는 없는데 알고보니 오기입이라 아예 작성 안 됨」 케이스 방지가 목적.
 function renderHnDiag() {
   const diag = document.getElementById('hnDiag');
   if (!diag) return;
@@ -572,6 +573,7 @@ function renderHnDiag() {
   const q = raw.toLowerCase();
   const work = histNeedList().filter(x => !x.pending);
 
+  // 빈 입력 — 1줄 컴팩트
   if (!q) {
     diag.className = 'hn-diag muted';
     diag.innerHTML = '<span class="hnd-ic">📋</span><b>전체 이력 필요 목록 ' + work.length + '건</b>'
@@ -579,96 +581,95 @@ function renderHnDiag() {
     return;
   }
 
-  // 1) 이력 필요 목록에서 부분 매칭?
+  // 직접 부분 매칭
   const matches = work.filter(x => [x.ship.product_name, x.ship.detector_sn, x.tft, x.ship.company]
     .some(v => v && String(v).toLowerCase().includes(q)));
-  if (matches.length > 0) {
-    const s = matches[0];
-    let extra;
-    if (matches.length === 1) {
-      extra = '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">디텍터</span>' + esc(s.ship.detector_sn) + '</span>'
-        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">품명</span>' + esc(s.ship.product_name) + '</span>';
-    } else {
-      extra = '<span class="hnd-sep">·</span><span class="hnd-meta">아래 목록에서 확인하거나 검색어를 더 좁히세요</span>';
-    }
-    diag.className = 'hn-diag warn';
-    diag.innerHTML = '<span class="hnd-ic">📝</span><b>' + matches.length + '건 매칭 — 이력 작성 대상</b>' + extra;
-    return;
-  }
-
-  // 2) 매칭 없음 → production / tft_match / shipment 부분 검색으로 진단
-  const inProd = state.prodD.filter(p => p.tft_sn && String(p.tft_sn).toLowerCase().includes(q));
-  const inTftm = state.tftmD.filter(t =>
+  const directProd = state.prodD.filter(p => p.tft_sn && String(p.tft_sn).toLowerCase().includes(q));
+  const directTftm = state.tftmD.filter(t =>
     (t.tft_sn && String(t.tft_sn).toLowerCase().includes(q)) ||
     (t.detector_sn && String(t.detector_sn).toLowerCase().includes(q)));
-  const inShip = state.shipD.filter(s => s.detector_sn && String(s.detector_sn).toLowerCase().includes(q));
+  const directShip = state.shipD.filter(s => s.detector_sn && String(s.detector_sn).toLowerCase().includes(q));
 
-  // 2a) TFT로 production 직접 조회 (입력이 TFT일 때)
-  if (inProd.length > 0) {
-    const p = inProd[0];
-    let detail;
-    if (inProd.length === 1) {
-      detail = '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">TFT</span>' + esc(p.tft_sn) + '</span>'
-        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">작업자</span>' + esc(p.worker || '-') + '</span>'
-        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">완료일</span>' + esc(p.completed_date || '-') + '</span>';
-    } else {
-      detail = '<span class="hnd-sep">·</span><span class="hnd-meta">' + inProd.length + '건 일치 — 모두 작성 완료</span>';
-    }
-    diag.className = 'hn-diag ok';
-    diag.innerHTML = '<span class="hnd-ic">✓</span><b>이미 입력됨 (생산기록 있음)</b>' + detail;
-    return;
-  }
-
-  // 2b) 디텍터로 검색 → tft_match로 TFT 찾고 → production 있는지 확인 (조인 따라가기)
-  //     (입력이 디텍터일 때도 "이미 입력됨" 판정이 되도록)
-  for (const t of inTftm) {
-    if (t.tft_sn && state.tftMap[t.tft_sn]) {
-      const p = state.tftMap[t.tft_sn];
-      diag.className = 'hn-diag ok';
-      diag.innerHTML = '<span class="hnd-ic">✓</span><b>이미 입력됨 (생산기록 있음)</b>'
-        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">디텍터</span>' + esc(t.detector_sn) + '</span>'
-        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">TFT</span>' + esc(t.tft_sn) + '</span>'
-        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">작업자</span>' + esc(p.worker || '-') + '</span>'
-        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">완료일</span>' + esc(p.completed_date || '-') + '</span>';
-      return;
-    }
-  }
-  // 2c) 검사포장 디텍터 → detTftMap → tftMap 경로 (위에서 못 잡힌 경우 보강)
-  for (const s of inShip) {
-    const tft = state.detTftMap[s.detector_sn];
-    const p = tft && state.tftMap[tft];
-    if (p) {
-      diag.className = 'hn-diag ok';
-      diag.innerHTML = '<span class="hnd-ic">✓</span><b>이미 입력됨 (생산기록 있음)</b>'
-        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">디텍터</span>' + esc(s.detector_sn) + '</span>'
-        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">TFT</span>' + esc(tft) + '</span>'
-        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">작업자</span>' + esc(p.worker || '-') + '</span>'
-        + '<span class="hnd-sep">·</span><span class="hnd-meta"><span class="k">완료일</span>' + esc(p.completed_date || '-') + '</span>';
-      return;
-    }
-  }
-
-  // 2d) 검사포장/폴더에 일부만 있고 조인 미완성 (실제 부분 매칭)
-  if (inShip.length > 0 || inTftm.length > 0) {
-    let msg;
-    if (inShip.length > 0 && inTftm.length === 0) {
-      msg = '검사포장엔 있지만 출하완료 폴더에 매칭 없음 — 출하 예정이거나 폴더 미작성';
-    } else if (inTftm.length > 0 && inShip.length === 0) {
-      msg = '출하완료 폴더엔 있으나 검사포장 출하건에 없음 — 검사포장 데이터 확인';
-    } else {
-      msg = '검사포장·폴더에 일부 있음 (이력 필요 조건은 미충족)';
-    }
+  // S/N이 아닌 검색(품명·업체 등)으로 work만 매칭된 경우 — 1줄 안내로 처리
+  if (matches.length > 0 && directProd.length === 0 && directTftm.length === 0 && directShip.length === 0) {
     diag.className = 'hn-diag warn';
-    diag.innerHTML = '<span class="hnd-ic">⚠</span><b>부분 매칭</b>'
-      + '<span class="hnd-sep">·</span><span class="hnd-meta">' + msg + '</span>';
+    diag.innerHTML = '<span class="hnd-ic">📝</span><b>' + matches.length + '건 매칭 — 이력 작성 대상</b>'
+      + '<span class="hnd-sep">·</span><span class="hnd-meta">아래 목록 참고 또는 S/N으로 좁히기</span>';
     return;
   }
 
-  // 3) 어디에도 없음 — 오기입 의심
-  diag.className = 'hn-diag err';
-  diag.innerHTML = '<span class="hnd-ic">⚠</span><b>매칭 없음 — 오기입 의심</b>'
-    + '<span class="hnd-sep">·</span><span class="hnd-meta">생산기록 ✗ &nbsp; 출하완료 폴더 ✗ &nbsp; 검사포장 ✗</span>'
-    + '<span class="hnd-sep">·</span><span class="hnd-errmsg">이력카드 TFT를 다시 확인하거나 디텍터 S/N으로 검색</span>';
+  // 대표 TFT/디텍터 결정 — 검색어가 TFT든 디텍터든 시작점으로 사용 가능한 값 선택
+  const reprTft = (directProd[0]?.tft_sn) || (directTftm[0]?.tft_sn) || '';
+  const reprDet = (directTftm[0]?.detector_sn) || (directShip[0]?.detector_sn) || '';
+
+  // 크로스 참조 — 대표값으로 다른 시스템도 조회 (검색 시작점이 한쪽이어도 다른 시스템 상태가 정확히 잡힘)
+  let prodRow = directProd[0] || null;
+  if (!prodRow && reprTft) prodRow = state.tftMap[reprTft] || null;
+  let tftmRow = directTftm[0] || null;
+  if (!tftmRow && reprDet) tftmRow = state.tftmD.find(t => t.detector_sn === reprDet) || null;
+  if (!tftmRow && reprTft) tftmRow = state.tftmD.find(t => t.tft_sn === reprTft) || null;
+  let shipRow = directShip[0] || null;
+  if (!shipRow && reprDet) shipRow = state.shipD.find(s => s.detector_sn === reprDet) || null;
+
+  const prodHas = !!prodRow;
+  const tftmHas = !!tftmRow;
+  const shipHas = !!shipRow;
+  const sampleProd = prodRow;
+  const sampleTftm = tftmRow;
+  const sampleShip = shipRow;
+  const matchedTft = prodRow?.tft_sn || tftmRow?.tft_sn || reprTft || '';
+  const matchedDet = tftmRow?.detector_sn || shipRow?.detector_sn || reprDet || '';
+
+  // 종합 판정
+  let vTxt, vCls, vDetail;
+  if (prodHas && tftmHas && shipHas) {
+    vTxt = '✓ 완료된 출하건'; vCls = 'ok'; vDetail = '추가 작업 불필요';
+  } else if (shipHas && tftmHas && !prodHas) {
+    vTxt = '📝 이력 작성 필요'; vCls = 'warn';
+    vDetail = '아래 「＋ 큐에」<br>버튼으로 작업 시작';
+  } else if (shipHas && !tftmHas && !prodHas) {
+    vTxt = '⚠ 폴더 미작성'; vCls = 'warn';
+    vDetail = '출하완료 폴더 미작성<br>또는 출하 예정';
+  } else if (!shipHas && tftmHas && !prodHas) {
+    vTxt = '⚠ 검사포장 누락'; vCls = 'warn';
+    vDetail = '폴더엔 있으나<br>검사포장 데이터 없음';
+  } else if (prodHas && (!tftmHas || !shipHas)) {
+    vTxt = '⚠ 부분 매칭'; vCls = 'warn';
+    vDetail = '일부 시스템에만 존재<br>데이터 정합성 확인';
+  } else {
+    vTxt = '⚠ 오기입 의심'; vCls = 'no';
+    vDetail = '이력카드 TFT 재확인<br>또는 디텍터로 검색';
+  }
+
+  // 4분할 카드 렌더
+  diag.className = 'hn-diag hn-diag-cards';
+  diag.innerHTML =
+    '<div class="dcard ' + (prodHas ? 'ok' : 'no') + '">'
+      + '<div class="dt"><span class="dot"></span>생산기록</div>'
+      + '<div class="dv">' + (prodHas ? '있음 ✓' : '없음 ✗') + '</div>'
+      + '<div class="dm">' + (prodHas
+        ? '작업자 ' + esc(sampleProd.worker || '-') + '<br>완료 ' + esc(sampleProd.completed_date || '-')
+        : 'production에<br>해당 TFT 없음') + '</div>'
+    + '</div>'
+    + '<div class="dcard ' + (tftmHas ? 'ok' : 'no') + '">'
+      + '<div class="dt"><span class="dot"></span>출하완료 폴더</div>'
+      + '<div class="dv">' + (tftmHas ? '있음 ✓' : '없음 ✗') + '</div>'
+      + '<div class="dm">' + (tftmHas
+        ? '디텍터 ' + esc(matchedDet || sampleTftm.detector_sn || '-') + '<br>TFT ' + esc(matchedTft || sampleTftm.tft_sn || '-')
+        : 'tft_match에<br>해당 S/N 없음') + '</div>'
+    + '</div>'
+    + '<div class="dcard ' + (shipHas ? 'ok' : 'no') + '">'
+      + '<div class="dt"><span class="dot"></span>검사포장</div>'
+      + '<div class="dv">' + (shipHas ? '있음 ✓' : '없음 ✗') + '</div>'
+      + '<div class="dm">' + (shipHas
+        ? esc(sampleShip.product_name || '-') + '<br>' + esc(sampleShip.company || '-')
+        : '출하건에<br>해당 디텍터 없음') + '</div>'
+    + '</div>'
+    + '<div class="dcard ' + vCls + '">'
+      + '<div class="dt"><span class="dot"></span>종합</div>'
+      + '<div class="dv">' + vTxt + '</div>'
+      + '<div class="dm">' + vDetail + '</div>'
+    + '</div>';
 }
 
 export function renderHistNeed() {
