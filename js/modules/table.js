@@ -261,7 +261,9 @@ export function renderMergeTable() {
     // 통합취합본 조인: 검사포장 디텍터 S/N → tft_match → TFT S/N → 생산
     const tftSn = state.detTftMap[r.detector_sn];
     const p = state.tftMap[tftSn] || {};
-    const cells = ['<tr><td class="rn">' + (i + 1) + '</td>'];
+    // 행 번호 칸 = 편집 트리거 (좌측 고정, 항상 보임)
+    const cells = ['<tr><td class="rn merge-rn-edit" data-id="' + r._id + '" title="클릭하면 유닛 상세 편집">'
+      + '<span class="rn-num">' + (i + 1) + '</span><span class="rn-edit-icon">✏</span></td>'];
     // 검사포장 컬럼 — 읽기 전용 텍스트로 렌더 (편집은 모달에서)
     for (let j = 0; j < SHIP_FIELDS.length; j++) {
       cells.push(readCell(SHIP_FIELDS[j], r[SHIP_FIELDS[j]], 'cw'));
@@ -275,25 +277,16 @@ export function renderMergeTable() {
       }
       cells.push(readCell(f, p[f], 'v'));
     }
-    // 편집 버튼 — 검사포장+생산 합쳐서 모달로 편집
-    cells.push('<td class="merge-edit-td"><button class="merge-edit-btn" data-id="' + r._id + '" title="유닛 상세 편집">✏</button></td>');
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
   const b3 = document.getElementById('b3');
   if (b3) b3.innerHTML = rows.join('');
-  // 편집 컬럼 헤더 추가 (mkHead가 만든 두 줄 thead에 마지막 칸 append, 한 번만)
-  const th3 = document.getElementById('th3');
-  if (th3 && !th3.querySelector('.col-edit-h')) {
-    const trs = th3.querySelectorAll('tr');
-    if (trs[0]) trs[0].insertAdjacentHTML('beforeend', '<th class="al col-edit"></th>');
-    if (trs[1]) trs[1].insertAdjacentHTML('beforeend', '<th class="col-edit-h">편집</th>');
-  }
   state.tabRendered.merge = true;
 }
 
 // ═══ 통합취합본 — 유닛 상세 편집 모달 ═══
-//  행 끝 「✏」 클릭 → 검사포장+생산 한 화면에서 편집. dbUpdate로 양쪽 테이블 반영.
+//  좌측 행 번호 칸(✏) 클릭 → 검사포장+생산 한 화면에서 편집. dbUpdate로 양쪽 테이블 반영.
 let unitEditState = null;   // { shipRow, prodRow, tftSn }
 
 function openUnitEditModal(shipId) {
@@ -429,10 +422,10 @@ async function saveUnitEditModal() {
 // 통합취합본 「✏」 클릭 위임 핸들러 (한 번 등록)
 export function initMergeEditClicks() {
   document.getElementById('b3')?.addEventListener('click', e => {
-    const btn = e.target.closest('.merge-edit-btn');
-    if (!btn) return;
+    const trigger = e.target.closest('.merge-rn-edit');
+    if (!trigger) return;
     e.stopPropagation();
-    openUnitEditModal(btn.dataset.id);
+    openUnitEditModal(trigger.dataset.id);
   });
   document.getElementById('unitClose')?.addEventListener('click', closeUnitEditModal);
   document.getElementById('unitCancel')?.addEventListener('click', closeUnitEditModal);

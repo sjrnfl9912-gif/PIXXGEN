@@ -212,17 +212,32 @@
 }
 .unit-info { font-size: 11px; color: #677; margin-right: auto; }
 
-/* 통합취합본 행 끝의 ✏ 편집 버튼 */
-#b3 td.merge-edit-td {
-  padding: 0; text-align: center; background: #fff !important;
-  border-left: 2px solid #d9e0ec;
+/* 통합취합본 — 행 번호 칸을 좌측 고정(sticky) + 클릭으로 편집 모달 열기 */
+#b3 td.rn.merge-rn-edit {
+  position: sticky; left: 0; z-index: 5;
+  background: #f3f5f8;
+  cursor: pointer;
+  min-width: 52px;
+  padding: 2px 6px;
+  text-align: center;
+  border-right: 2px solid #d9e0ec;
+  user-select: none;
 }
-#b3 .merge-edit-btn {
-  border: 1px solid #d9e0ec; background: #fff; color: #1f3b6e;
-  font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer;
+#b3 td.rn.merge-rn-edit:hover {
+  background: #dbe7ff;
+  color: #1f3b6e;
 }
-#b3 .merge-edit-btn:hover { background: #e8f0ff; border-color: #b9d0ff; }
-#th3 th.col-edit-h { background: #1a3352; color: #fff; }
+#b3 td.rn.merge-rn-edit .rn-num { display: inline-block; }
+#b3 td.rn.merge-rn-edit .rn-edit-icon {
+  display: inline-block; margin-left: 4px; font-size: 11px;
+  opacity: .35; transition: opacity .12s;
+}
+#b3 td.rn.merge-rn-edit:hover .rn-edit-icon { opacity: 1; color: #1f3b6e; }
+/* 짝수행 줄무늬가 rn 셀에는 적용 안 되도록 (이미 :not(.rn) 지정이라 자동) */
+/* thead 좌상단 코너도 sticky로 — 헤더 두 줄 모두 */
+#th3 tr > th:first-child {
+  position: sticky; left: 0; z-index: 11;
+}
 
 .cfm-bg {
   position: fixed;
