@@ -81,6 +81,27 @@ table.g td {
   position: relative;
   user-select: none;
 }
+/* 가독성 — 짝수행 옅은 줄무늬 + 마우스 올린 행 강조 (모든 표 공통) */
+table.g tbody tr:nth-child(even) > td:not(.rn) { background: #fbfcfe; }
+table.g tbody tr:hover > td:not(.rn) { background: #f0f6ff; }
+/* 통합취합본 생산 컬럼 — 살짝 다른 배경으로 검사포장과 구분 */
+table.g td.v { background: #fafbfc; color: #555; padding: 3px 6px; }
+table.g tbody tr:nth-child(even) > td.v { background: #f4f7fb; }
+table.g tbody tr:hover > td.v { background: #e8eff8; }
+/* 읽기 전용 텍스트 셀 (통합취합본·TFT 매칭) — 넉넉한 패딩으로 가독성 */
+#b3 td.cw, #b3 td.v, #b4 td.cw { padding: 3px 8px; }
+/* 긴 텍스트 — 잘림 + 툴팁 (품명·업체명·비고 등) */
+table.g td.long { max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
+/* S/N 모노스페이스 — 가독성·정렬 */
+table.g td.mono { font-family: ui-monospace, Consolas, monospace; }
+/* 클릭 복사 가능한 셀 */
+table.g td.copy { cursor: pointer; }
+table.g td.copy:hover { background: #e8f0ff !important; box-shadow: inset 0 0 0 1px #b9d0ff; }
+/* 매칭 안내 마크 */
+.vl-na   { color: #ccc; font-size: 9px; }
+.vl-miss { color: #d97706; font-size: 9px; }
+/* 입력칸 호버/포커스 톤 통일 (편집 가능 탭) */
+table.g td input.c:not(.vl):hover { border-color: #c8d5ea; }
 
 /* 화면 밖 행은 브라우저가 레이아웃/페인트를 건너뜀
    — 1천행 이상에서 메모리·스크롤 부담을 크게 줄임 (행 높이 26px 고정) */

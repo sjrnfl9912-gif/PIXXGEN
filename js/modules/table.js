@@ -206,6 +206,28 @@ export function renderProductionTable() {
 
 const PROD_VL_FIELDS = ['tft_sn', 'scintillator', 'cpu_sn', 'main_board_sn', 'main_board_ver', 'panel_type', 'completed_date', 'detector_fw', 'micom_ver', 'bat_micom_ver', 'worker', 'aed_sn', 'note1', 'note2'];
 
+// 가독성 — 긴 텍스트 잘림(툴팁) / 클릭 복사 대상 컬럼
+const LONG_COLS = new Set(['product_name', 'company', 'manager_info', 'zview_sw', 'note1', 'note2']);
+const COPY_COLS = new Set(['detector_sn', 'tft_sn']);
+
+// 읽기 전용 셀 HTML 빌더
+function readCell(field, value, baseClass) {
+  if (value == null || value === '') {
+    return '<td class="' + baseClass + '"></td>';
+  }
+  const s = esc(value);
+  let cls = baseClass;
+  let attrs = '';
+  if (COPY_COLS.has(field)) {
+    cls += ' mono copy';
+    attrs = ' data-copy="' + s + '" title="클릭 복사"';
+  } else if (LONG_COLS.has(field)) {
+    cls += ' long';
+    attrs = ' title="' + s + '"';
+  }
+  return '<td class="' + cls + '"' + attrs + '>' + s + '</td>';
+}
+
 export function renderMergeTable() {
   const q = (document.getElementById('q3')?.value || '').toLowerCase();
   let d = state.mergeD;
@@ -239,9 +261,21 @@ export function renderMergeTable() {
     // 통합취합본 조인: 검사포장 디텍터 S/N → tft_match → TFT S/N → 생산
     const tftSn = state.detTftMap[r.detector_sn];
     const p = state.tftMap[tftSn] || {};
-    const cells = ['<tr><td class="rn" data-row-idx="' + i + '" data-tb="b3">' + (i + 1) + '</td>'];
-    for (let j = 0; j < SHIP_FIELDS.length; j++) cells.push('<td class="cw">' + ci(r._id, 'm', SHIP_FIELDS[j], r[SHIP_FIELDS[j]]) + '</td>');
-    for (let j = 0; j < PROD_VL_FIELDS.length; j++) cells.push('<td>' + vl(p[PROD_VL_FIELDS[j]], tftSn) + '</td>');
+    const cells = ['<tr><td class="rn">' + (i + 1) + '</td>'];
+    // 검사포장 컬럼 — 읽기 전용 텍스트로 렌더 (편집은 검사포장 탭에서)
+    for (let j = 0; j < SHIP_FIELDS.length; j++) {
+      cells.push(readCell(SHIP_FIELDS[j], r[SHIP_FIELDS[j]], 'cw'));
+    }
+    // 생산 컬럼 — 매칭 없으면 안내, 있으면 텍스트
+    for (let j = 0; j < PROD_VL_FIELDS.length; j++) {
+      const f = PROD_VL_FIELDS[j];
+      if (!tftSn) { cells.push('<td class="v"><span class="vl-na">-</span></td>'); continue; }
+      if (p[f] == null || p[f] === '') {
+        // tft_sn 컬럼은 매칭은 됐으니 값이 비더라도 매칭없음으로만 표시할 필요는 없음
+        cells.push('<td class="v"><span class="vl-miss">매칭없음</span></td>'); continue;
+      }
+      cells.push(readCell(f, p[f], 'v'));
+    }
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
@@ -263,9 +297,10 @@ export function renderTftmTable() {
   const rows = [];
   for (let i = 0; i < d.length; i++) {
     const r = d[i];
-    const cells = ['<tr><td class="rn" data-row-idx="' + i + '" data-tb="b4">' + (i + 1) + '</td>'];
+    const cells = ['<tr><td class="rn">' + (i + 1) + '</td>'];
+    // 읽기 전용 텍스트 렌더 (input 제거) + S/N 컬럼 클릭 복사
     for (let j = 0; j < TFTM_FIELDS.length; j++) {
-      cells.push('<td class="cw"><input class="c vl" value="' + esc(r[TFTM_FIELDS[j]]) + '" readonly tabindex="-1"></td>');
+      cells.push(readCell(TFTM_FIELDS[j], r[TFTM_FIELDS[j]], 'cw'));
     }
     cells.push('</tr>');
     rows.push(cells.join(''));
@@ -824,6 +859,12 @@ export function initHistNeed() {
     if (cp) copyCellText(cp.dataset.copy);
   });
   document.getElementById('fiCopyAll')?.addEventListener('click', copyFolderIssuesText);
+
+  // 통합취합본·TFT 매칭 — 읽기 전용 셀에 .copy 클래스로 클릭 복사 (document 위임)
+  document.addEventListener('click', e => {
+    const cp = e.target.closest('td.copy');
+    if (cp && cp.dataset.copy) copyCellText(cp.dataset.copy);
+  });
 }
 
 // 모든 탭의 카운트 배지를 한 번에 갱신 (탭을 클릭하지 않아도 숫자가 보이도록)
