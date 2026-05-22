@@ -236,6 +236,12 @@ async function init() {
     }
   });
 
+  // Changelog modal (업데이트 내역)
+  const clBg = document.getElementById('changelogBg');
+  document.getElementById('changelogBtn')?.addEventListener('click', () => clBg?.classList.add('show'));
+  document.getElementById('changelogClose')?.addEventListener('click', () => clBg?.classList.remove('show'));
+  clBg?.addEventListener('click', e => { if (e.target === clBg) clBg.classList.remove('show'); });
+
   // TFT match button
   document.getElementById('tftMatchBtn')?.addEventListener('click', () => { /* TODO: TFT modal */ toast('TFT 매칭 모달 (준비 중)', 'info'); });
 

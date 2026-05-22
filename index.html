@@ -39,6 +39,7 @@
       <div class="tab" data-tab="kpi">📊 KPI 통계</div>
       <div class="tab-right">
         <button class="btn" id="helpBtn" title="사용 설명서">❓ 사용법</button>
+        <button class="btn" id="changelogBtn" title="업데이트 내역">🆕 업데이트</button>
         <span id="saveStatus" style="font-size:10px;color:var(--ok)">저장 완료</span>
         <button class="btn btn-pr" id="saveBtn" style="font-weight:600">💾 저장</button>
         <button class="btn btn-hide-m" id="backupBtn">📥 백업</button>
@@ -252,8 +253,8 @@
               <div class="hg-mini"><table><tr><th>출하일</th><th>TFT S/N</th><th>디텍터 S/N</th></tr><tr><td>2026-05-11</td><td>T241P356NE02</td><td>A710260E1</td></tr><tr><td>2026-05-08</td><td>T24AN332NB02</td><td>P330260E1</td></tr></table><div class="hg-cap">검사포장 ↔ 생산을 잇는 다리</div></div>
             </div>
             <div class="hg-tabrow">
-              <div class="hg-info"><h3>통합취합본 <span class="hg-bdg hg-auto">자동 취합</span></h3><p>탭에 들어가면 검사포장 + 생산 데이터를 자동으로 합쳐서 보여줍니다.</p></div>
-              <div class="hg-mini"><table><tr><th>품명</th><th>디텍터</th><th>TFT</th><th>작업자</th></tr><tr><td>PRUDENT</td><td>K120260A1</td><td class="hg-ro">CJ51…</td><td class="hg-ro">홍승범</td></tr></table><div class="hg-cap">회색 칸 = 생산쪽에서 자동으로 붙음</div></div>
+              <div class="hg-info"><h3>통합취합본 <span class="hg-bdg hg-auto">자동 취합</span> <span class="hg-bdg hg-man">행 편집</span></h3><p>탭 들어가면 검사포장 + 생산 데이터를 자동으로 합쳐서 보여줍니다. 행 끝 <b>「✏」</b> 버튼 → 두 쪽 한꺼번에 모달로 편집.</p></div>
+              <div class="hg-mini"><table><tr><th>품명</th><th>디텍터</th><th>TFT</th><th>편집</th></tr><tr><td>PRUDENT</td><td>K120260A1</td><td class="hg-ro">CJ51…</td><td>✏</td></tr></table><div class="hg-cap">행 끝 ✏ 클릭 → 검사포장·생산 한 모달</div></div>
             </div>
             <div class="hg-tabrow">
               <div class="hg-info"><h3>이력 필요 <span class="hg-bdg hg-man">직접 작성</span></h3><p>옛 재고가 출하될 때 생산이력을 입력하는 곳. 아래 3번에서 자세히 설명합니다.</p></div>
@@ -272,23 +273,23 @@
             <p class="hg-lead">옛 재고(2023~2025년 제작분)는 출하될 때 디텍터 S/N이 정해져, 출하 후 생산이력을 새로 적어야 합니다. 이력카드는 무작위로 오므로 <b>S/N으로 찾아</b> 입력합니다.</p>
             <div class="hg-steps">
               <div class="hg-step"><div class="hg-sn">1</div><div class="hg-stb">
-                <h4>S/N 입력</h4><p>이력카드의 TFT S/N 또는 디텍터 S/N을 상단 입력창에 입력하고 Enter.</p>
-                <div class="hg-vscan"><span>🔍</span><div class="hg-vbox">QJ415092KAAA  ← 입력 후 Enter</div></div>
+                <h4>S/N 검색 (실시간 + 진단)</h4><p>이력카드의 TFT S/N 또는 디텍터 S/N을 상단 입력창에 타이핑/붙여넣기 하면 <b>실시간으로 아래 목록이 좁혀지고</b>, 진단 바가 4분할 카드로 상태를 보여줍니다 — 생산기록 / 출하완료 폴더 / 검사포장 / 종합. <b>어디에도 없는 S/N(오기입)</b>도 즉시 알 수 있습니다. Enter로 큐에 추가.</p>
+                <div class="hg-vscan"><span>🔍</span><div class="hg-vbox">QJ415092KAAA  ← 입력 즉시 목록 필터링</div></div>
               </div></div>
               <div class="hg-step"><div class="hg-sn">2</div><div class="hg-stb">
-                <h4>작업 큐에 쌓기</h4><p>입력한 카드가 큐에 칩으로 쌓입니다. 여러 장 먼저 입력해두고 한 번에 작성해도 됩니다.</p>
-                <div class="hg-vq"><span class="hg-vchip on">PRUDENT·K120260A1</span><span class="hg-vchip">PIXX·P330260E1</span><span class="hg-vchip">OPTIMUM·A720261B2</span></div>
+                <h4>작업 큐에 쌓기</h4><p>입력한 카드가 큐에 칩으로 쌓입니다. 각 칩에 <b>품명 · 디텍터 · TFT</b>가 같이 표시되어 확인이 쉽습니다. 여러 장 먼저 입력해두고 한 번에 작성해도 됩니다.</p>
+                <div class="hg-vq"><span class="hg-vchip on">PRUDENT·K120260A1·<span style="color:#3a6ed1">QJ415092</span></span><span class="hg-vchip">PIXX·P330260E1·<span style="color:#3a6ed1">CJ519121</span></span></div>
               </div></div>
               <div class="hg-step"><div class="hg-sn">3</div><div class="hg-stb">
-                <h4>생산이력 입력</h4><p>큐 칩을 클릭하면 입력 폼이 열립니다. TFT S/N은 자동으로 채워져 있고, <span class="hg-kbd">Tab</span>으로 칸을 이동하며 채웁니다.</p>
-                <div class="hg-vform"><div class="hg-vfld"><span>생산번호</span><i></i></div><div class="hg-vfld"><span>TFT S/N</span><i class="pre"></i></div><div class="hg-vfld"><span>CPU S/N</span><i></i></div><div class="hg-vfld"><span>작업자</span><i></i></div></div>
+                <h4>생산이력 입력</h4><p>큐 칩을 클릭하면 폼이 열립니다. <b>TFT S/N·작업자·제작완료일이 자동 프리필</b>됩니다 (작업자는 화면 좌측에서 선택한 사람, 완료일은 오늘). <span class="hg-kbd">Tab</span>으로 칸 이동.</p>
+                <div class="hg-vform"><div class="hg-vfld"><span>생산번호</span><i></i></div><div class="hg-vfld"><span>TFT S/N</span><i class="pre"></i></div><div class="hg-vfld"><span>작업자</span><i class="pre"></i></div><div class="hg-vfld"><span>완료일</span><i class="pre"></i></div></div>
               </div></div>
               <div class="hg-step"><div class="hg-sn">4</div><div class="hg-stb">
-                <h4>저장하고 다음</h4><p>저장 버튼을 누르면 생산관리대장에 추가되고, 자동으로 큐의 다음 카드로 넘어갑니다.</p>
-                <span class="hg-vsave">💾 저장하고 다음</span>
+                <h4>저장 → 잘못 적었으면 다시 수정</h4><p>저장 버튼 한 번이면 생산관리대장에 추가되고 자동으로 다음 카드로 넘어갑니다. <b>잘못 입력한 경우</b> 완료된(✓) 칩을 다시 클릭하면 「수정 모드」로 폼이 다시 열려 고칠 수 있습니다.</p>
+                <span class="hg-vsave">💾 저장하고 다음</span> <span class="hg-vsave" style="background:#d9821a;margin-left:6px">✏ 수정 저장</span>
               </div></div>
             </div>
-            <div class="hg-tip">※ 「이력 필요」 목록엔 실제 작업 대상만 표시됩니다. 아직 출하 안 된 건은 「출하 예정」 목록에 따로 있습니다.</div>
+            <div class="hg-tip">※ 작업 대상만 「이력 필요」 목록에 표시 · 미출하 건은 「출하 예정」으로 자동 분리 · 인식 못한 폴더는 「TFT 매칭」 탭 「폴더 오류」 섹션에서 확인.</div>
           </div>
         </div>
 
@@ -341,11 +342,17 @@
             </ul>
             <table class="hg-kt">
               <tr><td><span class="hg-kbd">Ctrl+S</span></td><td>저장</td></tr>
-              <tr><td><span class="hg-kbd">Ctrl+Z</span></td><td>되돌리기</td></tr>
+              <tr><td><span class="hg-kbd">Ctrl+Z</span> / <span class="hg-kbd">Ctrl+Y</span></td><td>되돌리기 / 다시 실행</td></tr>
               <tr><td><span class="hg-kbd">Ctrl+C</span> / <span class="hg-kbd">Ctrl+V</span></td><td>복사 / 붙여넣기 (엑셀과 호환)</td></tr>
+              <tr><td><span class="hg-kbd">Ctrl+D</span> / <span class="hg-kbd">Ctrl+R</span></td><td>아래로 / 오른쪽으로 채우기</td></tr>
               <tr><td><span class="hg-kbd">Tab</span> · 방향키</td><td>칸 이동</td></tr>
               <tr><td><span class="hg-kbd">Ctrl+Enter</span></td><td>새 행 추가</td></tr>
               <tr><td><span class="hg-kbd">셀 더블클릭</span></td><td>해당 칸 바로 편집</td></tr>
+              <tr><td><span class="hg-kbd">셀 우측 하단 드래그</span></td><td>아래로 값 채우기 (엑셀 fill handle)</td></tr>
+              <tr><td colspan="2" style="background:#f4f6fa;font-weight:600;padding:8px;color:#1f3b6e">통합취합본 · TFT 매칭 · 이력 필요 (읽기 전용 표)</td></tr>
+              <tr><td><span class="hg-kbd">S/N 셀 클릭</span></td><td>디텍터·TFT 시리얼 즉시 클립보드 복사</td></tr>
+              <tr><td><span class="hg-kbd">통합취합본 행 끝 ✏</span></td><td>검사포장+생산 한 화면에서 편집 (모달)</td></tr>
+              <tr><td><span class="hg-kbd">완료된 큐 칩 클릭</span></td><td>「수정 모드」로 생산이력 재편집</td></tr>
             </table>
           </div>
         </div>
@@ -375,6 +382,73 @@
         </div>
 
        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Changelog / 업데이트 내역 -->
+  <div class="help-bg" id="changelogBg">
+    <div class="help">
+      <div class="help-h">
+        <h3>🆕 업데이트 내역</h3>
+        <button class="help-x" id="changelogClose" title="닫기">&times;</button>
+      </div>
+      <div class="help-b">
+        <div class="changelog">
+          <p class="cl-intro">새로 추가·개선된 기능들. 위쪽이 가장 최근.</p>
+
+          <!-- ▼ 새 항목은 이 아래에 추가 -->
+
+          <div class="cl-entry">
+            <div class="cl-date">2026-05-22</div>
+            <ul class="cl-list">
+              <li><b>통합취합본 행 편집</b> — 행 끝 「✏」 버튼으로 검사포장+생산을 한 화면 모달에서 편집</li>
+              <li><b>작업 큐 칩에 TFT S/N 표시</b> — 디텍터 + TFT 함께 (TFT는 파란 강조)</li>
+              <li><b>완료된 큐 항목 재편집</b> — 칩 클릭 → 「수정 모드」로 폼 다시 열림 (오기입 수정)</li>
+              <li><b>통합취합본·TFT 매칭 가벼워짐</b> — input 제거(읽기 전용) → 첫 표시·스크롤 빠름, 폭도 줄음</li>
+              <li><b>모든 표 줄무늬 + 행 호버</b> — 시선 따라가기 쉬움</li>
+              <li><b>S/N 칸 클릭 복사</b> — 디텍터·TFT 셀 클릭 한 번에 클립보드 복사 (파일 탐색기에 바로 붙여넣기)</li>
+              <li><b>긴 텍스트 줄임표</b> — 품명·업체명 잘림 + 마우스 올리면 풀텍스트 툴팁</li>
+              <li><b>TFT 매칭 탭에 「폴더 오류」 섹션</b> — 검사포장팀 공유용 텍스트 자동 정리·복사</li>
+            </ul>
+          </div>
+
+          <div class="cl-entry">
+            <div class="cl-date">2026-05-21</div>
+            <ul class="cl-list">
+              <li><b>이력 필요 통합 검색</b> — 검색·진단·결과·큐를 한 박스로 합침. 별도 검색칸 없음</li>
+              <li><b>진단 바 4분할 카드</b> — 생산기록 / 출하완료 폴더 / 검사포장 / 종합 — 어디서 끊겼는지 한눈에</li>
+              <li><b>검색 일관성</b> — 디텍터로 검색하든 TFT로 검색하든 동일 결과 (조인 따라가기)</li>
+              <li><b>통합취합본 검색 강화</b> — TFT·작업자·완료일 등 조인된 필드까지 매칭</li>
+              <li><b>탭 전환 가속</b> — 데이터 변경 없으면 재렌더 생략. 검사포장 탭 ~3초 → 즉시</li>
+              <li><b>붙여넣기 정상화</b> — 그리드 외 입력칸(S/N 검색 등)에 Ctrl+V 막히던 문제 해제</li>
+            </ul>
+          </div>
+
+          <div class="cl-entry">
+            <div class="cl-date">2026-05-20</div>
+            <ul class="cl-list">
+              <li><b>TFT 매칭 스크립트 개선</b> — 「주간출하대기」 + 100EA 묶음 등 깊이 무제한 스캔. 「Old data」 폴더 자동 제외</li>
+              <li><b>통합취합본 자동 백업 포함</b> — 매일 17:30 백업에 통합취합본도 같이 저장</li>
+              <li><b>사용 설명서 경로 갱신</b> — \\SERVER03 으로 통일, 스크립트 공용 서버 위치 안내</li>
+              <li><b>이력 필요 셀 클릭 복사</b> — S/N 칸 클릭 한 번에 복사</li>
+              <li><b>다중 사용자 작업 보호</b> — 다른 사람 저장해도 내 입력 폼 안 날아감</li>
+            </ul>
+          </div>
+
+          <div class="cl-entry">
+            <div class="cl-date">2026-05-18 이전</div>
+            <ul class="cl-list">
+              <li><b>이력 필요 폼 작업자/제작완료일 자동 프리필</b> — 빈 채로 저장돼 생산관리대장 필터에서 가려지던 버그 차단</li>
+              <li><b>새 행 추가 — 오늘 날짜 자동 입력</b> — 연도 필터에 안 가려지게</li>
+              <li><b>생산관리대장 완제품 제작완료일 자동 정렬</b></li>
+              <li><b>중복 S/N 그룹 + 구분선</b></li>
+              <li><b>사용 설명서 시각적 가이드로 개편</b></li>
+              <li><b>PowerShell 자동화</b> — 매일 17:00 검사포장 / 17:10 TFT 매칭 / 17:30 백업</li>
+            </ul>
+          </div>
+
+        </div>
       </div>
     </div>
   </div>
