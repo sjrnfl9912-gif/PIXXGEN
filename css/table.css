@@ -520,7 +520,11 @@ tr.grp-start td {
 }
 .hn-qchip:hover { border-color: var(--pr); }
 .hn-qchip.on { border-color: var(--pr); background: #eef3ff; box-shadow: 0 0 0 2px rgba(59, 109, 224, .15); }
-.hn-qchip.done { opacity: .5; }
+.hn-qchip.done { opacity: .65; }
+.hn-qchip .qc-mono { font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; }
+.hn-qchip .qc-tft { color: var(--pr); font-weight: 500; }
+.hn-qchip .qc-tft-na { color: #b88; font-size: 10px; font-style: italic; }
+.hn-qchip.done .qc-tft { color: #4a7a3f; }
 .hn-qchip b { color: #1f2d4d; }
 .hn-qx { color: #b91c1c; font-weight: 700; cursor: pointer; padding: 0 3px; }
 .hn-qx:hover { color: #fff; background: #b91c1c; border-radius: 3px; }

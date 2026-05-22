@@ -397,8 +397,14 @@ function renderQueue() {
   box.innerHTML = hnQueue.map((q, i) => {
     const ship = hnShipByDet(q.det);
     const tip = q.done ? '클릭하면 수정' : '클릭하면 입력 폼 열기';
+    const tftPart = q.tft
+      ? '<span class="qc-mono qc-tft">' + esc(q.tft) + '</span>'
+      : '<span class="qc-tft-na">TFT 없음</span>';
     return '<div class="hn-qchip' + (q.done ? ' done' : '') + (i === hnSel ? ' on' : '') + '" data-qi="' + i + '" title="' + tip + '">'
-      + (q.done ? '✓ ' : '') + '<b>' + esc(ship.product_name || '?') + '</b> · ' + esc(q.det)
+      + (q.done ? '✓ ' : '')
+      + '<b>' + esc(ship.product_name || '?') + '</b>'
+      + ' · <span class="qc-mono">' + esc(q.det) + '</span>'
+      + ' · ' + tftPart
       + '<span class="hn-qx" data-qx="' + i + '" title="큐에서 제거">×</span></div>';
   }).join('');
 }
