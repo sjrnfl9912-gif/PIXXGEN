@@ -562,6 +562,73 @@ function renderHistPending() {
   }).join('');
 }
 
+// 검사포장 폴더 오류 — tft-sync가 인식 못한 폴더 목록 (검사포장팀 검토용)
+//  spacing: 띄어쓰기 누락 (TFT+디텍터 붙음) — 폴더명만 수정하면 인식됨
+//  review : 그 외 (디텍터 누락 / 오타 / 묶음 외 단독 등) — 수동 검토 필요
+function renderFolderIssues() {
+  const list = state.folderIssues || [];
+  const p7 = document.getElementById('p7');
+  if (p7) p7.textContent = list.length + '건';
+  const sum = document.getElementById('fiSummary');
+  if (sum) {
+    const nSp = list.filter(x => x.issue_type === 'spacing').length;
+    const nRv = list.length - nSp;
+    sum.textContent = list.length ? ('띄어쓰기 누락 ' + nSp + ' · 검토 필요 ' + nRv) : '인식 못한 폴더 없음 👍';
+  }
+  const th7 = document.getElementById('th7');
+  if (th7 && !th7.childElementCount) {
+    th7.innerHTML = '<tr><th class="hn-th" style="width:36px">#</th>'
+      + '<th class="hn-th" style="width:120px">분류</th>'
+      + '<th class="hn-th">폴더명</th>'
+      + '<th class="hn-th">권장 조치</th></tr>';
+  }
+  const b7 = document.getElementById('b7');
+  if (!b7) return;
+  if (!list.length) {
+    b7.innerHTML = '<tr><td colspan="4" class="hn-empty">tft-sync가 모든 폴더를 정상 인식했습니다 👍</td></tr>';
+    return;
+  }
+  // spacing 먼저(쉽게 고침), 그 다음 review
+  const sorted = [...list].sort((a, b) => (a.issue_type === 'spacing' ? -1 : 1) - (b.issue_type === 'spacing' ? -1 : 1));
+  b7.innerHTML = sorted.map((x, i) => {
+    const isSp = x.issue_type === 'spacing';
+    const badge = isSp
+      ? '<span class="hn-badge" style="background:#fff5e1;color:#7a4a00">띄어쓰기 누락</span>'
+      : '<span class="hn-badge" style="background:#fde7e7;color:#8a1f1f">검토 필요</span>';
+    const action = isSp
+      ? 'TFT와 디텍터 사이에 공백 추가'
+      : '디텍터 S/N 추가 또는 폴더 정리';
+    return '<tr>'
+      + '<td class="hn-rn">' + (i + 1) + '</td>'
+      + '<td class="hn-c">' + badge + '</td>'
+      + '<td class="hn-c hn-mono hn-copy" data-copy="' + esc(x.folder_name) + '" title="클릭하면 폴더명 복사">' + esc(x.folder_name) + '</td>'
+      + '<td class="hn-c" style="color:#666;font-size:11px">' + action + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+// 폴더 오류 전체를 카톡 공유용 텍스트로 클립보드 복사
+function copyFolderIssuesText() {
+  const list = state.folderIssues || [];
+  if (!list.length) { toast('공유할 폴더 오류가 없습니다', 'info'); return; }
+  const nSp = list.filter(x => x.issue_type === 'spacing').length;
+  const nRv = list.length - nSp;
+  const lines = ['[검사포장 폴더명 검토 요청]',
+    '총 ' + list.length + '건 (띄어쓰기 누락 ' + nSp + ' · 검토 필요 ' + nRv + ')',
+    ''];
+  if (nSp > 0) {
+    lines.push('▣ 띄어쓰기 누락 — TFT와 디텍터 사이에 공백만 넣으면 자동 인식됨:');
+    list.filter(x => x.issue_type === 'spacing').forEach(x => lines.push('  • ' + x.folder_name));
+    lines.push('');
+  }
+  if (nRv > 0) {
+    lines.push('▣ 검토 필요 — 디텍터 누락/오타/묶음 외 단독 폴더:');
+    list.filter(x => x.issue_type !== 'spacing').forEach(x => lines.push('  • ' + x.folder_name));
+  }
+  const text = lines.join('\n');
+  copyCellText(text);  // 기존 클립보드 헬퍼 재사용
+}
+
 // 이력 필요 탭 전체 렌더 (목록 + 출하예정 + 큐 + 폼)
 // 진단 바 — 입력 S/N의 실제 상태를 4분할 카드로 표시.
 //  생산기록 / 출하완료 폴더 / 검사포장 / 종합 — 어느 시스템에 데이터가 있고 어디서 끊겼는지 한눈에.
@@ -676,6 +743,7 @@ export function renderHistNeed() {
   renderHistNeedTable();
   renderHnDiag();
   renderHistPending();
+  renderFolderIssues();
   renderQueue();
   renderHnForm();
   state.tabRendered.histneed = true;
@@ -749,6 +817,13 @@ export function initHistNeed() {
     const cp = e.target.closest('.hn-copy');
     if (cp) copyCellText(cp.dataset.copy);
   });
+
+  // 폴더 오류 — 폴더명 셀 클릭 복사 / 전체 복사 버튼
+  document.getElementById('b7')?.addEventListener('click', e => {
+    const cp = e.target.closest('.hn-copy');
+    if (cp) copyCellText(cp.dataset.copy);
+  });
+  document.getElementById('fiCopyAll')?.addEventListener('click', copyFolderIssuesText);
 }
 
 // 모든 탭의 카운트 배지를 한 번에 갱신 (탭을 클릭하지 않아도 숫자가 보이도록)

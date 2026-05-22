@@ -73,10 +73,14 @@ async function fullReload() {
   state.isReloading = true;
   toast('DB 전체 동기화 중...', 'info');
   try {
-    const [sData, pData, tData] = await Promise.all([dbFetchAll('shipment'), dbFetchAll('production'), dbFetchAll('tft_match')]);
+    const [sData, pData, tData, fiData] = await Promise.all([
+      dbFetchAll('shipment'), dbFetchAll('production'), dbFetchAll('tft_match'),
+      dbFetchAll('folder_issues').catch(() => [])    // 테이블 미생성 시 graceful
+    ]);
     state.shipD = sData.map(r => ({ ...r, _id: r.id }));
     state.prodD = pData.map(r => ({ ...r, _id: r.id }));
     state.tftmD = tData;
+    state.folderIssues = fiData || [];
     // dirty 상태 초기화 (DB 데이터로 완전 교체했으므로)
     state.dirty = { updates: {}, inserts: { ship: [], prod: [] }, deletes: { ship: [], prod: [] } };
     state.hasChanges = false;
@@ -292,10 +296,14 @@ async function init() {
   // Then full DB sync (초기 로드 시에는 확인 없이 바로 동기화)
   state.isReloading = true;
   try {
-    const [sData, pData, tData] = await Promise.all([dbFetchAll('shipment'), dbFetchAll('production'), dbFetchAll('tft_match')]);
+    const [sData, pData, tData, fiData] = await Promise.all([
+      dbFetchAll('shipment'), dbFetchAll('production'), dbFetchAll('tft_match'),
+      dbFetchAll('folder_issues').catch(() => [])    // 테이블 미생성 시 graceful
+    ]);
     state.shipD = sData.map(r => ({ ...r, _id: r.id }));
     state.prodD = pData.map(r => ({ ...r, _id: r.id }));
     state.tftmD = tData;
+    state.folderIssues = fiData || [];
     state.dirty = { updates: {}, inserts: { ship: [], prod: [] }, deletes: { ship: [], prod: [] } };
     state.hasChanges = false;
     rebuildTft(); rebuildDetTft(); markDupDirty(); invalidateAllTabs(); renderAll(); updateTabCounts();

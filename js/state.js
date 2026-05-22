@@ -14,6 +14,7 @@ export const state = {
   prodD: [],
   mergeD: [],
   tftmD: [],          // tft_match: { ship_date, tft_sn, detector_sn }
+  folderIssues: [],   // tft-sync가 인식 못한 폴더 목록 { folder_name, issue_type, scanned_at }
   tftMap: {},         // tft_sn → production row
   detTftMap: {},      // detector_sn → tft_sn (from tft_match)
 
