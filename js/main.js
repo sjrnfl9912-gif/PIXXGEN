@@ -29,9 +29,9 @@ export function addRow(type) {
     markDirty(); markDupDirty(); invalidateOtherTabs(); renderShipmentTable();
   } else {
     const w = state.workerFilt !== 'all' ? state.workerFilt : null;
-    // 제작완료일은 오늘 날짜로 프리필 — 현재 연도 필터에 들어와서 새 행이 바로 보임.
+    // 신규 행 프리필 — 작업자(필터값) + 제작완료일(오늘) + 중판 TYPE 표준값(AL(1.5T))
     const todayStr = new Date().toISOString().slice(0, 10);
-    const newRow = { _id: 'new_' + Date.now(), _new: true, worker: w, completed_date: todayStr };
+    const newRow = { _id: 'new_' + Date.now(), _new: true, worker: w, completed_date: todayStr, panel_type: 'AL(1.5T)' };
     PROD_FIELDS.forEach(f => { if (!(f in newRow)) newRow[f] = null; });
     state.prodD.push(newRow); state.dirty.inserts.prod.push(newRow);
     markDirty(); markDupDirty(); rebuildTft(); invalidateOtherTabs(); renderProductionTable();

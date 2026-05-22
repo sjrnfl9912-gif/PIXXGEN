@@ -210,6 +210,21 @@ const PROD_VL_FIELDS = ['tft_sn', 'scintillator', 'cpu_sn', 'main_board_sn', 'ma
 const LONG_COLS = new Set(['product_name', 'company', 'manager_info', 'zview_sw', 'note1', 'note2']);
 const COPY_COLS = new Set(['detector_sn', 'tft_sn']);
 
+// 고정 옵션 컬럼 — 입력 폼에서 드롭다운으로 렌더 (오타 방지)
+const PANEL_TYPE_OPTS = ['AL(1.5T)', 'MG(1.5T)'];
+function fieldInputHtml(f, v, baseAttrs) {
+  // baseAttrs 예: 'data-pf="panel_type"' 또는 'data-side="p" data-f="panel_type"'
+  const safe = esc(v == null ? '' : v);
+  if (f === 'panel_type') {
+    // 표준 옵션 + 레거시 값(혹시 남았으면)을 마지막에 추가
+    const opts = [...PANEL_TYPE_OPTS];
+    if (v && !opts.includes(v)) opts.push(v);
+    const optsHtml = opts.map(o => '<option value="' + esc(o) + '"' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>').join('');
+    return '<select ' + baseAttrs + '>' + optsHtml + '</select>';
+  }
+  return '<input ' + baseAttrs + ' value="' + safe + '">';
+}
+
 // 읽기 전용 셀 HTML 빌더
 function readCell(field, value, baseClass) {
   if (value == null || value === '') {
@@ -595,7 +610,7 @@ function renderHnForm() {
   const snap = {};
   let focusedField = null, caret = null;
   if (sameItem) {
-    area.querySelectorAll('input[data-pf]').forEach(inp => { snap[inp.dataset.pf] = inp.value; });
+    area.querySelectorAll('[data-pf]').forEach(inp => { snap[inp.dataset.pf] = inp.value; });
     const act = document.activeElement;
     if (act?.dataset?.pf && area.contains(act)) {
       focusedField = act.dataset.pf;
@@ -603,7 +618,7 @@ function renderHnForm() {
     }
   }
 
-  // 프리필: 수정 모드면 저장된 값 그대로, 신규면 기본값(오늘 + 현재 작업자 필터)
+  // 프리필: 수정 모드면 저장된 값 그대로, 신규면 기본값(오늘 + 현재 작업자 필터 + 중판 표준)
   let prefill;
   if (isEdit) {
     prefill = {};
@@ -616,6 +631,7 @@ function renderHnForm() {
       detector_fw: ship.detector_fw || '',
       worker: workerPre,
       completed_date: todayStr,
+      panel_type: 'AL(1.5T)',   // 표준값(거의 모든 케이스), MG는 선택 시 변경
     };
   }
 
@@ -624,7 +640,7 @@ function renderHnForm() {
     const f = PROD_FIELDS[j], hh = PROD_HEADS[j].replace(/\n/g, ' ');
     const v = (f in snap) ? snap[f] : (prefill[f] || '');
     fields += '<label class="hn-fld"><span>' + esc(hh) + '</span>'
-      + '<input data-pf="' + f + '" value="' + esc(v) + '"></label>';
+      + fieldInputHtml(f, v, 'data-pf="' + f + '"') + '</label>';
   }
 
   const headIcon = isEdit ? '✏' : '📝';
@@ -643,13 +659,13 @@ function renderHnForm() {
   area.dataset.formDet = q.det;
   // 포커스/캐럿 복원 — 입력 흐름을 깨지 않음. 첫 진입이면 첫 입력칸에 포커스.
   if (focusedField) {
-    const fi = area.querySelector('input[data-pf="' + focusedField + '"]');
+    const fi = area.querySelector('[data-pf="' + focusedField + '"]');
     if (fi) {
       fi.focus();
       if (caret != null) { try { fi.setSelectionRange(caret, caret); } catch (e) {} }
     }
   } else if (!sameItem) {
-    const fi = area.querySelector('input[data-pf]');
+    const fi = area.querySelector('[data-pf]');
     if (fi) fi.focus();
   }
 }
@@ -660,7 +676,7 @@ async function saveHnForm() {
   const q = (hnSel >= 0) ? hnQueue[hnSel] : null;
   if (!area || !q) return;
   const obj = {};
-  area.querySelectorAll('input[data-pf]').forEach(inp => {
+  area.querySelectorAll('[data-pf]').forEach(inp => {
     const v = inp.value.trim();
     obj[inp.dataset.pf] = v === '' ? null : v;
   });
