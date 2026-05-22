@@ -2,7 +2,7 @@
 // TABLE RENDERING (Full rewrite)
 // ═══════════════════════════════════════
 import { SHIP_FIELDS, SHIP_HEADS, PROD_FIELDS, PROD_HEADS, MERGE_HEADS, MERGE_VC_START, TFTM_FIELDS, TFTM_HEADS } from '../config.js';
-import { state, markDupDirty, rebuildTft, invalidateOtherTabs } from '../state.js';
+import { state, markDupDirty, rebuildTft, rebuildDetTft, invalidateOtherTabs } from '../state.js';
 import { dbInsert, dbUpdate } from '../db.js';
 import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
@@ -262,7 +262,7 @@ export function renderMergeTable() {
     const tftSn = state.detTftMap[r.detector_sn];
     const p = state.tftMap[tftSn] || {};
     const cells = ['<tr><td class="rn">' + (i + 1) + '</td>'];
-    // 검사포장 컬럼 — 읽기 전용 텍스트로 렌더 (편집은 검사포장 탭에서)
+    // 검사포장 컬럼 — 읽기 전용 텍스트로 렌더 (편집은 모달에서)
     for (let j = 0; j < SHIP_FIELDS.length; j++) {
       cells.push(readCell(SHIP_FIELDS[j], r[SHIP_FIELDS[j]], 'cw'));
     }
@@ -271,17 +271,180 @@ export function renderMergeTable() {
       const f = PROD_VL_FIELDS[j];
       if (!tftSn) { cells.push('<td class="v"><span class="vl-na">-</span></td>'); continue; }
       if (p[f] == null || p[f] === '') {
-        // tft_sn 컬럼은 매칭은 됐으니 값이 비더라도 매칭없음으로만 표시할 필요는 없음
         cells.push('<td class="v"><span class="vl-miss">매칭없음</span></td>'); continue;
       }
       cells.push(readCell(f, p[f], 'v'));
     }
+    // 편집 버튼 — 검사포장+생산 합쳐서 모달로 편집
+    cells.push('<td class="merge-edit-td"><button class="merge-edit-btn" data-id="' + r._id + '" title="유닛 상세 편집">✏</button></td>');
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
   const b3 = document.getElementById('b3');
   if (b3) b3.innerHTML = rows.join('');
+  // 편집 컬럼 헤더 추가 (mkHead가 만든 두 줄 thead에 마지막 칸 append, 한 번만)
+  const th3 = document.getElementById('th3');
+  if (th3 && !th3.querySelector('.col-edit-h')) {
+    const trs = th3.querySelectorAll('tr');
+    if (trs[0]) trs[0].insertAdjacentHTML('beforeend', '<th class="al col-edit"></th>');
+    if (trs[1]) trs[1].insertAdjacentHTML('beforeend', '<th class="col-edit-h">편집</th>');
+  }
   state.tabRendered.merge = true;
+}
+
+// ═══ 통합취합본 — 유닛 상세 편집 모달 ═══
+//  행 끝 「✏」 클릭 → 검사포장+생산 한 화면에서 편집. dbUpdate로 양쪽 테이블 반영.
+let unitEditState = null;   // { shipRow, prodRow, tftSn }
+
+function openUnitEditModal(shipId) {
+  const ship = state.shipD.find(s => String(s._id) === String(shipId));
+  if (!ship) { toast('출하건을 찾을 수 없습니다', 'er'); return; }
+  if (String(ship._id).startsWith('new_')) {
+    toast('새로 추가한 출하건은 먼저 저장 후 편집 가능합니다', 'er'); return;
+  }
+  const tftSn = state.detTftMap[ship.detector_sn] || '';
+  const prod = tftSn ? state.tftMap[tftSn] : null;
+  unitEditState = { shipRow: ship, prodRow: prod, tftSn };
+
+  // 타이틀·서브
+  document.getElementById('unitTitle').textContent = '📦 유닛 상세 편집 — ' + (ship.product_name || '(품명 없음)');
+  document.getElementById('unitDesc').textContent =
+    '디텍터 ' + (ship.detector_sn || '-') + (tftSn ? ' · TFT ' + tftSn : ' · TFT 매칭 없음');
+
+  // 검사포장 필드
+  const shipGrid = document.getElementById('unitShipGrid');
+  shipGrid.innerHTML = SHIP_FIELDS.map((f, idx) => {
+    const head = SHIP_HEADS[idx].replace(/\n/g, ' ');
+    const v = ship[f] != null ? ship[f] : '';
+    const isRO = (f === 'row_no');   // NO는 자동 — 편집 잠금
+    return '<div class="unit-fld"><label>' + esc(head) + '</label>'
+      + '<input data-side="s" data-f="' + f + '" value="' + esc(v) + '"' + (isRO ? ' readonly' : '') + '></div>';
+  }).join('');
+
+  // 생산 필드
+  const prodGrid = document.getElementById('unitProdGrid');
+  const note = document.getElementById('unitProdNote');
+  if (!prod) {
+    note.textContent = '— 생산기록 없음. 「이력 필요」 탭에서 생성하거나 검사포장에서 매칭 폴더 확인';
+    prodGrid.innerHTML = PROD_FIELDS.map((f, idx) => {
+      const head = PROD_HEADS[idx].replace(/\n/g, ' ');
+      return '<div class="unit-fld"><label>' + esc(head) + '</label>'
+        + '<input data-side="p" data-f="' + f + '" value="" readonly></div>';
+    }).join('');
+  } else {
+    note.textContent = '';
+    prodGrid.innerHTML = PROD_FIELDS.map((f, idx) => {
+      const head = PROD_HEADS[idx].replace(/\n/g, ' ');
+      const v = prod[f] != null ? prod[f] : '';
+      return '<div class="unit-fld"><label>' + esc(head) + '</label>'
+        + '<input data-side="p" data-f="' + f + '" value="' + esc(v) + '"></div>';
+    }).join('');
+  }
+
+  document.getElementById('unitInfo').textContent = '';
+  // 변경 추적 — 입력 변하면 .changed 토글
+  document.querySelectorAll('#unitBg input[data-side]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const orig = inp.defaultValue;
+      inp.parentElement.classList.toggle('changed', inp.value !== orig);
+    });
+  });
+
+  document.getElementById('unitBg').classList.add('show');
+  // 첫 입력 포커스 (NO는 readonly이므로 다음)
+  setTimeout(() => document.querySelector('#unitBg input:not([readonly])')?.focus(), 30);
+}
+
+function closeUnitEditModal() {
+  document.getElementById('unitBg').classList.remove('show');
+  unitEditState = null;
+}
+
+async function saveUnitEditModal() {
+  if (!unitEditState) return;
+  const { shipRow, prodRow } = unitEditState;
+  const btn = document.getElementById('unitSave');
+  const info = document.getElementById('unitInfo');
+
+  // 변경된 필드만 수집
+  const shipChanges = {};
+  const prodChanges = {};
+  document.querySelectorAll('#unitBg input[data-side]').forEach(inp => {
+    if (inp.readOnly) return;
+    const newV = inp.value.trim();
+    const oldV = inp.defaultValue;
+    if (newV === oldV) return;
+    const obj = inp.dataset.side === 's' ? shipChanges : prodChanges;
+    obj[inp.dataset.f] = newV === '' ? null : newV;
+  });
+
+  const nShip = Object.keys(shipChanges).length;
+  const nProd = Object.keys(prodChanges).length;
+  if (nShip === 0 && nProd === 0) {
+    toast('변경된 항목 없음', 'info');
+    return;
+  }
+
+  // 안전장치 — TFT 변경 시 다른 행과 충돌
+  if (prodChanges.tft_sn && state.tftMap[prodChanges.tft_sn] && state.tftMap[prodChanges.tft_sn] !== prodRow) {
+    toast('새 TFT S/N(' + prodChanges.tft_sn + ')은 이미 다른 생산기록에 사용 중', 'er');
+    return;
+  }
+  if (shipChanges.detector_sn) {
+    const dup = state.shipD.find(s => s.detector_sn === shipChanges.detector_sn && s !== shipRow);
+    if (dup) { toast('새 디텍터 S/N(' + shipChanges.detector_sn + ')은 이미 다른 출하건에 있음', 'er'); return; }
+  }
+
+  btn.disabled = true; btn.textContent = '저장 중...';
+  info.textContent = '저장 중...';
+  try {
+    if (nShip > 0) {
+      const updated = await dbUpdate('shipment', shipRow.id != null ? shipRow.id : shipRow._id, shipChanges);
+      if (!updated) throw new Error('출하 정보 저장 실패');
+      Object.assign(shipRow, updated, { _id: updated.id });
+    }
+    if (nProd > 0 && prodRow) {
+      const updated = await dbUpdate('production', prodRow.id != null ? prodRow.id : prodRow._id, prodChanges);
+      if (!updated) throw new Error('생산 정보 저장 실패');
+      Object.assign(prodRow, updated, { _id: updated.id });
+    }
+    rebuildTft();
+    rebuildDetTft();
+    markDupDirty();
+    invalidateOtherTabs();
+    saveCache(state.shipD, state.prodD);
+    const parts = [];
+    if (nShip) parts.push('출하 ' + nShip + '개 필드');
+    if (nProd) parts.push('생산 ' + nProd + '개 필드');
+    toast('저장 완료 — ' + parts.join(', '), 'ok');
+    closeUnitEditModal();
+    renderMergeTable();
+  } catch (e) {
+    toast('저장 실패: ' + e.message, 'er');
+    btn.disabled = false; btn.textContent = '💾 변경 저장';
+    info.textContent = '';
+  }
+}
+
+// 통합취합본 「✏」 클릭 위임 핸들러 (한 번 등록)
+export function initMergeEditClicks() {
+  document.getElementById('b3')?.addEventListener('click', e => {
+    const btn = e.target.closest('.merge-edit-btn');
+    if (!btn) return;
+    e.stopPropagation();
+    openUnitEditModal(btn.dataset.id);
+  });
+  document.getElementById('unitClose')?.addEventListener('click', closeUnitEditModal);
+  document.getElementById('unitCancel')?.addEventListener('click', closeUnitEditModal);
+  document.getElementById('unitSave')?.addEventListener('click', saveUnitEditModal);
+  document.getElementById('unitBg')?.addEventListener('click', e => {
+    if (e.target.id === 'unitBg') closeUnitEditModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('unitBg')?.classList.contains('show')) {
+      closeUnitEditModal();
+    }
+  });
 }
 
 // ═══ TFT 매칭 탭 (읽기 전용) ═══

@@ -4,7 +4,7 @@
 import { SHIP_FIELDS, PROD_FIELDS } from './config.js';
 import { state, rebuildTft, rebuildDetTft, markDirty, markDupDirty, invalidateOtherTabs, invalidateAllTabs } from './state.js';
 import { dbFetchAll } from './db.js';
-import { renderAll, renderShipmentTable, renderProductionTable, renderHistNeedTable, updateTabCounts, initHistNeed } from './modules/table.js';
+import { renderAll, renderShipmentTable, renderProductionTable, renderHistNeedTable, updateTabCounts, initHistNeed, initMergeEditClicks } from './modules/table.js';
 import { saveCache, saveTftmCache, loadCache } from './services/storage.js';
 import { toast, showLoading, customConfirm } from './services/ui.js';
 import { init as initSelection } from './modules/selection.js';
@@ -279,6 +279,7 @@ async function init() {
   initMobile();
   initKPI();
   initHistNeed();
+  initMergeEditClicks();
 
   // ═══ LOAD DATA ═══
   // Try cache first for instant display
