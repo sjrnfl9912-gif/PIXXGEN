@@ -242,6 +242,17 @@ async function init() {
   document.getElementById('changelogClose')?.addEventListener('click', () => clBg?.classList.remove('show'));
   clBg?.addEventListener('click', e => { if (e.target === clBg) clBg.classList.remove('show'); });
 
+  // Manual Run modal (⚡ 수동 실행)
+  const mrBg = document.getElementById('manualRunBg');
+  document.getElementById('manualRunBtn')?.addEventListener('click', () => mrBg?.classList.add('show'));
+  document.getElementById('manualRunClose')?.addEventListener('click', () => mrBg?.classList.remove('show'));
+  mrBg?.addEventListener('click', e => { if (e.target === mrBg) mrBg.classList.remove('show'); });
+  document.getElementById('mrPathCopy')?.addEventListener('click', () => {
+    const p = '\\\\SERVER03\\Fab_Sync\\99. 기타 - 팀원 임시 폴더\\홍승범\\PIXXGEN\\PIXXGEN-sync\\';
+    navigator.clipboard?.writeText(p);
+    toast('경로 복사됨 — 파일 탐색기 주소창에 붙여넣기(Ctrl+V)', 'ok');
+  });
+
   // TFT match button
   document.getElementById('tftMatchBtn')?.addEventListener('click', () => { /* TODO: TFT modal */ toast('TFT 매칭 모달 (준비 중)', 'info'); });
 

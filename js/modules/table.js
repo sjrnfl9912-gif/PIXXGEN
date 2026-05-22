@@ -319,14 +319,14 @@ function openUnitEditModal(shipId) {
   document.getElementById('unitDesc').textContent =
     '디텍터 ' + (ship.detector_sn || '-') + (tftSn ? ' · TFT ' + tftSn : ' · TFT 매칭 없음');
 
-  // 검사포장 필드
+  // 검사포장 필드 — 매일 17:00 엑셀에서 자동 덮어쓰기되므로 여기 편집은 의미 없음.
+  //  → 읽기 전용으로 표시하고, 엑셀 원본 경로 복사 버튼 제공.
   const shipGrid = document.getElementById('unitShipGrid');
   shipGrid.innerHTML = SHIP_FIELDS.map((f, idx) => {
     const head = SHIP_HEADS[idx].replace(/\n/g, ' ');
     const v = ship[f] != null ? ship[f] : '';
-    const isRO = (f === 'row_no');   // NO는 자동 — 편집 잠금
     return '<div class="unit-fld"><label>' + esc(head) + '</label>'
-      + '<input data-side="s" data-f="' + f + '" value="' + esc(v) + '"' + (isRO ? ' readonly' : '') + '></div>';
+      + '<input data-side="s" data-f="' + f + '" value="' + esc(v) + '" readonly></div>';
   }).join('');
 
   // 생산 필드
@@ -345,15 +345,18 @@ function openUnitEditModal(shipId) {
       const head = PROD_HEADS[idx].replace(/\n/g, ' ');
       const v = prod[f] != null ? prod[f] : '';
       return '<div class="unit-fld"><label>' + esc(head) + '</label>'
-        + '<input data-side="p" data-f="' + f + '" value="' + esc(v) + '"></div>';
+        + fieldInputHtml(f, v, 'data-side="p" data-f="' + f + '"') + '</div>';
     }).join('');
   }
 
   document.getElementById('unitInfo').textContent = '';
-  // 변경 추적 — 입력 변하면 .changed 토글
-  document.querySelectorAll('#unitBg input[data-side]').forEach(inp => {
-    inp.addEventListener('input', () => {
-      const orig = inp.defaultValue;
+  // 변경 추적 — 입력/선택 변하면 .changed 토글
+  document.querySelectorAll('#unitBg [data-side]').forEach(inp => {
+    const ev = inp.tagName === 'SELECT' ? 'change' : 'input';
+    inp.addEventListener(ev, () => {
+      const orig = inp.tagName === 'SELECT'
+        ? Array.from(inp.options).find(o => o.defaultSelected)?.value || ''
+        : inp.defaultValue;
       inp.parentElement.classList.toggle('changed', inp.value !== orig);
     });
   });
@@ -374,13 +377,15 @@ async function saveUnitEditModal() {
   const btn = document.getElementById('unitSave');
   const info = document.getElementById('unitInfo');
 
-  // 변경된 필드만 수집
+  // 변경된 필드만 수집 (input + select 둘 다, readonly 제외)
   const shipChanges = {};
   const prodChanges = {};
-  document.querySelectorAll('#unitBg input[data-side]').forEach(inp => {
-    if (inp.readOnly) return;
+  document.querySelectorAll('#unitBg [data-side]').forEach(inp => {
+    if (inp.readOnly || inp.disabled) return;
     const newV = inp.value.trim();
-    const oldV = inp.defaultValue;
+    const oldV = (inp.tagName === 'SELECT')
+      ? Array.from(inp.options).find(o => o.defaultSelected)?.value || ''
+      : inp.defaultValue;
     if (newV === oldV) return;
     const obj = inp.dataset.side === 's' ? shipChanges : prodChanges;
     obj[inp.dataset.f] = newV === '' ? null : newV;
@@ -445,6 +450,11 @@ export function initMergeEditClicks() {
   document.getElementById('unitClose')?.addEventListener('click', closeUnitEditModal);
   document.getElementById('unitCancel')?.addEventListener('click', closeUnitEditModal);
   document.getElementById('unitSave')?.addEventListener('click', saveUnitEditModal);
+  // 엑셀 원본 경로 복사
+  document.getElementById('unitShipExcelCopy')?.addEventListener('click', () => {
+    const path = '\\\\SERVER03\\Fab_Sync\\1. 재고\\2026년 출하이력\\2026년 통합 출하 이력.xlsx';
+    copyCellText(path);
+  });
   document.getElementById('unitBg')?.addEventListener('click', e => {
     if (e.target.id === 'unitBg') closeUnitEditModal();
   });

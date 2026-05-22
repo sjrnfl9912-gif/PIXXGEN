@@ -19,6 +19,9 @@ export function init() {
     if (e.key === 'Escape' && document.getElementById('changelogBg')?.classList.contains('show')) {
       document.getElementById('changelogBg').classList.remove('show'); return;
     }
+    if (e.key === 'Escape' && document.getElementById('manualRunBg')?.classList.contains('show')) {
+      document.getElementById('manualRunBg').classList.remove('show'); return;
+    }
     if (e.key === 'Escape' && document.getElementById('modalBg')?.classList.contains('show')) {
       document.getElementById('modalBg').classList.remove('show'); return;
     }

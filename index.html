@@ -40,6 +40,7 @@
       <div class="tab-right">
         <button class="btn" id="helpBtn" title="사용 설명서">❓ 사용법</button>
         <button class="btn" id="changelogBtn" title="업데이트 내역">🆕 업데이트</button>
+        <button class="btn" id="manualRunBtn" title="스크립트 수동 실행">⚡ 수동 실행</button>
         <span id="saveStatus" style="font-size:10px;color:var(--ok)">저장 완료</span>
         <button class="btn btn-pr" id="saveBtn" style="font-weight:600">💾 저장</button>
         <button class="btn btn-hide-m" id="backupBtn">📥 백업</button>
@@ -198,7 +199,15 @@
       </div>
       <div class="unit-body">
         <div class="unit-sec">
-          <div class="unit-sec-h"><span class="unit-badge unit-badge-ship">검사포장</span> 출하 정보</div>
+          <div class="unit-sec-h">
+            <span class="unit-badge unit-badge-ship">검사포장</span> 출하 정보
+            <span class="unit-sec-note">읽기 전용 — 매일 17:00에 엑셀 원본에서 자동 갱신됨</span>
+          </div>
+          <div class="unit-ship-tools">
+            <button class="btn-mini" id="unitShipExcelCopy" title="원본 엑셀 경로 복사 (파일 탐색기에 붙여넣기)">📋 엑셀 원본 경로</button>
+            <a class="btn-mini btn-mini-pri" href="pixxgen://upload" id="unitShipUploadRun" title="엑셀 수정 후 즉시 반영하려면 클릭 (pixxgen:// 프로토콜 필요)">📤 출하 이력 업로드 실행</a>
+            <span class="unit-ship-hint">엑셀에서 수정 → 「📤 업로드 실행」 또는 매일 17:00 자동 반영</span>
+          </div>
           <div class="unit-grid" id="unitShipGrid"></div>
         </div>
         <div class="unit-sec">
@@ -386,6 +395,49 @@
     </div>
   </div>
 
+  <!-- Manual Run / 수동 실행 -->
+  <div class="help-bg" id="manualRunBg">
+    <div class="help" style="width:560px;max-width:95vw">
+      <div class="help-h">
+        <h3>⚡ 수동 실행</h3>
+        <button class="help-x" id="manualRunClose" title="닫기">&times;</button>
+      </div>
+      <div class="help-b" style="padding:18px">
+        <p class="cl-intro">자동 실행(매일 17:00/17:10/17:30) 외에 즉시 실행이 필요할 때 사용.</p>
+
+        <div class="mr-grid">
+          <a class="mr-card" href="pixxgen://upload">
+            <div class="mr-h">📤 검사포장 출하 이력 업로드</div>
+            <div class="mr-d">엑셀 원본을 수정한 후 즉시 DB에 반영하고 싶을 때.<br>매일 17:00 자동 실행 외 임시 갱신용.</div>
+          </a>
+          <a class="mr-card" href="pixxgen://tft-sync">
+            <div class="mr-h">🔗 TFT 매칭 동기화</div>
+            <div class="mr-d">출하완료 폴더명을 고친 후 즉시 반영.<br>매일 17:10 자동 실행 외 임시 갱신용.</div>
+          </a>
+          <a class="mr-card" href="pixxgen://sync">
+            <div class="mr-h">💾 서버 백업 실행</div>
+            <div class="mr-d">현재 DB 상태를 서버 스냅샷 폴더로 백업.<br>매일 17:30 자동 실행 외 즉시 백업용.</div>
+          </a>
+        </div>
+
+        <div class="mr-setup">
+          <div class="mr-setup-h">⚙️ 처음 사용 시 1회 설치 (PC당)</div>
+          <ol class="mr-ol">
+            <li>아래 폴더 열기 → <b>register-pixxgen-protocol.bat</b> 더블클릭 (사용자 계정 등록, 관리자 권한 불필요)</li>
+            <li>이후 위의 ⚡ 버튼 클릭하면 PowerShell 창이 열려 스크립트가 실행됩니다.</li>
+          </ol>
+          <div class="mr-path">
+            <span class="mr-path-pp">\\SERVER03\Fab_Sync\99. 기타 - 팀원 임시 폴더\홍승범\PIXXGEN\PIXXGEN-sync\</span>
+            <button class="btn-mini" id="mrPathCopy">📋 경로 복사</button>
+          </div>
+          <div class="mr-alt">
+            ※ 프로토콜 등록 안 해도 됩니다 — 위 폴더의 <b>run-upload.bat</b> · <b>run-tft-sync.bat</b> · <b>run-sync.bat</b> 더블클릭으로도 같은 동작.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Changelog / 업데이트 내역 -->
   <div class="help-bg" id="changelogBg">
     <div class="help">
@@ -398,6 +450,17 @@
           <p class="cl-intro">새로 추가·개선된 기능들. 위쪽이 가장 최근.</p>
 
           <!-- ▼ 새 항목은 이 아래에 추가 -->
+
+          <div class="cl-entry">
+            <div class="cl-date">2026-05-23</div>
+            <ul class="cl-list">
+              <li><b>⚡ 수동 실행 패널</b> — 헤더에 「⚡ 수동 실행」 추가. 업로드/TFT 매칭/백업 3가지 스크립트를 즉시 실행 (pixxgen:// 프로토콜)</li>
+              <li><b>수동 실행 .bat</b> — 서버 공용 PIXXGEN-sync 폴더에 run-upload/run-tft-sync/run-sync.bat 추가. 더블클릭으로 즉시 실행</li>
+              <li><b>중판 TYPE 표준화</b> — 입력 드롭다운(AL(1.5T)/MG(1.5T)) + 기본값 AL(1.5T). DB 변이 5종 정규화(3,349건)</li>
+              <li><b>통합취합본 ✏ 모달</b> — 검사포장 측은 읽기 전용으로 변경(엑셀이 원본). 엑셀 경로 복사 + 업로드 즉시 실행 버튼 추가</li>
+              <li><b>✏ 트리거 좌측 이동</b> — 행 번호 칸이 좌측 고정(sticky). 가로 스크롤 어디서든 ✏ 클릭 가능</li>
+            </ul>
+          </div>
 
           <div class="cl-entry">
             <div class="cl-date">2026-05-22</div>
