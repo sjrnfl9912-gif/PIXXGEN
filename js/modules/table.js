@@ -272,6 +272,7 @@ export function renderTftmTable() {
   }
   const b4 = document.getElementById('b4');
   if (b4) b4.innerHTML = rows.join('');
+  renderFolderIssues();   // 폴더 오류 섹션도 같이 갱신 (TFT 매칭 탭 안에 있음)
   state.tabRendered.tftm = true;
 }
 
@@ -743,7 +744,6 @@ export function renderHistNeed() {
   renderHistNeedTable();
   renderHnDiag();
   renderHistPending();
-  renderFolderIssues();
   renderQueue();
   renderHnForm();
   state.tabRendered.histneed = true;
