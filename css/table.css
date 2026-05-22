@@ -527,6 +527,13 @@ tr.grp-start td {
 #hnFormArea { padding: 8px 16px 4px; }
 .hn-form-pos { float: right; font-size: 11px; color: #888; font-weight: 500; }
 .hn-form-done { background: #e7f6ec; color: #16794a; font-weight: 700; font-size: 13px; }
+/* 수정 모드 — 완료된 큐 항목 다시 편집할 때 시각 구분 */
+.hn-form.hn-form-edit { background: #fff7e6; border-color: #f0d690; }
+.hn-form.hn-form-edit .hn-form-h { color: #8a5a00; }
+.hn-form-edit-tag {
+  background: #d9821a; color: #fff; padding: 1px 8px; border-radius: 8px;
+  font-size: 10px; font-weight: 500; margin-left: 6px; letter-spacing: .3px;
+}
 .hn-list-d { margin: 10px 16px 16px; }
 .hn-list-d > summary {
   cursor: pointer;

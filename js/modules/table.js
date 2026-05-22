@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════
 import { SHIP_FIELDS, SHIP_HEADS, PROD_FIELDS, PROD_HEADS, MERGE_HEADS, MERGE_VC_START, TFTM_FIELDS, TFTM_HEADS } from '../config.js';
 import { state, markDupDirty, rebuildTft, invalidateOtherTabs } from '../state.js';
-import { dbInsert } from '../db.js';
+import { dbInsert, dbUpdate } from '../db.js';
 import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
 
@@ -396,7 +396,8 @@ function renderQueue() {
   }
   box.innerHTML = hnQueue.map((q, i) => {
     const ship = hnShipByDet(q.det);
-    return '<div class="hn-qchip' + (q.done ? ' done' : '') + (i === hnSel ? ' on' : '') + '" data-qi="' + i + '">'
+    const tip = q.done ? '클릭하면 수정' : '클릭하면 입력 폼 열기';
+    return '<div class="hn-qchip' + (q.done ? ' done' : '') + (i === hnSel ? ' on' : '') + '" data-qi="' + i + '" title="' + tip + '">'
       + (q.done ? '✓ ' : '') + '<b>' + esc(ship.product_name || '?') + '</b> · ' + esc(q.det)
       + '<span class="hn-qx" data-qx="' + i + '" title="큐에서 제거">×</span></div>';
   }).join('');
@@ -412,12 +413,21 @@ function renderHnForm() {
   const q = (hnSel >= 0) ? hnQueue[hnSel] : null;
   if (!q) { area.innerHTML = ''; area.dataset.formDet = ''; return; }
   const ship = hnShipByDet(q.det);
-  if (q.done) {
-    area.innerHTML = '<div class="hn-form hn-form-done">✓ ' + esc(ship.product_name || '')
-      + ' / 디텍터 ' + esc(q.det) + ' — 생산이력 작성 완료</div>';
-    area.dataset.formDet = '';
-    return;
+
+  // 완료된 항목 — 수정 모드 (저장된 생산기록을 다시 편집 가능)
+  const isEdit = !!q.done;
+  let existingProd = null;
+  if (isEdit) {
+    existingProd = state.tftMap[q.tft] || null;
+    if (!existingProd) {
+      area.innerHTML = '<div class="hn-form hn-form-done">✓ ' + esc(ship.product_name || '')
+        + ' / 디텍터 ' + esc(q.det) + ' — 생산이력 작성 완료<br>'
+        + '<span style="font-size:11px;color:#666">생산기록을 찾을 수 없어 여기서 수정 불가 — 생산관리대장 탭에서 직접 수정</span></div>';
+      area.dataset.formDet = '';
+      return;
+    }
   }
+
   // 같은 큐 항목을 다시 그리는 경우 입력 중이던 값/포커스 스냅샷
   const sameItem = area.dataset.formDet === q.det;
   const snap = {};
@@ -430,17 +440,23 @@ function renderHnForm() {
       try { caret = act.selectionStart; } catch (e) {}
     }
   }
-  // 작업자 + 제작완료일 자동 프리필 — 비어있는 채로 저장돼 생산관리대장 필터에서 가려지던 문제 방지.
-  //  작업자: 화면에서 선택된 작업자 필터값(state.workerFilt)
-  //  제작완료일: 오늘 날짜
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const workerPre = (state.workerFilt && state.workerFilt !== 'all') ? state.workerFilt : '';
-  const prefill = {
-    tft_sn: q.tft,
-    detector_fw: ship.detector_fw || '',
-    worker: workerPre,
-    completed_date: todayStr,
-  };
+
+  // 프리필: 수정 모드면 저장된 값 그대로, 신규면 기본값(오늘 + 현재 작업자 필터)
+  let prefill;
+  if (isEdit) {
+    prefill = {};
+    for (const f of PROD_FIELDS) prefill[f] = existingProd[f] != null ? existingProd[f] : '';
+  } else {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const workerPre = (state.workerFilt && state.workerFilt !== 'all') ? state.workerFilt : '';
+    prefill = {
+      tft_sn: q.tft,
+      detector_fw: ship.detector_fw || '',
+      worker: workerPre,
+      completed_date: todayStr,
+    };
+  }
+
   let fields = '';
   for (let j = 0; j < PROD_FIELDS.length; j++) {
     const f = PROD_FIELDS[j], hh = PROD_HEADS[j].replace(/\n/g, ' ');
@@ -448,13 +464,19 @@ function renderHnForm() {
     fields += '<label class="hn-fld"><span>' + esc(hh) + '</span>'
       + '<input data-pf="' + f + '" value="' + esc(v) + '"></label>';
   }
-  area.innerHTML = '<div class="hn-form">'
-    + '<div class="hn-form-h">📝 ' + esc(ship.product_name || '') + ' / 디텍터 ' + esc(q.det)
-    + ' · TFT ' + esc(q.tft || '(없음 — 직접 입력)')
+
+  const headIcon = isEdit ? '✏' : '📝';
+  const headTag  = isEdit ? '<span class="hn-form-edit-tag">수정 모드</span>' : '';
+  const saveTxt  = isEdit ? '💾 수정 저장' : '💾 저장하고 다음';
+  const skipBtn  = isEdit ? '' : '<button class="hn-skip">건너뛰기 ▶</button>';
+
+  area.innerHTML = '<div class="hn-form' + (isEdit ? ' hn-form-edit' : '') + '">'
+    + '<div class="hn-form-h">' + headIcon + ' ' + esc(ship.product_name || '') + ' / 디텍터 ' + esc(q.det)
+    + ' · TFT ' + esc(q.tft || '(없음 — 직접 입력)') + ' ' + headTag
     + '<span class="hn-form-pos">큐 ' + (hnSel + 1) + ' / ' + hnQueue.length + '</span></div>'
     + '<div class="hn-form-grid">' + fields + '</div>'
-    + '<div class="hn-form-f"><button class="hn-skip">건너뛰기 ▶</button>'
-    + '<button class="hn-save">💾 저장하고 다음</button></div>'
+    + '<div class="hn-form-f">' + skipBtn
+    + '<button class="hn-save">' + saveTxt + '</button></div>'
     + '</div>';
   area.dataset.formDet = q.det;
   // 포커스/캐럿 복원 — 입력 흐름을 깨지 않음. 첫 진입이면 첫 입력칸에 포커스.
@@ -470,7 +492,7 @@ function renderHnForm() {
   }
 }
 
-// 폼 저장 → production 테이블에 직접 추가
+// 폼 저장 → 신규는 insert, 완료(수정 모드)는 update
 async function saveHnForm() {
   const area = document.getElementById('hnFormArea');
   const q = (hnSel >= 0) ? hnQueue[hnSel] : null;
@@ -482,15 +504,45 @@ async function saveHnForm() {
   });
   if (!obj.tft_sn) { toast('TFT S/N은 반드시 입력해야 합니다', 'er'); return; }
   if (!obj.worker) { toast('작업자를 반드시 입력해야 합니다 — 생산관리대장 필터에서 가려지지 않게', 'er'); return; }
+  const btn = area.querySelector('.hn-save');
+
+  // ── 수정 모드 (완료된 큐 항목 재편집) ──
+  if (q.done) {
+    const existing = state.tftMap[q.tft];
+    if (!existing) { toast('수정할 생산기록을 찾지 못했습니다', 'er'); return; }
+    // TFT 변경 시 다른 행과 충돌하면 차단
+    if (obj.tft_sn !== existing.tft_sn && state.tftMap[obj.tft_sn]) {
+      toast('새 TFT S/N(' + obj.tft_sn + ')은 이미 다른 생산기록에 사용 중', 'er'); return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+    const id = existing.id != null ? existing.id : existing._id;
+    const updated = await dbUpdate('production', id, obj);
+    if (!updated) {
+      toast('수정 실패 — 다시 시도해주세요', 'er');
+      if (btn) { btn.disabled = false; btn.textContent = '💾 수정 저장'; }
+      return;
+    }
+    const idx = state.prodD.findIndex(p => (p.id != null ? p.id : p._id) === id);
+    if (idx >= 0) state.prodD[idx] = { ...updated, _id: updated.id };
+    if (obj.tft_sn !== q.tft) q.tft = obj.tft_sn;
+    rebuildTft();
+    markDupDirty();
+    invalidateOtherTabs();
+    saveCache(state.shipD, state.prodD);
+    hnQueueSave();
+    toast('생산이력 수정 완료 — ' + obj.tft_sn, 'ok');
+    renderHistNeed();
+    return;
+  }
+
+  // ── 신규 저장 ──
   // 동시 작업 가드 — 그 사이 다른 사람이 같은 TFT 생산기록을 이미 만들었으면 중복 저장 방지
   if (state.tftMap[obj.tft_sn]) {
     toast('이미 생산기록이 있습니다 — 다른 사람이 먼저 작성한 것 같습니다', 'info');
     q.done = true; hnQueueSave();
-    hnSel = hnQueue.findIndex(x => !x.done);
     renderHistNeed();
     return;
   }
-  const btn = area.querySelector('.hn-save');
   if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
   const row = await dbInsert('production', obj);
   if (!row) {
