@@ -498,7 +498,15 @@ export function renderTftmTable() {
 // 연동 안 된 출하건 목록 계산
 //  no-prod : TFT는 찾았으나 생산기록 없음 (작성하면 바로 연동)
 //  no-tft  : 디텍터 S/N이 tft_match에 없음 (출하완료 폴더도 확인 필요)
+//  thin    : 생산기록은 있으나 CPU/MAINBOARD/작업자 중 하나라도 비어있음 (보강 권장)
 //  pending : no-tft 인데 예상출하일이 아직 안 지남 → 미출하, 작업 대상 아님 (따로 분리)
+
+// 생산기록이 "있긴 있지만 비어있는" 케이스 판정 — 사용자 기준: CPU·MAINBOARD·작업자가 핵심
+function isThinProd(p) {
+  if (!p) return false;
+  return !p.cpu_sn || !p.main_board_sn || !p.worker;
+}
+
 function histNeedList() {
   const today = new Date().toISOString().slice(0, 10);   // yyyy-MM-dd
   const out = [];
@@ -509,7 +517,8 @@ function histNeedList() {
     let status;
     if (!tft) status = 'no-tft';
     else if (!state.tftMap[tft]) status = 'no-prod';
-    else continue;                       // 정상 연동 → 목록에서 제외
+    else if (isThinProd(state.tftMap[tft])) status = 'thin';   // 생산기록 빈약 → 보강 권장
+    else continue;                       // 정상 연동 + 데이터 충분 → 목록에서 제외
     const psd = String(s.planned_ship_date || '').trim();
     const pending = (status === 'no-tft') && psd && psd > today;   // 미출하 (예상출하일 미래)
     out.push({ ship: s, tft: tft || '', status, pending });
@@ -789,9 +798,11 @@ export function renderHistNeedTable() {
   const rows = [];
   for (let i = 0; i < list.length; i++) {
     const x = list[i], s = x.ship;
-    const badge = x.status === 'no-prod'
-      ? '<span class="hn-badge hn-noprod">생산기록 없음</span>'
-      : '<span class="hn-badge hn-notft">TFT매칭 없음</span>';
+    const badge = x.status === 'thin'
+      ? '<span class="hn-badge hn-thin">데이터 보강</span>'
+      : x.status === 'no-prod'
+        ? '<span class="hn-badge hn-noprod">생산기록 없음</span>'
+        : '<span class="hn-badge hn-notft">TFT매칭 없음</span>';
     rows.push('<tr>'
       + '<td class="hn-rn">' + (i + 1) + '</td>'
       + '<td class="hn-c">' + esc(s.product_name) + '</td>'
@@ -963,10 +974,18 @@ function renderHnDiag() {
   const matchedTft = prodRow?.tft_sn || tftmRow?.tft_sn || reprTft || '';
   const matchedDet = tftmRow?.detector_sn || shipRow?.detector_sn || reprDet || '';
 
+  // 생산기록이 비어있는지(thin) 판정 — 종합에 반영
+  const thinProd = prodHas && isThinProd(sampleProd);
+
   // 종합 판정
   let vTxt, vCls, vDetail;
   if (prodHas && tftmHas && shipHas) {
-    vTxt = '✓ 완료된 출하건'; vCls = 'ok'; vDetail = '추가 작업 불필요';
+    if (thinProd) {
+      vTxt = '📝 데이터 보강 권장'; vCls = 'warn';
+      vDetail = 'CPU·MAINBOARD·작업자 중<br>비어있는 칸 채우기 권장';
+    } else {
+      vTxt = '✓ 완료된 출하건'; vCls = 'ok'; vDetail = '추가 작업 불필요';
+    }
   } else if (shipHas && tftmHas && !prodHas) {
     vTxt = '📝 이력 작성 필요'; vCls = 'warn';
     vDetail = '아래 「＋ 큐에」<br>버튼으로 작업 시작';
@@ -987,9 +1006,9 @@ function renderHnDiag() {
   // 4분할 카드 렌더
   diag.className = 'hn-diag hn-diag-cards';
   diag.innerHTML =
-    '<div class="dcard ' + (prodHas ? 'ok' : 'no') + '">'
+    '<div class="dcard ' + (prodHas ? (thinProd ? 'warn' : 'ok') : 'no') + '">'
       + '<div class="dt"><span class="dot"></span>생산기록</div>'
-      + '<div class="dv">' + (prodHas ? '있음 ✓' : '없음 ✗') + '</div>'
+      + '<div class="dv">' + (prodHas ? (thinProd ? '있음 (빈약)' : '있음 ✓') : '없음 ✗') + '</div>'
       + '<div class="dm">' + (prodHas
         ? '작업자 ' + esc(sampleProd.worker || '-') + '<br>완료 ' + esc(sampleProd.completed_date || '-')
         : 'production에<br>해당 TFT 없음') + '</div>'

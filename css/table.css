@@ -400,6 +400,11 @@ tr.grp-start td {
   background: #fef3c7;
   color: #b45309;
 }
+.hn-thin {
+  background: #fff7e6;
+  color: #8a5a00;
+  border: 1px solid #f0d690;
+}
 .hn-notft {
   background: #fee2e2;
   color: #b91c1c;
