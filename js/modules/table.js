@@ -1011,8 +1011,30 @@ function renderHnDiag() {
     + '<div class="dcard ' + vCls + '">'
       + '<div class="dt"><span class="dot"></span>종합</div>'
       + '<div class="dv">' + vTxt + '</div>'
-      + '<div class="dm">' + vDetail + '</div>'
+      + '<div class="dm">' + vDetail
+        + (prodHas
+            ? '<br><button class="diag-edit-btn" data-det="' + esc(matchedDet) + '" data-tft="' + esc(matchedTft) + '" title="생산이력 폼을 수정 모드로 엽니다">✏ 생산이력 수정</button>'
+            : '')
+      + '</div>'
     + '</div>';
+}
+
+// 진단 카드의 「✏ 생산이력 수정」 → 큐에 done 상태로 추가하고 폼을 수정 모드로 열기
+function startDiagEdit(det, tft) {
+  det = String(det || '').trim();
+  if (!det) return;
+  let qi = hnQueue.findIndex(q => q.det === det);
+  if (qi < 0) {
+    hnQueue.push({ det, tft: (tft || '').trim(), done: true });
+    qi = hnQueue.length - 1;
+  } else {
+    hnQueue[qi].done = true;
+    if (tft && !hnQueue[qi].tft) hnQueue[qi].tft = tft.trim();
+  }
+  hnSel = qi;
+  hnQueueSave();
+  renderHistNeed();
+  setTimeout(() => document.getElementById('hnFormArea')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
 }
 
 export function renderHistNeed() {
@@ -1104,6 +1126,12 @@ export function initHistNeed() {
   document.addEventListener('click', e => {
     const cp = e.target.closest('td.copy');
     if (cp && cp.dataset.copy) copyCellText(cp.dataset.copy);
+  });
+
+  // 진단 카드의 「✏ 생산이력 수정」 클릭 — 큐에 done 상태로 추가 + 폼을 수정 모드로
+  document.getElementById('hnDiag')?.addEventListener('click', e => {
+    const b = e.target.closest('.diag-edit-btn');
+    if (b) startDiagEdit(b.dataset.det, b.dataset.tft);
   });
 }
 

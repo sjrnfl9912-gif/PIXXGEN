@@ -343,6 +343,14 @@ tr.grp-start td {
   font-size: 11px; color: #555; margin-top: 4px; line-height: 1.4;
   overflow: hidden; text-overflow: ellipsis;
 }
+.hn-diag .diag-edit-btn {
+  margin-top: 6px; padding: 3px 10px; font-size: 11px; font-weight: 600;
+  background: #fff7e6; color: #8a5a00; border: 1px solid #f0d690;
+  border-radius: 4px; cursor: pointer;
+}
+.hn-diag .diag-edit-btn:hover { background: #ffeec2; border-color: #d9821a; }
+.hn-diag .dcard.ok .diag-edit-btn { background: #d8efe0; color: #16794a; border-color: #b6dec3; }
+.hn-diag .dcard.ok .diag-edit-btn:hover { background: #c4e7d1; border-color: #2e9d50; }
 @media (max-width: 720px) {
   .hn-diag.hn-diag-cards { grid-template-columns: repeat(2, 1fr); }
 }
