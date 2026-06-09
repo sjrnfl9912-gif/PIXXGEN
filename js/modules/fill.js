@@ -2,6 +2,7 @@
 // FILL HANDLE (Drag to fill)
 // ═══════════════════════════════════════
 import { state, pushUndo, trackUpdate, markDupDirty, rebuildTft } from '../state.js';
+import { isEditableCell, commitCellValue } from './cell.js';
 import { saveCache } from '../services/storage.js';
 import { toast } from '../services/ui.js';
 
@@ -21,12 +22,12 @@ export function init() {
   document.addEventListener('mousedown', e => {
     if (!e.target.classList.contains('fh')) return;
     e.preventDefault(); e.stopPropagation();
-    const td = e.target.closest('td'), inp = td.querySelector('input.c'); if (!inp) return;
+    const td = e.target.closest('td'); if (!isEditableCell(td)) return;
     const tr = td.closest('tr'), tb = tr.parentElement;
     state.fillSt = {
-      inp, td, tb, rows: [...tb.children],
+      td, tb, rows: [...tb.children],
       ri: [...tb.children].indexOf(tr), ci: [...tr.children].indexOf(td),
-      val: inp.value, curR: [...tb.children].indexOf(tr)
+      val: td.dataset.v || '', curR: [...tb.children].indexOf(tr)
     };
     state.fillTip = document.createElement('div'); state.fillTip.className = 'fill-tip';
     document.body.appendChild(state.fillTip);
@@ -57,14 +58,8 @@ function fillEnd() {
   if (cnt > 0) {
     for (let i = 1; i <= cnt; i++) {
       const td = rows[ri + i]?.children[ci]; if (!td) break;
-      const inp = td.querySelector('input.c:not(.vl)'); if (!inp) continue;
-      const nv = fillVal(val, i), ov = inp.value; inp.value = nv; inp.dataset.o = nv;
-      const rawId = inp.dataset.id, id = String(rawId).startsWith('new_') ? rawId : +rawId;
-      const f = inp.dataset.f, t = inp.dataset.t;
-      const arr = t === 's' ? state.shipD : t === 'p' ? state.prodD : state.mergeD;
-      const row = arr.find(x => String(x._id) === String(id)); if (row) row[f] = nv || null;
-      us.push({ id, t, f, ov, nv });
-      td.classList.add('chg'); setTimeout(() => td.classList.remove('chg'), 600);
+      if (!isEditableCell(td)) continue;
+      us.push(commitCellValue(td, fillVal(val, i)));
     }
     if (us.length) {
       pushUndo(us);

@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════
 import { state } from '../state.js';
 import { endEdit } from './editing.js';
+import { isEditableCell } from './cell.js';
 
 // ── Helpers ──
 export function cellPos(td) {
@@ -12,7 +13,7 @@ export function cellPos(td) {
 export function cellAt(tb, r, c) {
   const tr = tb.children[r]; if (!tr) return null;
   const td = tr.children[c]; if (!td) return null;
-  return { td, inp: td.querySelector('input.c:not(.vl)') };
+  return { td };
 }
 
 export function clearSelection() {
@@ -20,19 +21,20 @@ export function clearSelection() {
   document.querySelectorAll('.sel-box').forEach(e => e.remove());
 }
 
-export function selCell(td, inp) {
+export function selCell(td) {
   clearSelection();
   endEditIfNeeded();
   const oldFh = document.querySelector('.fh'); if (oldFh) oldFh.remove();
   td.classList.add('sel');
   const { r, c, tb } = cellPos(td);
-  state.sel = { td, inp, r, c, tb };
+  state.sel = { td, inp: null, r, c, tb };
   state.range = { r1: r, c1: c, r2: r, c2: c };
   state.editing = false;
-  if (inp && !inp.classList.contains('vl')) {
+  if (isEditableCell(td)) {
     const isMob = 'ontouchstart' in window;
-    if (!isMob) inp.focus();
-    inp.readOnly = true; inp.classList.remove('edit');
+    // td를 포커스 가능하게 만들어 키보드 입력을 그리드로 가져옴 (검색창 등 다른 곳에서 뺏어옴)
+    if (!isMob) { td.tabIndex = -1; try { td.focus({ preventScroll: true }); } catch (e) { td.focus(); } }
+    td.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const fh = document.createElement('div'); fh.className = 'fh'; fh.style.opacity = '1';
     td.appendChild(fh);
   }
@@ -79,7 +81,7 @@ export function moveSel(dr, dc, shift) {
     const nc = state.sel.c + dc;
     if (nc < 1) return; // 0번 열은 행번호 셀 — 데이터 셀이 아니므로 이동 금지
     const c = cellAt(state.sel.tb, state.sel.r + dr, nc);
-    if (c) selCell(c.td, c.inp);
+    if (c) selCell(c.td);
   }
 }
 
@@ -91,7 +93,7 @@ export function getSelVals() {
   const vals = [];
   for (let r = r1; r <= r2; r++) {
     const rv = []; const tr = tb.children[r];
-    for (let c = c1; c <= c2; c++) { const inp = tr?.children[c]?.querySelector('input.c'); rv.push(inp ? inp.value : ''); }
+    for (let c = c1; c <= c2; c++) { const td = tr?.children[c]; rv.push(td?.dataset?.v || ''); }
     vals.push(rv);
   }
   return vals;
@@ -100,8 +102,8 @@ export function getSelVals() {
 export function selWholeCol(tbId, c) {
   const tb = document.getElementById(tbId); if (!tb || !tb.children.length) return;
   clearSelection(); endEditIfNeeded();
-  const td0 = tb.children[0].children[c], inp0 = td0?.querySelector('input.c:not(.vl)');
-  state.sel = { td: td0, inp: inp0, r: 0, c, tb };
+  const td0 = tb.children[0].children[c];
+  state.sel = { td: td0, inp: null, r: 0, c, tb };
   state.range = { r1: 0, c1: c, r2: tb.children.length - 1, c2: c }; paintRange();
 }
 
@@ -109,8 +111,8 @@ export function selWholeRow(tbId, r) {
   const tb = document.getElementById(tbId); if (!tb || !tb.children[r]) return;
   clearSelection(); endEditIfNeeded();
   const tr = tb.children[r], cols = tr.children.length;
-  const td0 = tr.children[1] || tr.children[0], inp0 = td0?.querySelector('input.c:not(.vl)');
-  state.sel = { td: td0, inp: inp0, r, c: 0, tb };
+  const td0 = tr.children[1] || tr.children[0];
+  state.sel = { td: td0, inp: null, r, c: 0, tb };
   state.range = { r1: r, c1: 0, r2: r, c2: cols - 1 }; paintRange();
   tr.children[0]?.classList.add('sel');
 }
@@ -139,10 +141,9 @@ export function init() {
     const td = e.target.closest('td');
     if (!td || !td.closest('table.g tbody')) return;
     if (e.target.classList.contains('fh')) return;
-    const inp = td.querySelector('input.c:not(.vl)');
-    if (e.detail === 2) { if (inp) { selCell(td, inp); import('./editing.js').then(m => m.startEdit(inp, false)); } return; }
+    if (e.detail === 2) { if (isEditableCell(td)) { selCell(td); import('./editing.js').then(m => m.startEdit(td, false)); } return; }
     if (e.shiftKey && state.sel) { const { r, c } = cellPos(td); state.range.r2 = r; state.range.c2 = c; paintRange(); state.isDrag = true; e.preventDefault(); return; }
-    selCell(td, inp); state.isDrag = true; e.preventDefault();
+    selCell(td); state.isDrag = true; e.preventDefault();
   });
 
   document.addEventListener('mousemove', e => {
@@ -161,7 +162,7 @@ export function init() {
     if (state.sel) return;
     const td = e.target.closest('td');
     if (!td || !td.closest('table.g tbody')) return;
-    selCell(td, td.querySelector('input.c:not(.vl)'));
+    selCell(td);
   });
 
   document.addEventListener('focusin', e => {
@@ -169,7 +170,7 @@ export function init() {
     const el = e.target;
     if (!el?.classList?.contains('c') || el.classList.contains('vl')) return;
     const td = el.closest('td');
-    if (td?.closest('table.g tbody')) selCell(td, el);
+    if (td?.closest('table.g tbody')) selCell(td);
   });
 
   // Row number click → select whole row

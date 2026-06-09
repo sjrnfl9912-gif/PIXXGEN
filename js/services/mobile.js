@@ -5,6 +5,7 @@ import { state } from '../state.js';
 import { cellPos, selCell, clearSelection } from '../modules/selection.js';
 import { startEdit, endEdit } from '../modules/editing.js';
 import { moveSel } from '../modules/selection.js';
+import { isEditableCell } from '../modules/cell.js';
 
 let lastTap = 0, lastTapTd = null;
 let _ts = { x: 0, y: 0, td: null, inp: null, isDoubleTap: false };
@@ -17,11 +18,10 @@ export function init() {
     if (!td || !td.closest('table.g tbody')) return;
     if (e.target.classList.contains('fh')) return;
     const touch = e.touches[0];
-    const inp = td.querySelector('input.c:not(.vl)');
     const now = Date.now();
     const isDoubleTap = now - lastTap < 350 && lastTapTd === td;
     lastTap = isDoubleTap ? 0 : now; lastTapTd = isDoubleTap ? null : td;
-    _ts = { x: touch.clientX, y: touch.clientY, td, inp, isDoubleTap };
+    _ts = { x: touch.clientX, y: touch.clientY, td, editable: isEditableCell(td), isDoubleTap };
   }, { passive: true });
 
   document.addEventListener('touchmove', e => {
@@ -34,25 +34,18 @@ export function init() {
 
   document.addEventListener('touchend', () => {
     if (!_ts.td) return;
-    if (_ts.isDoubleTap && _ts.inp && !_ts.inp.classList.contains('vl')) {
+    if (_ts.isDoubleTap && _ts.editable) {
       if (!state.editing) {
-        clearSelection(); endEdit();
-        _ts.td.classList.add('sel');
-        const { r, c, tb } = cellPos(_ts.td);
-        state.sel = { td: _ts.td, inp: _ts.inp, r, c, tb };
-        state.range = { r1: r, c1: c, r2: r, c2: c };
-        _ts.inp.readOnly = false; _ts.inp.classList.add('edit');
-        _ts.inp.dataset.bk = _ts.inp.value;
-        state.editing = true;
-        _mpEnter(_ts.td, _ts.inp);
+        selCell(_ts.td);
+        startEdit(_ts.td, false);
+        if (state.sel?.inp) _mpEnter(_ts.td, state.sel.inp);
       }
     } else {
-      if (state.sel && state.sel.td === _ts.td && !state.editing && _ts.inp && !_ts.inp.classList.contains('vl')) {
-        _ts.inp.readOnly = false; _ts.inp.classList.add('edit');
-        _ts.inp.dataset.bk = _ts.inp.value;
-        state.editing = true; _mpEnter(_ts.td, _ts.inp);
+      if (state.sel && state.sel.td === _ts.td && !state.editing && _ts.editable) {
+        startEdit(_ts.td, false);
+        if (state.sel?.inp) _mpEnter(_ts.td, state.sel.inp);
       } else {
-        selCell(_ts.td, _ts.inp);
+        selCell(_ts.td);
       }
     }
     _ts.td = null;
@@ -64,7 +57,7 @@ export function init() {
   px.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); _mpSync(); endEdit(); _mpStop(); if (state.sel) moveSel(1, 0, false); }
     else if (e.key === 'Tab') { e.preventDefault(); _mpSync(); endEdit(); _mpStop(); if (state.sel) moveSel(0, e.shiftKey ? -1 : 1, false); }
-    else if (e.key === 'Escape') { e.preventDefault(); if (_mpTgt) { _mpTgt.value = _mpTgt.dataset.bk || _mpTgt.dataset.o; _mpTgt.readOnly = true; _mpTgt.classList.remove('edit'); } state.editing = false; _mpStop(); }
+    else if (e.key === 'Escape') { e.preventDefault(); if (_mpTgt) _mpTgt.value = _mpTgt.dataset.bk || ''; endEdit(); _mpStop(); }
   });
   px.addEventListener('blur', () => { if (!_mpTgt) return; setTimeout(() => { if (_mpTgt) { _mpSync(); endEdit(); _mpStop(); } }, 200); });
 }

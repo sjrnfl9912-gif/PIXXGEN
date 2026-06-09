@@ -3,6 +3,8 @@
 // ═══════════════════════════════════════
 import { state, pushUndo, trackUpdate, markDupDirty, rebuildTft, invalidateOtherTabs } from '../state.js';
 import { getSelVals } from './selection.js';
+import { isEditableCell, commitCellValue } from './cell.js';
+import { endEdit } from './editing.js';
 import { saveCache } from '../services/storage.js';
 import { toast } from '../services/ui.js';
 
@@ -16,7 +18,7 @@ function legacyCopy(text) {
     document.body.appendChild(ta); ta.focus(); ta.select();
     const ok = document.execCommand('copy');
     document.body.removeChild(ta);
-    if (state.sel?.inp) state.sel.inp.focus();
+    if (state.sel?.td) { try { state.sel.td.focus({ preventScroll: true }); } catch (e) {} }
     return ok;            // execCommand는 실패해도 throw하지 않고 false 반환 → 꼭 확인
   } catch (e) { return false; }
 }
@@ -56,15 +58,9 @@ export function pasteGrid(text) {
     const srcR = grid[(r - pr1) % srcRows];
     for (let c = pc1; c <= pc2; c++) {
       const td = tr.children[c]; if (!td) break;
-      const inp = td.querySelector('input.c:not(.vl)'); if (!inp) continue;
-      const nv = (srcR[(c - pc1) % srcCols] || '').trim(), ov = inp.value;
-      inp.value = nv; inp.dataset.o = nv;
-      const rawId = inp.dataset.id, id = String(rawId).startsWith('new_') ? rawId : +rawId;
-      const f = inp.dataset.f, t = inp.dataset.t;
-      const arr = t === 's' ? state.shipD : t === 'p' ? state.prodD : state.mergeD;
-      const row = arr.find(x => String(x._id) === String(id)); if (row) row[f] = nv || null;
-      us.push({ id, t, f, ov, nv: nv || null });
-      td.classList.add('chg'); setTimeout(() => td.classList.remove('chg'), 600);
+      if (!isEditableCell(td)) continue;
+      const nv = (srcR[(c - pc1) % srcCols] || '').trim();
+      us.push(commitCellValue(td, nv));
       n++;
     }
   }
@@ -82,13 +78,8 @@ export function deleteRange() {
   for (let r = r1; r <= r2; r++) {
     const tr = tb.children[r]; if (!tr) continue;
     for (let c = c1; c <= c2; c++) {
-      const inp = tr.children[c]?.querySelector('input.c:not(.vl)'); if (!inp || !inp.value) continue;
-      const ov = inp.value; inp.value = ''; inp.dataset.o = '';
-      const rawId = inp.dataset.id, id = String(rawId).startsWith('new_') ? rawId : +rawId;
-      const f = inp.dataset.f, t = inp.dataset.t;
-      const arr = t === 's' ? state.shipD : t === 'p' ? state.prodD : state.mergeD;
-      const row = arr.find(x => String(x._id) === String(id)); if (row) row[f] = null;
-      us.push({ id, t, f, ov, nv: null }); n++;
+      const td = tr.children[c]; if (!isEditableCell(td) || !(td.dataset.v || '')) continue;
+      us.push(commitCellValue(td, '')); n++;
     }
   }
   if (us.length) { pushUndo(us); batchTrack(us); }
@@ -103,19 +94,14 @@ export function fillDown() {
   const c1 = Math.min(state.range.c1, state.range.c2), c2 = Math.max(state.range.c1, state.range.c2);
   if (r1 === r2) return;
   const topTr = tb.children[r1]; if (!topTr) return;
-  const srcVals = []; for (let c = c1; c <= c2; c++) { const inp = topTr.children[c]?.querySelector('input.c'); srcVals.push(inp ? inp.value : ''); }
+  const srcVals = []; for (let c = c1; c <= c2; c++) { const td = topTr.children[c]; srcVals.push(td?.dataset?.v || ''); }
   const us = []; let n = 0;
   for (let r = r1 + 1; r <= r2; r++) {
     const tr = tb.children[r]; if (!tr) continue;
     for (let c = c1; c <= c2; c++) {
-      const inp = tr.children[c]?.querySelector('input.c:not(.vl)'); if (!inp) continue;
-      const nv = srcVals[c - c1], ov = inp.value; if (nv === ov) continue;
-      inp.value = nv; inp.dataset.o = nv;
-      const rawId = inp.dataset.id, id = String(rawId).startsWith('new_') ? rawId : +rawId;
-      const f = inp.dataset.f, t = inp.dataset.t;
-      const arr = t === 's' ? state.shipD : t === 'p' ? state.prodD : state.mergeD;
-      const row = arr.find(x => String(x._id) === String(id)); if (row) row[f] = nv || null;
-      us.push({ id, t, f, ov, nv: nv || null }); const td_ = tr.children[c]; td_.classList.add('chg'); setTimeout(() => td_.classList.remove('chg'), 600); n++;
+      const td = tr.children[c]; if (!isEditableCell(td)) continue;
+      const nv = srcVals[c - c1], ov = td.dataset.v || ''; if (nv === ov) continue;
+      us.push(commitCellValue(td, nv)); n++;
     }
   }
   if (us.length) { pushUndo(us); batchTrack(us); }
@@ -132,16 +118,11 @@ export function fillRight() {
   const us = []; let n = 0;
   for (let r = r1; r <= r2; r++) {
     const tr = tb.children[r]; if (!tr) continue;
-    const srcInp = tr.children[c1]?.querySelector('input.c'); const srcV = srcInp ? srcInp.value : '';
+    const srcTd = tr.children[c1]; const srcV = srcTd?.dataset?.v || '';
     for (let c = c1 + 1; c <= c2; c++) {
-      const inp = tr.children[c]?.querySelector('input.c:not(.vl)'); if (!inp) continue;
-      const ov = inp.value; if (srcV === ov) continue;
-      inp.value = srcV; inp.dataset.o = srcV;
-      const rawId = inp.dataset.id, id = String(rawId).startsWith('new_') ? rawId : +rawId;
-      const f = inp.dataset.f, t = inp.dataset.t;
-      const arr = t === 's' ? state.shipD : t === 'p' ? state.prodD : state.mergeD;
-      const row = arr.find(x => String(x._id) === String(id)); if (row) row[f] = srcV || null;
-      us.push({ id, t, f, ov, nv: srcV || null }); const td_ = tr.children[c]; td_.classList.add('chg'); setTimeout(() => td_.classList.remove('chg'), 600); n++;
+      const td = tr.children[c]; if (!isEditableCell(td)) continue;
+      const ov = td.dataset.v || ''; if (srcV === ov) continue;
+      us.push(commitCellValue(td, srcV)); n++;
     }
   }
   if (us.length) { pushUndo(us); batchTrack(us); }
@@ -173,14 +154,14 @@ export function initPasteHandler() {
       try { t = cd ? cd.getData('text/plain') || cd.getData('text') || '' : ''; } catch (x) { t = ''; }
       if (!html && !t) {
         e.preventDefault();
-        if (state.editing) { state.editing = false; if (state.sel?.inp) { state.sel.inp.classList.remove('edit'); state.sel.inp.dataset.o = state.sel.inp.value; } }
+        if (state.editing) endEdit();
         if (state.internalClip) pasteGrid(state.internalClip);
         return;
       }
       const isMulti = (html && /<tr[\s>]/i.test(html)) || /\t/.test(t) || (t.split(/\r?\n/).filter(l => l).length > 1);
       if (state.editing && !isMulti) return;
       e.preventDefault();
-      if (state.editing) { state.editing = false; if (state.sel?.inp) { state.sel.inp.classList.remove('edit'); state.sel.inp.dataset.o = state.sel.inp.value; } }
+      if (state.editing) endEdit();
       if (html) {
         try {
           const doc2 = new DOMParser().parseFromString(html, 'text/html');

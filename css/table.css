@@ -17,7 +17,7 @@ table.g {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 /* 화면 밖 행은 페인트 생략 — TFT 매칭(5천+행) 같은 큰 표 첫 표시·스크롤 가속 */
-table.g tbody tr { content-visibility: auto; contain-intrinsic-size: 22px; }
+table.g tbody tr { content-visibility: auto; contain-intrinsic-size: auto 26px; }
 
 table.g thead {
   position: sticky;
@@ -107,7 +107,7 @@ table.g td input.c:not(.vl):hover { border-color: #c8d5ea; }
    — 1천행 이상에서 메모리·스크롤 부담을 크게 줄임 (행 높이 26px 고정) */
 table.g tbody tr {
   content-visibility: auto;
-  contain-intrinsic-size: auto 30px;
+  contain-intrinsic-size: auto 26px;
 }
 
 table.g tr:nth-child(even) td {
@@ -157,6 +157,20 @@ th.corner:hover {
   position: relative;
   overflow: hidden;
 }
+/* 편집 가능 텍스트 셀 (ship/prod) — 평소엔 input 없이 텍스트로 표시, 편집 시에만 input 생성.
+   대용량 표(4천행)에서 셀당 input을 없애 노드 수·메모리를 크게 줄임. */
+#b1 td.cw, #b2 td.cw {
+  cursor: cell;
+  color: var(--tx);
+  padding: 2px 4px;
+}
+#b1 td.cw:focus, #b2 td.cw:focus { outline: none; }
+/* 편집 input은 셀을 꽉 채워 표시 위치가 텍스트와 어긋나지 않게 */
+#b1 td.cw > input.c, #b2 td.cw > input.c { padding: 0; }
+/* 중복 S/N 셀 — 텍스트도 빨갛게 (기존엔 input 글자색이었음) */
+#b1 td.dup-cell, #b2 td.dup-cell { color: var(--er); font-weight: 600; }
+/* 범위 선택된 셀 텍스트 가독성 */
+#b1 td.sel-r, #b2 td.sel-r { color: #1a1d26; }
 
 .c {
   width: 100%;

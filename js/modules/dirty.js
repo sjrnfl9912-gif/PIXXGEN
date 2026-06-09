@@ -129,8 +129,9 @@ export function deleteRows() {
       const arr = tblKey === 's' ? state.shipD : tblKey === 'p' ? state.prodD : state.mergeD;
       const delKey = tblKey === 's' ? 'ship' : 'prod';
       for (let r = r1; r <= r2; r++) {
-        const inp = tb.children[r]?.querySelector('input.c'); if (!inp) continue;
-        const id = inp.dataset.id, isNew = String(id).startsWith('new_');
+        const tr = tb.children[r]; if (!tr) continue;
+        const id = tr.dataset.id || (tr.children[1] || tr.children[0])?.dataset.id; if (!id) continue;
+        const isNew = String(id).startsWith('new_');
         if (isNew) { const idx = state.dirty.inserts[delKey].findIndex(r => r._id === id); if (idx >= 0) state.dirty.inserts[delKey].splice(idx, 1); }
         else { state.dirty.deletes[delKey].push(+id); const tbl = delKey === 'ship' ? 'shipment' : 'production'; delete state.dirty.updates[tbl + ':' + id]; }
         const i = arr.findIndex(r => String(r._id) === String(id)); if (i >= 0) arr.splice(i, 1);

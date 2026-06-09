@@ -15,8 +15,7 @@ export function init() {
     const td = e.target.closest('td');
     if (!td || !td.closest('table.g tbody')) return;
     e.preventDefault();
-    const inp = td.querySelector('input.c:not(.vl)');
-    if (!state.sel || state.sel.td !== td) selCell(td, inp);
+    if (!state.sel || state.sel.td !== td) selCell(td);
     ctx.style.left = e.clientX + 'px';
     ctx.style.top = e.clientY + 'px';
     ctx.classList.add('show');

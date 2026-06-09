@@ -6,10 +6,10 @@ import { state, markDupDirty, rebuildTft, rebuildDetTft, invalidateOtherTabs } f
 import { dbInsert, dbUpdate } from '../db.js';
 import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
+import { cellHtml } from './cell.js';
 
 function colL(n) { let s = ''; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; }
 function esc(v) { if (v == null) return ''; return String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-function ci(id, t, f, v) { const s = esc(v); return '<input class="c" type="text" value="' + s + '" data-id="' + id + '" data-t="' + t + '" data-f="' + f + '" data-o="' + s + '" readonly>'; }
 
 // S/N 셀 클릭 → 클립보드 복사 (파일 탐색기 등 다른 창에 붙여넣기용)
 function legacyCopyText(text) {
@@ -125,10 +125,10 @@ export function renderShipmentTable() {
   for (let i = 0; i < d.length; i++) {
     const r = d[i];
     const trCls = (groupInfo && i > 0 && groupInfo.groupStart.has(i)) ? ' class="grp-start"' : '';
-    const cells = ['<tr' + trCls + '><td class="rn" data-row-idx="' + i + '" data-tb="b1">' + (i + 1) + '</td>'];
+    const cells = ['<tr data-id="' + esc(r._id) + '"' + trCls + '><td class="rn" data-row-idx="' + i + '" data-tb="b1">' + (i + 1) + '</td>'];
     for (let j = 0; j < SHIP_FIELDS.length; j++) {
       const f = SHIP_FIELDS[j], dup = isDupCell(f, r[f], state.shipDups);
-      cells.push('<td class="cw' + (dup ? ' dup-cell' : '') + '">' + ci(r._id, 's', f, r[f]) + '</td>');
+      cells.push(cellHtml(r._id, 's', f, r[f], dup ? 'dup-cell' : ''));
     }
     cells.push('</tr>');
     rows.push(cells.join(''));
@@ -191,10 +191,10 @@ export function renderProductionTable() {
   for (let i = 0; i < d.length; i++) {
     const r = d[i];
     const trCls = (groupInfo && i > 0 && groupInfo.groupStart.has(i)) ? ' class="grp-start"' : '';
-    const cells = ['<tr' + trCls + '><td class="rn" data-row-idx="' + i + '" data-tb="b2">' + (i + 1) + '</td>'];
+    const cells = ['<tr data-id="' + esc(r._id) + '"' + trCls + '><td class="rn" data-row-idx="' + i + '" data-tb="b2">' + (i + 1) + '</td>'];
     for (let j = 0; j < PROD_FIELDS.length; j++) {
       const f = PROD_FIELDS[j], dup = isDupCell(f, r[f], state.prodDups);
-      cells.push('<td class="cw' + (dup ? ' dup-cell' : '') + '">' + ci(r._id, 'p', f, r[f]) + '</td>');
+      cells.push(cellHtml(r._id, 'p', f, r[f], dup ? 'dup-cell' : ''));
     }
     cells.push('</tr>');
     rows.push(cells.join(''));

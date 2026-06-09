@@ -43,10 +43,8 @@ export function init() {
     // Auto-recover sel from focused element (workaround for security programs blocking mousedown)
     if (!state.sel) {
       const fi = document.activeElement;
-      if (fi?.classList?.contains('c') && !fi.classList.contains('vl')) {
-        const td = fi.closest('td');
-        if (td?.closest('table.g tbody')) selCell(td, fi);
-      }
+      const td = fi?.closest?.('td');
+      if (td?.dataset?.f && td.closest('table.g tbody')) selCell(td);
     }
     if (!state.sel) return;
 
@@ -66,8 +64,7 @@ export function init() {
             if (state.editing) {
               const isM = /\t/.test(state.internalClip) || state.internalClip.split(/\r?\n/).filter(l => l).length > 1;
               if (!isM) return;
-              state.editing = false;
-              if (state.sel?.inp) { state.sel.inp.classList.remove('edit'); state.sel.inp.dataset.o = state.sel.inp.value; }
+              endEdit();
             }
             pasteGrid(state.internalClip);
           }
@@ -79,7 +76,7 @@ export function init() {
 
     // Edit mode keys
     if (state.editing) {
-      if (e.key === 'Escape') { e.preventDefault(); state.sel.inp.value = state.sel.inp.dataset.bk || state.sel.inp.dataset.o; endEdit(); state.editing = false; state.sel.inp.readOnly = true; state.sel.inp.classList.remove('edit'); }
+      if (e.key === 'Escape') { e.preventDefault(); if (state.sel.inp) state.sel.inp.value = state.sel.inp.dataset.bk || ''; endEdit(); }
       else if (e.key === 'Enter') { e.preventDefault(); endEdit(); moveSel(1, 0, false); }
       else if (e.key === 'Tab') { e.preventDefault(); endEdit(); moveSel(0, e.shiftKey ? -1 : 1, false); }
       return;
@@ -92,9 +89,12 @@ export function init() {
     else if (e.key === 'ArrowLeft') { e.preventDefault(); moveSel(0, -1, e.shiftKey); }
     else if (e.key === 'Tab') { e.preventDefault(); moveSel(0, e.shiftKey ? -1 : 1, false); }
     else if (e.key === 'Enter') { e.preventDefault(); moveSel(1, 0, false); }
-    else if (e.key === 'F2') { e.preventDefault(); if (state.sel.inp) startEdit(state.sel.inp, false); }
+    else if (e.key === 'F2') { e.preventDefault(); if (state.sel.td) startEdit(state.sel.td, false); }
     else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteRange(); }
     else if (e.key === 'Escape') { clearSelection(); state.sel = null; }
-    else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) { if (state.sel.inp) startEdit(state.sel.inp, true); }
+    else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      // 텍스트 셀엔 평소 input이 없으므로, 타이핑한 첫 글자를 직접 주입해야 유실 안 됨
+      if (state.sel.td) { e.preventDefault(); startEdit(state.sel.td, true); if (state.sel.inp) { state.sel.inp.value = e.key; try { state.sel.inp.setSelectionRange(1, 1); } catch (x) {} } }
+    }
   });
 }
