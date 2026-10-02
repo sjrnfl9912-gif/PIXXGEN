@@ -11,6 +11,7 @@ export function toast(message, type = 'info') {
 
 export function showLoading(show = true) {
   const overlay = document.getElementById('loadingOverlay');
+  if (!overlay) return;   // 캐시로 먼저 그린 경우 이미 제거됨
   if (show) {
     overlay.classList.remove('hide');
   } else {

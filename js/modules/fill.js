@@ -5,6 +5,7 @@ import { state, pushUndo, trackUpdate, markDupDirty, rebuildTft } from '../state
 import { isEditableCell, commitCellValue } from './cell.js';
 import { saveCache } from '../services/storage.js';
 import { toast } from '../services/ui.js';
+import { requireEdit } from '../services/editmode.js';
 
 function fillVal(v, off) {
   if (!v) return v;
@@ -23,6 +24,7 @@ export function init() {
     if (!e.target.classList.contains('fh')) return;
     e.preventDefault(); e.stopPropagation();
     const td = e.target.closest('td'); if (!isEditableCell(td)) return;
+    if (!requireEdit()) return;
     const tr = td.closest('tr'), tb = tr.parentElement;
     state.fillSt = {
       td, tb, rows: [...tb.children],

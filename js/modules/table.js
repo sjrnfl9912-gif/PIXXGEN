@@ -7,6 +7,8 @@ import { dbInsert, dbUpdate } from '../db.js';
 import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
 import { cellHtml } from './cell.js';
+import { mountRows } from './lazy.js';
+import { requireEdit } from '../services/editmode.js';
 
 function colL(n) { let s = ''; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; }
 function esc(v) { if (v == null) return ''; return String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -133,8 +135,7 @@ export function renderShipmentTable() {
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
-  const b1 = document.getElementById('b1');
-  if (b1) b1.innerHTML = rows.join('');
+  mountRows('b1', rows, [state.shipFilt, q, state.dupMode.ship].join('|'));
   state.tabRendered.ship = true;
 }
 
@@ -199,8 +200,7 @@ export function renderProductionTable() {
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
-  const b2 = document.getElementById('b2');
-  if (b2) b2.innerHTML = rows.join('');
+  mountRows('b2', rows, [state.workerFilt, state.prodYearFilt, q, state.dupMode.prod].join('|'));
   state.tabRendered.prod = true;
 }
 
@@ -295,8 +295,7 @@ export function renderMergeTable() {
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
-  const b3 = document.getElementById('b3');
-  if (b3) b3.innerHTML = rows.join('');
+  mountRows('b3', rows, q);
   state.tabRendered.merge = true;
 }
 
@@ -372,6 +371,7 @@ function closeUnitEditModal() {
 }
 
 async function saveUnitEditModal() {
+  if (!requireEdit()) return;
   if (!unitEditState) return;
   const { shipRow, prodRow } = unitEditState;
   const btn = document.getElementById('unitSave');
@@ -486,8 +486,7 @@ export function renderTftmTable() {
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
-  const b4 = document.getElementById('b4');
-  if (b4) b4.innerHTML = rows.join('');
+  mountRows('b4', rows, q);
   renderFolderIssues();   // 폴더 오류 섹션도 같이 갱신 (TFT 매칭 탭 안에 있음)
   state.tabRendered.tftm = true;
 }
@@ -701,6 +700,7 @@ async function saveHnForm() {
   });
   if (!obj.tft_sn) { toast('TFT S/N은 반드시 입력해야 합니다', 'er'); return; }
   if (!obj.worker) { toast('작업자를 반드시 입력해야 합니다 — 생산관리대장 필터에서 가려지지 않게', 'er'); return; }
+  if (!requireEdit()) return;
   const btn = area.querySelector('.hn-save');
 
   // ── 수정 모드 (완료된 큐 항목 재편집) ──

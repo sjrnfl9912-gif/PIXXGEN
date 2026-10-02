@@ -4,6 +4,7 @@
 import { SHIP_FIELDS, SHIP_HEADS, PROD_FIELDS, PROD_HEADS } from '../config.js';
 import { state } from '../state.js';
 import { toast } from '../services/ui.js';
+import { requireEdit } from '../services/editmode.js';
 
 export function backupJSON() {
   const data = {
@@ -23,6 +24,7 @@ export function backupJSON() {
 
 export function restoreJSON(input) {
   const file = input.files[0]; if (!file) return;
+  if (!requireEdit()) { input.value = ''; return; }
   const reader = new FileReader();
   reader.onload = function (e) {
     try {

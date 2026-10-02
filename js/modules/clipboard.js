@@ -7,6 +7,8 @@ import { isEditableCell, commitCellValue } from './cell.js';
 import { endEdit } from './editing.js';
 import { saveCache } from '../services/storage.js';
 import { toast } from '../services/ui.js';
+import { ensureRows } from './lazy.js';
+import { requireEdit } from '../services/editmode.js';
 
 function escH(s) { return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
@@ -39,7 +41,7 @@ export function doCopy() {
 }
 
 export function pasteGrid(text) {
-  if (!state.sel) return;
+  if (!state.sel || !requireEdit()) return;
   const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(l => l);
   if (!lines.length) return;
   const grid = lines.map(l => l.split('\t'));
@@ -52,6 +54,7 @@ export function pasteGrid(text) {
     const selR = rr2 - rr1 + 1, selC = rc2 - rc1 + 1;
     if (selR >= srcRows && selC >= srcCols && (selR > 1 || selC > 1)) { pr1 = rr1; pc1 = rc1; pr2 = rr2; pc2 = rc2; }
   }
+  ensureRows(tb, pr2 + 1);   // 붙여넣기 범위가 아직 안 그려진 행까지 닿으면 먼저 렌더
   const us = []; let n = 0;
   for (let r = pr1; r <= pr2; r++) {
     const tr = tb.children[r]; if (!tr) break;
@@ -70,7 +73,7 @@ export function pasteGrid(text) {
 }
 
 export function deleteRange() {
-  if (!state.sel || !state.range) return;
+  if (!state.sel || !state.range || !requireEdit()) return;
   const { tb } = state.sel;
   const r1 = Math.min(state.range.r1, state.range.r2), r2 = Math.max(state.range.r1, state.range.r2);
   const c1 = Math.min(state.range.c1, state.range.c2), c2 = Math.max(state.range.c1, state.range.c2);
@@ -88,7 +91,7 @@ export function deleteRange() {
 }
 
 export function fillDown() {
-  if (!state.sel || !state.range) return;
+  if (!state.sel || !state.range || !requireEdit()) return;
   const { tb } = state.sel;
   const r1 = Math.min(state.range.r1, state.range.r2), r2 = Math.max(state.range.r1, state.range.r2);
   const c1 = Math.min(state.range.c1, state.range.c2), c2 = Math.max(state.range.c1, state.range.c2);
@@ -110,7 +113,7 @@ export function fillDown() {
 }
 
 export function fillRight() {
-  if (!state.sel || !state.range) return;
+  if (!state.sel || !state.range || !requireEdit()) return;
   const { tb } = state.sel;
   const r1 = Math.min(state.range.r1, state.range.r2), r2 = Math.max(state.range.r1, state.range.r2);
   const c1 = Math.min(state.range.c1, state.range.c2), c2 = Math.max(state.range.c1, state.range.c2);

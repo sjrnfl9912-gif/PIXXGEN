@@ -18,9 +18,13 @@ import { backupJSON, restoreJSON, exportAll } from './modules/export.js';
 import { buildMerge } from './modules/merge.js';
 import { saveAll } from './modules/dirty.js';
 import { initResize } from './modules/resize.js';
+import { jumpToEnd } from './modules/lazy.js';
+import { initEditMode, requireEdit } from './services/editmode.js';
+import { initRunLog } from './services/runlog.js';
 
 // ═══ ROW OPERATIONS ═══
 export function addRow(type) {
+  if (!requireEdit()) return;
   if (type === 'ship') {
     const n = state.shipD.reduce((m, r) => Math.max(m, r.row_no || 0), 0) + 1;
     const newRow = { _id: 'new_' + Date.now(), _new: true, row_no: n };
@@ -37,12 +41,14 @@ export function addRow(type) {
     markDirty(); markDupDirty(); rebuildTft(); invalidateOtherTabs(); renderProductionTable();
   }
   const tbId = type === 'ship' ? 'b1' : 'b2';
+  jumpToEnd(tbId);
   setTimeout(() => { const tb = document.getElementById(tbId); const last = tb?.lastElementChild; if (last) last.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50);
   saveCache(state.shipD, state.prodD);
   toast('행 추가됨 (저장 버튼으로 DB 반영)', 'info');
 }
 
 function cleanNull(type) {
+  if (!requireEdit()) return;
   const arr = type === 'ship' ? state.shipD : state.prodD;
   const delKey = type === 'ship' ? 'ship' : 'prod';
   const keyF = type === 'ship' ? ['product_name', 'detector_sn', 'company', 'country'] : ['prod_no', 'tft_sn', 'cpu_sn', 'main_board_sn'];
@@ -274,7 +280,9 @@ async function init() {
   if (fab) {
     fab.addEventListener('click', () => {
       const tw = document.querySelector('.tab-view.active .tw');
-      if (tw) tw.scrollTo({ top: tw.scrollHeight, behavior: 'smooth' });
+      const tb = tw?.querySelector('tbody');
+      if (tb?.id) jumpToEnd(tb.id);   // 끝 구간만 그려서 바로 이동 (전체 렌더 X)
+      else if (tw) tw.scrollTo({ top: tw.scrollHeight, behavior: 'smooth' });
     });
     // Show/hide based on scroll position
     document.addEventListener('scroll', e => {
@@ -297,6 +305,8 @@ async function init() {
   initKPI();
   initHistNeed();
   initMergeEditClicks();
+  initEditMode();
+  initRunLog();
 
   // ═══ LOAD DATA ═══
   // Try cache first for instant display

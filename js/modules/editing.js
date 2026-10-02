@@ -4,11 +4,13 @@
 import { state, pushUndo, trackUpdate, markDupDirty, rebuildTft } from '../state.js';
 import { saveCacheDebounced } from '../services/storage.js';
 import { setCellText } from './cell.js';
+import { requireEdit } from '../services/editmode.js';
 
 // td(편집 가능 셀)에 input을 만들어 편집 시작. clear=true면 빈 칸으로 시작(첫 타이핑).
 export function startEdit(td, clear) {
   if (!td || !td.dataset || !td.dataset.f) return;
   if (!state.sel || state.sel.td !== td) return;   // 반드시 선택된 셀에서만
+  if (!requireEdit()) return;
   state.editing = true;
   const v = td.dataset.v || '';
   // 기존 텍스트 노드 제거 (.fh 등 자식 요소는 보존)

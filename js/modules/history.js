@@ -5,6 +5,7 @@ import { state, trackUpdate, rebuildTft, invalidateOtherTabs } from '../state.js
 import { renderAll } from './table.js';
 import { saveCache } from '../services/storage.js';
 import { toast } from '../services/ui.js';
+import { requireEdit } from '../services/editmode.js';
 
 function applyUndo(entries, undo) {
   entries.forEach(e => {
@@ -19,7 +20,7 @@ function applyUndo(entries, undo) {
 }
 
 export function undo() {
-  if (!state.undoStack.length) return;
+  if (!state.undoStack.length || !requireEdit()) return;
   const u = state.undoStack.pop();
   state.redoStack.push(u);
   applyUndo(u, true);
@@ -27,7 +28,7 @@ export function undo() {
 }
 
 export function redo() {
-  if (!state.redoStack.length) return;
+  if (!state.redoStack.length || !requireEdit()) return;
   const u = state.redoStack.pop();
   state.undoStack.push(u);
   applyUndo(u, false);

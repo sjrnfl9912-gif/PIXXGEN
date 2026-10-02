@@ -4,6 +4,7 @@
 import { state } from '../state.js';
 import { endEdit } from './editing.js';
 import { isEditableCell } from './cell.js';
+import { ensureAll, ensureRows } from './lazy.js';
 
 // ── Helpers ──
 export function cellPos(td) {
@@ -73,6 +74,7 @@ export function paintRange() {
 
 export function moveSel(dr, dc, shift) {
   if (!state.sel) return;
+  if (dr > 0) ensureRows(state.sel.tb, (shift ? state.range.r2 : state.sel.r) + dr + 1);
   if (shift) {
     state.range.r2 = Math.max(0, Math.min(state.sel.tb.children.length - 1, state.range.r2 + dr));
     state.range.c2 = Math.max(0, state.range.c2 + dc);
@@ -100,6 +102,7 @@ export function getSelVals() {
 }
 
 export function selWholeCol(tbId, c) {
+  ensureAll(tbId);
   const tb = document.getElementById(tbId); if (!tb || !tb.children.length) return;
   clearSelection(); endEditIfNeeded();
   const td0 = tb.children[0].children[c];
@@ -118,6 +121,7 @@ export function selWholeRow(tbId, r) {
 }
 
 export function selAllCells(tbId) {
+  ensureAll(tbId);
   const tb = document.getElementById(tbId); if (!tb || !tb.children.length) return;
   clearSelection(); endEditIfNeeded();
   const td0 = tb.children[0].children[0];
@@ -179,7 +183,8 @@ export function init() {
     if (!rn) return;
     e.preventDefault();
     const tbId = rn.dataset.tb;
-    const ri = parseInt(rn.dataset.rowIdx);
+    const tr = rn.parentElement;
+    const ri = tr ? [...tr.parentElement.children].indexOf(tr) : NaN;
     if (tbId && !isNaN(ri)) {
       selWholeRow(tbId, ri);
       rowDrag = { tbId, si: ri };

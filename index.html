@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/table.css">
   <link rel="stylesheet" href="css/modals.css">
   <link rel="stylesheet" href="css/kpi.css">
+  <link rel="stylesheet" href="css/editmode.css?v=20261002">
   <link rel="stylesheet" href="css/responsive.css">
 
   <!-- External Libraries -->
@@ -27,8 +28,13 @@
   <div class="top-fixed">
     <div class="topbar">
       <h1><span class="logo">📦</span><span class="logo-txt">통합 출하 관리 시스템</span></h1>
-      <div class="sync"><div class="sync-dot"></div>동기화 중</div>
+      <div class="top-right">
+        <div class="sync"><div class="sync-dot"></div><span class="btn-hide-m">동기화 중</span></div>
+        <button class="runlog-btn" id="runLogBtn" data-st="idle" title="실행 기록"><span class="rl-dot"></span>📋<span class="btn-hide-m"> 실행 기록</span></button>
+        <button class="em-switch" id="editModeSw" role="switch" aria-checked="false" title="편집 모드 켜기/끄기"><span id="editModeLbl">보기 모드</span><span class="em-track"></span></button>
+      </div>
     </div>
+    <div class="em-band">✏️ 편집 모드 — 수정한 내용은 💾 저장을 눌러야 DB에 반영돼요. 다 쓰면 상단 스위치를 꺼주세요.</div>
 
     <div class="tabs">
       <div class="tab on" data-tab="ship">검사포장 출하이력<span class="cnt" id="cnt1">0</span></div>
@@ -172,6 +178,30 @@
   </div>
 
   <!-- Modal -->
+  <!-- 편집 모드 비밀번호 -->
+  <div class="em-bg" id="editPwBg">
+    <div class="em-modal">
+      <h3>✏️ 편집 모드 켜기</h3>
+      <p>팀 공용 비밀번호를 입력하세요. 켜는 동안 상단이 주황색으로 바뀌어요.<br>공용 PC라면 다 쓰고 꼭 스위치를 꺼주세요.</p>
+      <input type="password" id="editPwInput" placeholder="비밀번호" autocomplete="current-password">
+      <div class="em-err" id="editPwErr"></div>
+      <div class="em-row"><button class="btn" id="editPwCancel">취소</button><button class="btn em-ok" id="editPwOk">편집 모드 켜기</button></div>
+    </div>
+  </div>
+
+  <!-- 자동 실행 기록 서랍 -->
+  <div class="rl-drawer" id="runLogDrawer">
+    <div class="rl-h"><h3>📋 자동 실행 기록</h3><button class="rl-x" id="runLogClose" title="닫기">&times;</button></div>
+    <p class="rl-sub">매일 17:00 엑셀 업로드 → 17:10 TFT 매칭 → 17:30 서버 백업 (최근 7일)</p>
+    <div id="runLogBody"><p class="rl-note">불러오는 중...</p></div>
+    <div class="rl-snap">
+      <b>📁 일일 스냅샷 위치</b>
+      <div class="rl-path" id="runLogSnapPath"></div>
+      <button class="btn" id="runLogSnapCopy">📋 경로 복사</button>
+      <p class="rl-note">날짜별 폴더에 검사포장·생산·TFT 매칭·통합취합본이 엑셀(xlsx)·JSON으로 저장돼요. 사내망에서만 열려요.</p>
+    </div>
+  </div>
+
   <div class="modal-bg" id="modalBg">
     <div class="modal">
       <div class="modal-h"><h3 id="mTitle"></h3><p id="mDesc"></p></div>
@@ -243,6 +273,7 @@
               <div class="hg-frow"><span class="hg-arr">위 3가지가 자동으로 합쳐져 ▶</span><span class="hg-fbox hg-out">통합취합본</span><span class="hg-fbox hg-out">KPI 통계</span></div>
             </div>
             <div class="hg-note">※ 검사포장·TFT 매칭은 손댈 필요 없이 자동입니다. 사람이 작성하는 건 <b>생산관리대장</b>과 <b>이력 필요</b>뿐입니다.</div>
+            <div class="hg-note">✏️ <b>수정하려면 편집 모드</b> — 처음엔 <b>보기 모드</b>(조회만 가능)입니다. 상단 오른쪽 스위치를 켜고 팀 공용 비밀번호를 넣으면 상단이 주황색으로 바뀌며 수정·저장할 수 있습니다. 다 쓰면 스위치를 꺼주세요. 매일 자동 실행 결과와 스냅샷 폴더 경로는 <b>📋 실행 기록</b>에서 봅니다.</div>
           </div>
         </div>
 
@@ -452,6 +483,18 @@
           <!-- ▼ 새 항목은 이 아래에 추가 -->
 
           <div class="cl-entry">
+            <div class="cl-date">2026-10-02</div>
+            <ul class="cl-list">
+              <li><b>보기 모드 / 편집 모드 스위치</b> — 이제 누구나 조회는 그대로 할 수 있고, 수정·저장·삭제는 상단 스위치를 켜고 팀 공용 비밀번호를 입력해야 가능합니다. 편집 모드에서는 상단이 주황색으로 바뀌니, 다 쓰면 스위치를 꺼주세요.</li>
+              <li><b>📋 실행 기록</b> — 매일 17:00 엑셀 업로드 · 17:10 TFT 매칭 · 17:30 서버 백업이 성공했는지 상단 점 색(초록 정상 / 빨강 실패 / 주황 기록 없음)과 최근 7일 표로 확인. 일일 스냅샷 폴더 경로도 여기서 복사할 수 있습니다.</li>
+              <li><b>탭 전환 속도 개선</b> — 생산관리대장·통합취합본을 처음 열 때 3초 넘게 멈추던 문제 해결(약 0.2~0.4초). 처음엔 위쪽 200행만 그리고 스크롤하면 이어서 그립니다. 「맨 아래로」 버튼은 끝부분으로 바로 이동합니다.</li>
+              <li><b>17시 자동 업로드 중 멈춤 완화</b> — 자동 업로드로 수천 건이 바뀔 때 화면을 건마다 다시 그리던 것을, 끝난 뒤 한 번만 그리도록 변경.</li>
+              <li><b>자동 업로드 안전장치</b> — 엑셀이 깨져 건수가 10% 넘게 줄면 반영하지 않고 중단, 중간에 실패해도 DB가 비지 않도록 한 번에 교체. 실패하면 사내 메신저로 알림.</li>
+            </ul>
+          </div>
+
+
+          <div class="cl-entry">
             <div class="cl-date">2026-06-09</div>
             <ul class="cl-list">
               <li><b>생산관리대장 속도 개선 · 팅김 해결</b> — 4천 건 이상에서 탭을 열 때 멈추거나 팅기던 문제를 잡았습니다. 셀마다 만들던 입력칸(약 6만 개)을 평소엔 텍스트로 표시하고 클릭·편집할 때만 생성하도록 바꿔 메모리·렌더 부담을 크게 줄였습니다. 선택·복사·붙여넣기·채우기·되돌리기 동작은 그대로입니다. (검사포장 탭도 동일 적용)</li>
@@ -535,6 +578,6 @@
   <button class="fab-bottom" id="fabBottom" title="맨 아래로">⬇</button>
 
   <!-- Scripts -->
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js?v=20261002"></script>
 </body>
 </html>

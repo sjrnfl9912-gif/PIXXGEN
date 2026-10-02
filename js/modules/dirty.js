@@ -6,12 +6,14 @@ import { state, rebuildTft, rebuildDetTft, markDupDirty, invalidateAllTabs, inva
 import { renderAll } from './table.js';
 import { saveCache } from '../services/storage.js';
 import { toast } from '../services/ui.js';
+import { requireEdit } from '../services/editmode.js';
 
 let isSaving = false;
 
 export async function saveAll() {
   // 중복 저장 방지
   if (isSaving) { toast('저장 진행 중...', 'info'); return; }
+  if (!requireEdit()) return;
   const { endEdit } = await import('./editing.js');
   endEdit();
   if (!state.hasChanges) { toast('변경사항 없음', 'info'); return; }
@@ -119,7 +121,7 @@ export async function saveAll() {
 }
 
 export function deleteRows() {
-  if (!state.sel || !state.range) return;
+  if (!state.sel || !state.range || !requireEdit()) return;
   const { tb } = state.sel;
   const r1 = Math.min(state.range.r1, state.range.r2), r2 = Math.max(state.range.r1, state.range.r2);
   const cnt = r2 - r1 + 1;

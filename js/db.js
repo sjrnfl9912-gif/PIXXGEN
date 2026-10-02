@@ -1,9 +1,10 @@
 import { getSupabase } from './config.js';
+import { requireEdit } from './services/editmode.js';
 
 const supabase = getSupabase();
 
 export async function dbInsert(table, data) {
-  if (!supabase) return null;
+  if (!supabase || !requireEdit()) return null;
   const { data: row, error } = await supabase.from(table).insert(data).select().single();
   if (error) {
     console.error(`Insert failed on ${table}:`, error);
@@ -13,7 +14,7 @@ export async function dbInsert(table, data) {
 }
 
 export async function dbBulkInsert(table, arr) {
-  if (!supabase || arr.length === 0) return [];
+  if (!supabase || arr.length === 0 || !requireEdit()) return [];
   const { data: rows, error } = await supabase.from(table).insert(arr).select();
   if (error) {
     console.error(`Bulk insert failed on ${table}:`, error);
@@ -23,7 +24,7 @@ export async function dbBulkInsert(table, arr) {
 }
 
 export async function dbUpdate(table, id, data) {
-  if (!supabase) return null;
+  if (!supabase || !requireEdit()) return null;
   const { data: row, error } = await supabase
     .from(table)
     .update(data)
@@ -48,7 +49,7 @@ export async function dbBulkUpdate(table, updates) {
 }
 
 export async function dbDelete(table, ids) {
-  if (!supabase) return false;
+  if (!supabase || !requireEdit()) return false;
   const { error } = await supabase.from(table).delete().in('id', ids);
   if (error) {
     console.error(`Delete failed on ${table}:`, error);

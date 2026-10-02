@@ -4,6 +4,12 @@
 export const SB_URL = 'https://arfytjlszyztmeycoeqk.supabase.co';
 export const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFyZnl0amxzenl6dG1leWNvZXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3MjU2NDMsImV4cCI6MjA4OTMwMTY0M30.dkhBveG0eP3Tggl6kSwKYZf_waXbcJ5MMVGFoq44kb8';
 
+// 편집 모드 로그인 계정 (팀 공용 비밀번호는 이 계정의 비밀번호 — Supabase Auth에 등록)
+export const TEAM_EMAIL = 'editor@pixxgen.internal';
+
+// 일일 서버 스냅샷 위치 (사내망 경로 — 실행 기록 서랍에서 복사)
+export const SNAPSHOT_PATH = '\\\\SERVER03\\Fab_Sync\\99. 기타 - 팀원 임시 폴더\\홍승범\\PIXXGEN\\snapshots\\';
+
 // supabase 전역 객체를 export (HTML 로드 완료 후 사용)
 export const getSupabase = () => {
   if (!window.supabase) {

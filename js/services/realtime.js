@@ -38,15 +38,28 @@ function rtHandle(arr, table, p) {
     const i = arr.findIndex(r => r._id === p.old.id);
     if (i >= 0) arr.splice(i, 1);
   }
-  markDupDirty(); saveCache(state.shipD, state.prodD);
+  markDupDirty();
+}
+
+// 이벤트마다 표 전체를 다시 그리면 17:00 자동 업로드(수천 행 교체) 때 브라우저가 멈춤.
+//  → 이벤트는 데이터에만 즉시 반영하고, 화면은 잠잠해진 뒤 한 번만 다시 그림.
+let renderTimer = null, prodTouched = false;
+function scheduleRender(isProd) {
+  if (isProd) prodTouched = true;
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(() => {
+    const doRender = () => { invalidateAllTabs(); renderAll(); saveCache(state.shipD, state.prodD); };
+    if (prodTouched) { prodTouched = false; import('../state.js').then(s => { s.rebuildTft(); doRender(); }); }
+    else doRender();
+  }, 400);
 }
 
 export function initRealtime() {
   const sb = getSupabase(); if (!sb) return;
   try {
     sb.channel('rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shipment' }, p => { rtHandle(state.shipD, 'shipment', p); invalidateAllTabs(); renderAll(); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'production' }, p => { rtHandle(state.prodD, 'production', p); import('../state.js').then(s => s.rebuildTft()); invalidateAllTabs(); renderAll(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shipment' }, p => { rtHandle(state.shipD, 'shipment', p); scheduleRender(false); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'production' }, p => { rtHandle(state.prodD, 'production', p); scheduleRender(true); })
       .subscribe();
   } catch (e) {
     console.warn('Realtime subscription failed:', e);
