@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="css/table.css">
   <link rel="stylesheet" href="css/modals.css">
   <link rel="stylesheet" href="css/kpi.css">
-  <link rel="stylesheet" href="css/editmode.css?v=20261002">
+  <link rel="stylesheet" href="css/editmode.css?v=20261015">
   <link rel="stylesheet" href="css/responsive.css">
 
   <!-- External Libraries -->
@@ -192,7 +192,7 @@
   <!-- 자동 실행 기록 서랍 -->
   <div class="rl-drawer" id="runLogDrawer">
     <div class="rl-h"><h3>📋 자동 실행 기록</h3><button class="rl-x" id="runLogClose" title="닫기">&times;</button></div>
-    <p class="rl-sub">매일 17:00 엑셀 업로드 → 17:10 TFT 매칭 → 17:30 서버 백업 (최근 7일)</p>
+    <p class="rl-sub">매일 17:00 엑셀 업로드 → 17:10 TFT 매칭 → 17:30 서버 백업 → 17:45 AI 점검 (최근 7일)</p>
     <div id="runLogBody"><p class="rl-note">불러오는 중...</p></div>
     <div class="rl-snap">
       <b>📁 일일 스냅샷 위치</b>
@@ -483,6 +483,16 @@
           <!-- ▼ 새 항목은 이 아래에 추가 -->
 
           <div class="cl-entry">
+            <div class="cl-date">2026-10-15</div>
+            <ul class="cl-list">
+              <li><b>🤖 AI 일일 점검</b> — 매일 17:45, 그날 업로드·TFT 매칭·백업 결과를 AI가 최근 7일과 비교해 이상 여부를 판정합니다(새 TFT 충돌, 검토 필요 폴더 증가, 건수 감소, 실행 시간 급증 등). 📋 실행 기록에 「AI 점검」 칸과 최근 판정 한 줄이 표시됩니다. AI에는 건수·통계만 보내고 S/N·업체명 등 원본 데이터는 보내지 않습니다.</li>
+              <li><b>자동 실행 멈춤 방지</b> — 공유폴더 응답이 없어 작업이 끝나지 않으면 정해진 시간 뒤 강제 종료하고 실패로 기록·알림합니다.</li>
+              <li><b>실행 기록 누락 방지</b> — 네트워크 문제로 기록을 못 올리면 PC에 보관했다가 다음 실행 때 다시 올립니다.</li>
+            </ul>
+          </div>
+
+
+          <div class="cl-entry">
             <div class="cl-date">2026-10-02</div>
             <ul class="cl-list">
               <li><b>보기 모드 / 편집 모드 스위치</b> — 이제 누구나 조회는 그대로 할 수 있고, 수정·저장·삭제는 상단 스위치를 켜고 팀 공용 비밀번호를 입력해야 가능합니다. 편집 모드에서는 상단이 주황색으로 바뀌니, 다 쓰면 스위치를 꺼주세요.</li>
@@ -578,6 +588,6 @@
   <button class="fab-bottom" id="fabBottom" title="맨 아래로">⬇</button>
 
   <!-- Scripts -->
-  <script type="module" src="js/main.js?v=20261002"></script>
+  <script type="module" src="js/main.js?v=20261015"></script>
 </body>
 </html>
