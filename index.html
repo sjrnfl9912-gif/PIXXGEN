@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="css/table.css">
   <link rel="stylesheet" href="css/modals.css">
   <link rel="stylesheet" href="css/kpi.css">
-  <link rel="stylesheet" href="css/editmode.css?v=20261019b">
+  <link rel="stylesheet" href="css/editmode.css?v=20261019c">
   <link rel="stylesheet" href="css/responsive.css">
 
   <!-- External Libraries -->
@@ -179,6 +179,16 @@
 
   <!-- Modal -->
   <!-- 편집 모드 비밀번호 -->
+  <div class="em-bg vg-bg" id="viewGateBg">
+    <div class="em-modal vg-modal">
+      <h3>🔒 출하 관리 시스템</h3>
+      <p>사내 전용입니다. 보기 비밀번호를 입력하세요.<br>한 번 입력하면 이 PC에서는 다시 묻지 않아요.</p>
+      <input type="password" id="viewGateInput" inputmode="numeric" placeholder="보기 비밀번호" autocomplete="current-password">
+      <div class="em-err" id="viewGateErr"></div>
+      <div class="em-row"><button class="btn em-ok vg-ok" id="viewGateOk">열기</button></div>
+    </div>
+  </div>
+
   <div class="em-bg" id="editPwBg">
     <div class="em-modal">
       <h3>✏️ 편집 모드 켜기</h3>
@@ -485,6 +495,7 @@
           <div class="cl-entry">
             <div class="cl-date">2026-10-19</div>
             <ul class="cl-list">
+              <li><b>🔒 사내 전용 — 보기 비밀번호</b> — 이제 조회도 보기 비밀번호를 입력해야 합니다(외부에서는 데이터가 보이지 않음). 한 번 입력하면 그 PC·브라우저에서는 다시 묻지 않습니다. 수정은 지금처럼 편집 모드 비밀번호가 따로 필요합니다.</li>
               <li><b>밀린 자동 실행 순서 보장</b> — 휴가 등으로 PC를 늦게 켜 밀린 작업이 한꺼번에 시작돼도 업로드 → TFT 매칭 → 서버 백업 → AI 점검 순서대로 앞 작업이 끝난 뒤 실행합니다. (전에는 업로드가 끝나기 전에 백업이 먼저 돌아 스냅샷에 최신 건이 빠질 수 있었음)</li>
               <li><b>폴더 오류 안내 문구</b> — 폴더명 수정 요청 대상을 「품질팀」으로 바로잡음.</li>
               <li><b>생산관리대장 「모델명」 칸 추가</b> — 생산번호 바로 뒤. 기존 기록 중 출하이력과 연결되는 2,385건은 출하 품명으로 미리 채워 두었고(다르면 고쳐 주세요), 나머지는 빈칸. 입력된 모델명은 목록으로 골라 쓸 수 있습니다(새 모델은 직접 입력). 생산 모델명은 출하 품명과 달라도 되며, 출하 ↔ 생산 연결은 S/N 기준이라 영향 없음.</li>
@@ -599,6 +610,6 @@
   <button class="fab-bottom" id="fabBottom" title="맨 아래로">⬇</button>
 
   <!-- Scripts -->
-  <script type="module" src="js/main.js?v=20261019b"></script>
+  <script type="module" src="js/main.js?v=20261019c"></script>
 </body>
 </html>

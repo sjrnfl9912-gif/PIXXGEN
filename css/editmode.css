@@ -132,6 +132,12 @@ body:not(.edit-mode) td .fh { display: none; }
 }
 
 .em-err { color: var(--er); font-size: 11px; min-height: 16px; margin-top: 4px; }
+
+/* 보기 잠금 — 로딩 화면보다 위, 뒤 화면이 보이지 않게 불투명 */
+.vg-bg { z-index: 1000; background: #1e293b; }
+.vg-modal { border-top-color: #2563eb; }
+.em-ok.vg-ok { background: #2563eb; border-color: #2563eb; }
+.em-ok.vg-ok:hover { background: #1d4ed8; }
 .em-row { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
 .em-ok { background: #d97706; border-color: #d97706; color: #fff; }
 .em-ok:hover { background: #b45309; }

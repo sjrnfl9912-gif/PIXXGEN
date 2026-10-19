@@ -1,11 +1,14 @@
 // ═══════════════════════════════════════
-// EDIT MODE — 보기는 누구나, 수정·저장은 팀 공용 비밀번호
-//   스위치 ON = Supabase 팀 계정 로그인, OFF = 로그아웃.
-//   DB 쓰기 권한은 RLS가 로그인 세션에만 허용하므로, 여기 잠금은 UX용 1차 방어.
+// EDIT MODE — 보기는 보기 계정(viewgate.js), 수정·저장은 팀 공용 비밀번호
+//   스위치 ON = 편집 계정 로그인, OFF = 편집 계정 로그아웃 후 보기 계정으로 복귀.
+//   DB 쓰기 권한은 RLS가 편집 계정에만 허용하므로, 여기 잠금은 UX용 1차 방어.
 // ═══════════════════════════════════════
 import { getSupabase, TEAM_EMAIL } from '../config.js?v=20261002';
 import { state } from '../state.js';
 import { toast, customConfirm } from './ui.js';
+import { backToViewer } from './viewgate.js';
+
+const isEditor = session => session?.user?.email === TEAM_EMAIL;
 
 state.editMode = false;
 
@@ -67,6 +70,7 @@ async function turnOff() {
     if (state.editing) { const { endEdit } = await import('../modules/editing.js'); endEdit(); }
     try { await sb?.auth.signOut(); } catch (e) { /* 네트워크 실패해도 로컬 세션은 정리됨 */ }
     state.editMode = false; applyUi();
+    await backToViewer();
     toast('보기 모드로 돌아왔어요', 'info');
   };
   if (state.hasChanges) {
@@ -89,6 +93,6 @@ export async function initEditMode() {
   if (!sb) return;
   // 스위치를 끄지 않고 닫았으면 세션이 남아 있음 → 편집 모드로 복귀
   const { data } = await sb.auth.getSession();
-  state.editMode = !!data?.session; applyUi();
-  sb.auth.onAuthStateChange((_ev, session) => { state.editMode = !!session; applyUi(); });
+  state.editMode = isEditor(data?.session); applyUi();
+  sb.auth.onAuthStateChange((_ev, session) => { state.editMode = isEditor(session); applyUi(); });
 }

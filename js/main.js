@@ -20,6 +20,7 @@ import { saveAll } from './modules/dirty.js';
 import { initResize } from './modules/resize.js';
 import { jumpToEnd } from './modules/lazy.js';
 import { initEditMode, requireEdit } from './services/editmode.js';
+import { ensureViewAccess } from './services/viewgate.js';
 import { initRunLog } from './services/runlog.js';
 
 // ═══ ROW OPERATIONS ═══
@@ -305,6 +306,8 @@ async function init() {
   initKPI();
   initHistNeed();
   initMergeEditClicks();
+  // 보기 잠금 — 로그인(보기 비밀번호) 전에는 캐시·DB 데이터를 띄우지 않음
+  await ensureViewAccess();
   initEditMode();
   initRunLog();
 
