@@ -49,3 +49,17 @@ export function commitCellValue(td, nv) {
   td.classList.add('chg'); setTimeout(() => td.classList.remove('chg'), 600);
   return { id, t, f, ov, nv: model };
 }
+
+// 모델명 입력 목록 — 생산관리대장에 이미 입력된 모델명만 (출하 품명과 이름이 다를 수 있어 섞지 않음).
+//   편집 칸을 열 때마다 최신으로 갱신. 목록에 없으면 직접 입력.
+export function refreshModelOpts() {
+  let dl = document.getElementById('modelOpts');
+  if (!dl) { dl = document.createElement('datalist'); dl.id = 'modelOpts'; document.body.appendChild(dl); }
+  const set = new Set();
+  for (const r of state.prodD || []) { const v = (r.model_name || '').trim(); if (v) set.add(v); }
+  const list = [...set].sort();
+  const key = list.join('|');
+  if (dl.dataset.key === key) return;
+  dl.dataset.key = key;
+  dl.innerHTML = list.map(v => '<option value="' + escAttr(v) + '">').join('');
+}

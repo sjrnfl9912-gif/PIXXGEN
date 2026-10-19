@@ -6,7 +6,7 @@ import { state, markDupDirty, rebuildTft, rebuildDetTft, invalidateOtherTabs } f
 import { dbInsert, dbUpdate } from '../db.js';
 import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
-import { cellHtml } from './cell.js';
+import { cellHtml, refreshModelOpts } from './cell.js';
 import { mountRows } from './lazy.js';
 import { requireEdit } from '../services/editmode.js';
 
@@ -204,7 +204,7 @@ export function renderProductionTable() {
   state.tabRendered.prod = true;
 }
 
-const PROD_VL_FIELDS = ['tft_sn', 'scintillator', 'cpu_sn', 'main_board_sn', 'main_board_ver', 'panel_type', 'completed_date', 'detector_fw', 'micom_ver', 'bat_micom_ver', 'worker', 'aed_sn', 'note1', 'note2'];
+const PROD_VL_FIELDS = ['model_name', 'tft_sn', 'scintillator', 'cpu_sn', 'main_board_sn', 'main_board_ver', 'panel_type', 'completed_date', 'detector_fw', 'micom_ver', 'bat_micom_ver', 'worker', 'aed_sn', 'note1', 'note2'];
 
 // 가독성 — 긴 텍스트 잘림(툴팁) / 클릭 복사 대상 컬럼
 const LONG_COLS = new Set(['product_name', 'company', 'manager_info', 'zview_sw', 'note1', 'note2']);
@@ -221,6 +221,11 @@ function fieldInputHtml(f, v, baseAttrs) {
     if (v && !opts.includes(v)) opts.push(v);
     const optsHtml = opts.map(o => '<option value="' + esc(o) + '"' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>').join('');
     return '<select ' + baseAttrs + '>' + optsHtml + '</select>';
+  }
+  if (f === 'model_name') {
+    // 쓰던 모델은 목록에서 고르고, 새 모델은 직접 입력
+    refreshModelOpts();
+    return '<input ' + baseAttrs + ' list="modelOpts" value="' + safe + '" placeholder="목록 선택 또는 입력">';
   }
   return '<input ' + baseAttrs + ' value="' + safe + '">';
 }
@@ -288,7 +293,8 @@ export function renderMergeTable() {
       const f = PROD_VL_FIELDS[j];
       if (!tftSn) { cells.push('<td class="v"><span class="vl-na">-</span></td>'); continue; }
       if (p[f] == null || p[f] === '') {
-        cells.push('<td class="v"><span class="vl-miss">매칭없음</span></td>'); continue;
+        // 모델명은 미입력이 정상(매칭 실패 아님) → 빈칸
+        cells.push(f === 'model_name' ? '<td class="v"></td>' : '<td class="v"><span class="vl-miss">매칭없음</span></td>'); continue;
       }
       cells.push(readCell(f, p[f], 'v'));
     }

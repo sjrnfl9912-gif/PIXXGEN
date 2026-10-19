@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════
 import { state, pushUndo, trackUpdate, markDupDirty, rebuildTft } from '../state.js';
 import { saveCacheDebounced } from '../services/storage.js';
-import { setCellText } from './cell.js';
+import { setCellText, refreshModelOpts } from './cell.js';
 import { requireEdit } from '../services/editmode.js';
 
 // td(편집 가능 셀)에 input을 만들어 편집 시작. clear=true면 빈 칸으로 시작(첫 타이핑).
@@ -21,6 +21,7 @@ export function startEdit(td, clear) {
   inp.value = clear ? '' : v;
   inp.dataset.bk = v;
   inp.dataset.o = v;
+  if (td.dataset.f === 'model_name') { refreshModelOpts(); inp.setAttribute('list', 'modelOpts'); }
   td.insertBefore(inp, td.firstChild);
   state.sel.inp = inp;
   inp.focus();
