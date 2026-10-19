@@ -849,7 +849,7 @@ function renderHistPending() {
   }).join('');
 }
 
-// 검사포장 폴더 오류 — tft-sync가 인식 못한 폴더 목록 (검사포장팀 검토용)
+// 검사포장 폴더 오류 — tft-sync가 인식 못한 폴더 목록 (품질팀 검토용)
 //  spacing: 띄어쓰기 누락 (TFT+디텍터 붙음) — 폴더명만 수정하면 인식됨
 //  review : 그 외 (디텍터 누락 / 오타 / 묶음 외 단독 등) — 수동 검토 필요
 function renderFolderIssues() {
