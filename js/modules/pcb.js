@@ -271,8 +271,9 @@ async function saveSection(sec) {
   toast('설정 저장됨', 'ok'); renderPCB();
 }
 
-// ═══ 등록 (편집 모드) — 탭 아래 바로 등록 줄에서 구분을 누르면 번호 발급 + 오른쪽 서랍 ═══
-let G = null;   // { cat, rec, part, by, sym, note, photos(새 dataURL), boards, busy }
+// ═══ 등록 (편집 모드) — 탭 아래 바로 등록 줄에서 구분 선택 → 오른쪽 서랍에서 내용 입력 → 「등록」 때 번호 발급 ═══
+//   잘못 눌러도 등록 전에는 아무것도 안 남음. 번호는 등록 순간 DB가 잠금 후 발급(동시에 눌러도 안 겹침).
+let G = null;   // { cat, rec, part, by, sym, note, photos(새 dataURL), boards, busy, done }
 const lastBy = () => { try { return localStorage.getItem('pcb_by'); } catch (e) { return null; } };
 
 function renderStrip() {
@@ -289,12 +290,14 @@ export async function openPcbGuide(opts = {}) {
   G = { cat: null, rec: null, part: '', by: lastBy() || P.set.people[0] || '', sym: [], note: '', photos: [], boards: opts.boards || null };
   if (opts.resume) {
     const r = P.rows.find(x => x.id === opts.resume);
-    // 이어서 적기·수정은 라벨이 이미 붙어 있으므로 확인 단계 생략
-    Object.assign(G, { rec: r, cat: r.cat, part: r.part_sn || '', by: r.reporter || G.by, sym: [...(r.symptoms || [])], note: r.note || '', labelOk: true });
-  }
+    Object.assign(G, { rec: r, cat: r.cat, part: r.part_sn || '', by: r.reporter || G.by, sym: [...(r.symptoms || [])], note: r.note || '' });
+  } else if (opts.cat) setCat(opts.cat);
   $('pcbGuideBg').classList.add('show'); $('pcbGuide').classList.add('show');
-  if (opts.cat && !G.rec) return issue(opts.cat);
   renderGuide();
+}
+function setCat(cat) {
+  if (G.cat !== cat) G.sym = [];   // 구분마다 불량 버튼 목록이 다름
+  G.cat = cat; G.part = G.boards?.[cat] ?? G.part;
 }
 function closeGuide() {
   if (G?.busy) return;
@@ -310,44 +313,37 @@ function grab() {
   if ($('pgBy')) G.by = $('pgBy').value;
 }
 
-// 번호는 구분을 누르는 순간 DB가 잠금 후 발급 → 동시에 눌러도 안 겹치고, 서랍을 닫아도 번호는 남음
-async function issue(cat) {
-  G.cat = cat; G.part = G.boards?.[cat] ?? G.part;
-  try { localStorage.setItem('pcb_by', G.by); } catch (e) { /* 저장 막힌 브라우저면 매번 선택 */ }
-  G.busy = '번호 발급 중…'; renderGuide();
-  const { data, error } = await sb().rpc('pcb_issue_label', { p_cat: cat, p_part: G.part, p_reporter: G.by });
-  G.busy = false;
-  if (error) { G.cat = null; renderGuide(); return showErr('번호 발급 실패: ' + error.message); }
-  G.rec = data; upsertRow(data); renderStrip(); renderGuide();
-}
-
 function renderGuide() {
   const s = G, box = $('pcbGuide');
-  if (!s.rec) {   // 구분 고르기 (생산관리대장 우클릭으로 들어온 경우)
-    box.innerHTML = `<div class="pd-head"><small>PCB 불량 등록</small><div class="pd-q">무엇이 불량인가요?</div><div class="pd-tip">누르면 바로 라벨 번호가 발급됩니다</div></div>
-      <div class="pd-body"><div class="pd-cats">${P.set.cats.map((c, i) => `<button data-gcat="${i}" ${s.busy ? 'disabled' : ''}>${esc(c.name)}</button>`).join('')}</div>
-        ${s.boards ? '<div class="pcb-note">생산관리대장의 버전·S/N을 가져옵니다</div>' : ''}<div class="pg-warn" id="pgErr"></div></div>
-      <div class="pd-foot"><button class="btn" data-g="close">닫기</button>${s.busy ? `<span class="pcb-note">${s.busy}</span>` : ''}</div>`;
-    return;
-  }
-  if (!s.labelOk) {   // 방금 발급된 번호: 라벨에 뭘 써야 하는지 크게 보여주고 확인을 받은 뒤 내용 입력으로
-    box.innerHTML = `<div class="pd-head"><small>${esc(s.rec.cat)} · 라벨 번호 발급됨</small><div class="pd-q">라벨에 이 번호를 쓰세요</div></div>
+  if (s.done) {   // 등록 끝 → 라벨에 쓸 번호를 크게, 확인을 받고 닫음
+    box.innerHTML = `<div class="pd-head"><small>${esc(s.rec.cat)} · 등록 완료</small><div class="pd-q">라벨에 이 번호를 쓰세요</div></div>
       <div class="pd-body pd-labelstep">
         <div class="pd-bignum">${esc(s.rec.label)}</div>
-        <ol class="pd-do"><li>라벨프린터에 <b>${esc(s.rec.label)}</b> 입력</li><li>출력해서 불량품에 붙이기</li><li>아래 <b>확인</b> 누르고 불량 내용 적기</li></ol>
+        <ol class="pd-do"><li>라벨프린터에 <b>${esc(s.rec.label)}</b> 입력</li><li>출력해서 불량품에 붙이기</li><li>불량품은 불량 보관함에</li></ol>
       </div>
-      <div class="pd-foot"><button class="btn" data-g="close">나중에 적기</button><button class="pg-go" data-g="labelok">✓ 라벨 붙였어요 — 확인</button></div>`;
+      <div class="pd-foot"><button class="pg-go" data-g="labelok">✓ 라벨 붙였어요 — 확인</button></div>`;
     return;
   }
-  const cat = P.set.cats.find(c => c.name === s.rec.cat) || { quick: [] };
-  const old = s.rec.photos || [], canPhoto = P.set.drive?.url && P.token;
-  box.innerHTML = `<div class="pd-head"><small>${esc(s.rec.cat)} · 라벨 번호</small><div class="pd-num">${esc(s.rec.label)}</div>
-      <div class="pd-tip">① 라벨프린터에 이 번호 입력 → ② 출력해서 불량품에 부착 → ③ 아래 불량 내용 선택</div></div>
+  if (!s.cat) {   // 구분 고르기 (생산관리대장 우클릭으로 들어온 경우)
+    box.innerHTML = `<div class="pd-head"><small>PCB 불량 등록</small><div class="pd-q">무엇이 불량인가요?</div><div class="pd-tip">고른 뒤 불량 내용을 적고 「등록」을 누르면 라벨 번호가 나옵니다</div></div>
+      <div class="pd-body"><div class="pd-cats">${P.set.cats.map((c, i) => `<button data-gcat="${i}">${esc(c.name)}</button>`).join('')}</div>
+        ${s.boards ? '<div class="pcb-note">생산관리대장의 버전·S/N을 가져옵니다</div>' : ''}</div>
+      <div class="pd-foot"><button class="btn" data-g="close">취소</button></div>`;
+    return;
+  }
+  const cat = P.set.cats.find(c => c.name === s.cat) || { quick: [] };
+  const old = s.rec?.photos || [], canPhoto = P.set.drive?.url && P.token;
+  const head = s.rec
+    ? `<div class="pd-head"><small>${esc(s.rec.cat)} · 라벨 번호</small><div class="pd-num">${esc(s.rec.label)}</div></div>`
+    : `<div class="pd-head"><small>PCB 불량 등록</small><div class="pd-q">불량 내용을 적고 「등록」</div><div class="pd-tip">등록을 누르면 라벨 번호가 나옵니다 · 취소하면 아무것도 안 남아요</div></div>`;
+  box.innerHTML = `${head}
     <div class="pd-body">
+      ${s.rec ? '' : `<label class="pd-l">구분 (잘못 골랐으면 바꾸세요)</label>
+        <div class="pd-seg">${P.set.cats.map((c, i) => `<button data-gcat="${i}" class="${c.name === s.cat ? 'on' : ''}" ${s.busy ? 'disabled' : ''}>${esc(c.name)}</button>`).join('')}</div>`}
       <label class="pd-l">어떤 불량인가요? (여러 개)</label>
       <div class="pg-chips">${cat.quick.map(q => `<button data-gq="${esc(q)}" class="${s.sym.includes(q) ? 'on' : ''}">${esc(q)}</button>`).join('')}</div>
       <textarea id="pgNote" rows="2" placeholder="내용 메모 (선택)">${esc(s.note)}</textarea>
-      <div class="pd-2"><div><label class="pd-l">${s.rec.cat === '듀얼배터리보드' ? '보드 버전' : '버전 · S/N'} (선택)</label><input id="pgPart" value="${esc(s.part)}" placeholder="${PART_PH[s.rec.cat] || '버전 / S/N'}"></div>
+      <div class="pd-2"><div><label class="pd-l">${s.cat === '듀얼배터리보드' ? '보드 버전' : '버전 · S/N'} (선택)</label><input id="pgPart" value="${esc(s.part)}" placeholder="${PART_PH[s.cat] || '버전 / S/N'}"></div>
         <div><label class="pd-l">등록자</label><select id="pgBy">${P.set.people.map(p => `<option ${p === s.by ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select></div></div>
       <label class="pd-l">사진 (선택)</label>
       ${canPhoto ? `<div class="pg-photo">${old.map(p => `<img src="${thumb(p.id, 200)}" alt="등록된 사진">`).join('')}${s.photos.map(p => `<img src="${p}" alt="새 사진">`).join('')}
@@ -355,8 +351,8 @@ function renderGuide() {
         : '<div class="pcb-note">사진 업로드가 아직 설정되지 않았어요 (설정 › 사진 저장)</div>'}
       <div class="pg-warn" id="pgErr"></div>
     </div>
-    <div class="pd-foot"><button class="btn" data-g="close" ${s.busy ? 'disabled' : ''}>${s.rec.incomplete ? '나중에 적기' : '닫기'}</button>
-      <button class="pg-go" data-g="save" ${s.busy ? 'disabled' : ''}>${s.busy || '등록 완료 ✓'}</button></div>`;
+    <div class="pd-foot"><button class="btn" data-g="close" ${s.busy ? 'disabled' : ''}>${s.rec ? '닫기' : '취소'}</button>
+      <button class="pg-go" data-g="save" ${s.busy ? 'disabled' : ''}>${s.busy || (s.rec ? '저장 ✓' : '등록 → 라벨 번호 받기')}</button></div>`;
   $('pgFile')?.addEventListener('change', e => [...e.target.files].forEach(addPhoto));
 }
 
@@ -384,6 +380,14 @@ async function uploadPhoto(label, n, dataUrl) {
 async function save() {
   const s = G; grab();
   if (!s.sym.length && !s.note.trim()) return showErr('불량 내용을 하나 고르거나 적어주세요');
+  const isNew = !s.rec;
+  if (isNew) {   // 여기서 처음으로 번호 발급
+    try { localStorage.setItem('pcb_by', s.by); } catch (e) { /* 저장 막힌 브라우저면 매번 선택 */ }
+    s.busy = '번호 발급 중…'; renderGuide();
+    const { data, error } = await sb().rpc('pcb_issue_label', { p_cat: s.cat, p_part: s.part, p_reporter: s.by });
+    if (error) { s.busy = false; renderGuide(); return showErr('등록 실패: ' + error.message); }
+    s.rec = data; upsertRow(data);
+  }
   const photos = [...(s.rec.photos || [])];
   let failed = 0;
   for (let i = 0; i < s.photos.length; i++) {
@@ -395,10 +399,12 @@ async function save() {
   if (s.by && s.by !== s.rec.reporter) patch.reporter = s.by;
   const rec = await updateRow(s.rec.id, patch);
   s.busy = false;
-  if (!rec) return renderGuide();
+  if (!rec) return renderGuide();   // 번호는 이미 발급됨 → 다시 누르면 내용만 저장
+  s.photos = [];
   if (failed) toast(`사진 ${failed}장은 올리지 못했어요 — 목록에서 「내용·사진 수정」으로 다시 올려주세요`, 'er');
-  else toast(`${rec.label} 등록 완료 — 불량품은 불량 보관함에 넣어주세요`, 'ok');
-  P.lastLabel = rec.label; s.photos = []; closeGuide();
+  P.lastLabel = rec.label; s.rec = rec;
+  if (isNew) { s.done = true; return renderGuide(); }
+  toast(`${rec.label} 저장됨`, 'ok'); closeGuide();
 }
 
 // ═══ 메일 링크(#pcb?q=라벨)로 들어오면 바로 검색 ═══
@@ -466,10 +472,10 @@ export async function initPCB() {
   box.addEventListener('click', e => {
     if (!G) return;
     const t = e.target.closest('[data-g],[data-gcat],[data-gq]'); if (!t) return;
-    if (t.dataset.gcat !== undefined) { grab(); return issue(P.set.cats[+t.dataset.gcat].name); }
+    if (t.dataset.gcat !== undefined) { grab(); setCat(P.set.cats[+t.dataset.gcat].name); return renderGuide(); }
     if (t.dataset.gq !== undefined) { grab(); const q = t.dataset.gq; G.sym = G.sym.includes(q) ? G.sym.filter(x => x !== q) : [...G.sym, q]; return renderGuide(); }
     if (t.dataset.g === 'close') return closeGuide();
-    if (t.dataset.g === 'labelok') { G.labelOk = true; return renderGuide(); }
+    if (t.dataset.g === 'labelok') { toast(`${G.rec.label} 등록 완료 — 불량품은 불량 보관함에 넣어주세요`, 'ok'); return closeGuide(); }
     if (t.dataset.g === 'save') return save();
   });
   box.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') closeGuide(); });

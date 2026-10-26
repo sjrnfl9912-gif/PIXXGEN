@@ -179,3 +179,8 @@ body.edit-mode .pcb-strip { display: flex; }
   .pd-2 { grid-template-columns: 1fr; }
   .pd-num { font-size: 32px; }
 }
+
+/* 등록 서랍 — 구분 바꾸기 (등록 전) */
+.pd-seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.pd-seg button { flex: 1; min-width: 90px; border: 1.5px solid var(--bd); background: #fff; border-radius: 6px; padding: 8px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--tx); }
+.pd-seg button.on { border-color: var(--pr); background: var(--pl); color: var(--pr); }
