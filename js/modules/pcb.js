@@ -289,7 +289,8 @@ export async function openPcbGuide(opts = {}) {
   G = { cat: null, rec: null, part: '', by: lastBy() || P.set.people[0] || '', sym: [], note: '', photos: [], boards: opts.boards || null };
   if (opts.resume) {
     const r = P.rows.find(x => x.id === opts.resume);
-    Object.assign(G, { rec: r, cat: r.cat, part: r.part_sn || '', by: r.reporter || G.by, sym: [...(r.symptoms || [])], note: r.note || '' });
+    // 이어서 적기·수정은 라벨이 이미 붙어 있으므로 확인 단계 생략
+    Object.assign(G, { rec: r, cat: r.cat, part: r.part_sn || '', by: r.reporter || G.by, sym: [...(r.symptoms || [])], note: r.note || '', labelOk: true });
   }
   $('pcbGuideBg').classList.add('show'); $('pcbGuide').classList.add('show');
   if (opts.cat && !G.rec) return issue(opts.cat);
@@ -327,6 +328,15 @@ function renderGuide() {
       <div class="pd-body"><div class="pd-cats">${P.set.cats.map((c, i) => `<button data-gcat="${i}" ${s.busy ? 'disabled' : ''}>${esc(c.name)}</button>`).join('')}</div>
         ${s.boards ? '<div class="pcb-note">생산관리대장의 버전·S/N을 가져옵니다</div>' : ''}<div class="pg-warn" id="pgErr"></div></div>
       <div class="pd-foot"><button class="btn" data-g="close">닫기</button>${s.busy ? `<span class="pcb-note">${s.busy}</span>` : ''}</div>`;
+    return;
+  }
+  if (!s.labelOk) {   // 방금 발급된 번호: 라벨에 뭘 써야 하는지 크게 보여주고 확인을 받은 뒤 내용 입력으로
+    box.innerHTML = `<div class="pd-head"><small>${esc(s.rec.cat)} · 라벨 번호 발급됨</small><div class="pd-q">라벨에 이 번호를 쓰세요</div></div>
+      <div class="pd-body pd-labelstep">
+        <div class="pd-bignum">${esc(s.rec.label)}</div>
+        <ol class="pd-do"><li>라벨프린터에 <b>${esc(s.rec.label)}</b> 입력</li><li>출력해서 불량품에 붙이기</li><li>아래 <b>확인</b> 누르고 불량 내용 적기</li></ol>
+      </div>
+      <div class="pd-foot"><button class="btn" data-g="close">나중에 적기</button><button class="pg-go" data-g="labelok">✓ 라벨 붙였어요 — 확인</button></div>`;
     return;
   }
   const cat = P.set.cats.find(c => c.name === s.rec.cat) || { quick: [] };
@@ -459,6 +469,7 @@ export async function initPCB() {
     if (t.dataset.gcat !== undefined) { grab(); return issue(P.set.cats[+t.dataset.gcat].name); }
     if (t.dataset.gq !== undefined) { grab(); const q = t.dataset.gq; G.sym = G.sym.includes(q) ? G.sym.filter(x => x !== q) : [...G.sym, q]; return renderGuide(); }
     if (t.dataset.g === 'close') return closeGuide();
+    if (t.dataset.g === 'labelok') { G.labelOk = true; return renderGuide(); }
     if (t.dataset.g === 'save') return save();
   });
   box.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') closeGuide(); });
