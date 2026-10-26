@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="css/kpi.css">
   <link rel="stylesheet" href="css/editmode.css?v=20261019c">
   <link rel="stylesheet" href="css/responsive.css">
-  <link rel="stylesheet" href="css/pcb.css?v=20261026">
+  <link rel="stylesheet" href="css/pcb.css?v=20261026c">
 
   <!-- External Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -46,19 +46,27 @@
       <div class="tab" data-tab="kpi">📊 KPI 통계</div>
       <div class="tab tab-pcb" data-tab="pcb">🔴 PCB 불량<span class="cnt" id="cntPcb">0</span></div>
       <div class="tab-right">
-        <button class="btn btn-bad" id="pcbAddBtn" title="PCB 불량 등록 — 라벨 번호를 알려줍니다">🔴 불량 등록</button>
-        <button class="btn" id="helpBtn" title="사용 설명서">❓ 사용법</button>
-        <button class="btn" id="changelogBtn" title="업데이트 내역">🆕 업데이트</button>
-        <button class="btn" id="manualRunBtn" title="스크립트 수동 실행">⚡ 수동 실행</button>
         <span id="saveStatus" style="font-size:10px;color:var(--ok)">저장 완료</span>
         <button class="btn btn-pr" id="saveBtn" style="font-weight:600">💾 저장</button>
-        <button class="btn btn-hide-m" id="backupBtn">📥 백업</button>
-        <button class="btn btn-hide-m" id="restoreBtn">📤 복원</button>
-        <input type="file" id="restoreFile" accept=".json" style="display:none">
         <button class="btn" id="reloadBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg><span class="btn-hide-m">새로고침</span></button>
         <button class="btn btn-pr btn-hide-m" id="exportBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>엑셀 추출</button>
+        <!-- 자주 안 쓰는 버튼은 더보기로 (id 그대로 → 기존 동작 유지) -->
+        <div class="more" id="moreWrap">
+          <button class="btn" id="moreBtn" aria-haspopup="true" aria-expanded="false">⋯ 더보기</button>
+          <div class="more-menu" role="menu">
+            <button role="menuitem" id="helpBtn">❓ 사용법</button>
+            <button role="menuitem" id="changelogBtn">🆕 업데이트 내역</button>
+            <hr>
+            <button role="menuitem" id="manualRunBtn">⚡ 수동 실행</button>
+            <button role="menuitem" id="backupBtn">📥 백업</button>
+            <button role="menuitem" id="restoreBtn">📤 복원</button>
+          </div>
+        </div>
+        <input type="file" id="restoreFile" accept=".json" style="display:none">
       </div>
     </div>
+    <!-- PCB 불량 바로 등록 줄 (편집 모드에서만 보임, pcb.js가 구분 버튼 채움) -->
+    <div class="pcb-strip" id="pcbStrip"></div>
   </div>
 
   <!-- ══ TAB: 검사포장 ══ -->
@@ -181,8 +189,9 @@
     <div id="pcbWrap"></div>
   </div>
 
-  <!-- PCB 불량 등록 안내 창 -->
-  <div class="pcb-guide-bg" id="pcbGuideBg"><div class="pg" id="pcbGuide"></div></div>
+  <!-- PCB 불량 등록 서랍 (오른쪽) -->
+  <div class="pcb-dim" id="pcbGuideBg"></div>
+  <div class="pcb-drawer" id="pcbGuide" role="dialog" aria-label="PCB 불량 등록"></div>
 
   <!-- Context Menu -->
   <div class="ctx" id="ctx">
@@ -512,6 +521,16 @@
           <!-- ▼ 새 항목은 이 아래에 추가 -->
 
           <div class="cl-entry">
+            <div class="cl-date">2026-10-26 (오후)</div>
+            <ul class="cl-list">
+              <li><b>🔴 PCB 불량 등록 줄</b> — 편집 모드를 켜면 탭 바로 아래 빨간 줄에 [메인보드] [듀얼배터리보드] [CPU] 버튼이 나옵니다. 누르면 그 자리에서 라벨 번호가 발급되고 오른쪽 창에서 불량 내용·사진을 적으면 끝. 「나중에 적기」로 닫아도 번호는 남습니다.</li>
+              <li><b>보기 모드는 불량 목록만</b> — 보기 모드에서는 PCB 불량 탭에서 검색·사진·내용 조회만 됩니다. 등록·처리 상태 변경·연구소 메모는 편집 모드에서.</li>
+              <li><b>「버전 · S/N」 칸</b> — 보드 버전과 S/N을 같이 적습니다(듀얼배터리보드는 버전만). 생산관리대장 행에서 열면 MAIN BOARD 버전/S/N이 자동으로 들어갑니다.</li>
+              <li><b>상단 버튼 정리</b> — 사용법·업데이트 내역·수동 실행·백업·복원은 「⋯ 더보기」 안으로. 자주 쓰는 저장·새로고침·엑셀 추출만 바로 보입니다.</li>
+            </ul>
+          </div>
+
+          <div class="cl-entry">
             <div class="cl-date">2026-10-26</div>
             <ul class="cl-list">
               <li><b>🔴 PCB 불량 등록</b> — 불량이 나오면 상단 「🔴 불량 등록」(또는 생산관리대장 행 오른쪽 클릭 → 「이 제품 PCB 불량 등록」)을 누르세요. ① 메인보드 / 듀얼배터리보드 / CPU 중 고르면 ② <b>라벨 번호</b>(예: 261026-03)를 알려줍니다 — 라벨프린터로 출력해 불량품에 붙이고 ③ 불량 내용을 고르거나 적으면 끝. 사진은 선택(폰이면 바로 촬영). 보기 비밀번호만으로 등록할 수 있습니다(편집 모드 불필요).</li>
@@ -639,6 +658,6 @@
   <button class="fab-bottom" id="fabBottom" title="맨 아래로">⬇</button>
 
   <!-- Scripts -->
-  <script type="module" src="js/main.js?v=20261026"></script>
+  <script type="module" src="js/main.js?v=20261026c"></script>
 </body>
 </html>

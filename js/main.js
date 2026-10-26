@@ -245,6 +245,14 @@ async function init() {
     }
   });
 
+  // 「⋯ 더보기」 메뉴 — 안의 버튼은 기존 id 그대로라 아래 핸들러가 그대로 동작
+  const moreWrap = document.getElementById('moreWrap');
+  const setMore = open => { moreWrap?.classList.toggle('open', open); document.getElementById('moreBtn')?.setAttribute('aria-expanded', open ? 'true' : 'false'); };
+  document.getElementById('moreBtn')?.addEventListener('click', e => { e.stopPropagation(); setMore(!moreWrap.classList.contains('open')); });
+  moreWrap?.querySelector('.more-menu')?.addEventListener('click', () => setMore(false));
+  document.addEventListener('click', e => { if (!e.target.closest('#moreWrap')) setMore(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') setMore(false); });
+
   // Changelog modal (업데이트 내역)
   const clBg = document.getElementById('changelogBg');
   document.getElementById('changelogBtn')?.addEventListener('click', () => clBg?.classList.add('show'));

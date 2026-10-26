@@ -99,17 +99,21 @@ function renderFeed() {
 }
 
 function detail(r) {
-  if (r.incomplete) return `라벨은 붙였지만 불량 내용이 비어 있어요. <button class="btn btn-pr" data-resume="${r.id}">불량 내용 적기</button>
-    ${state.editMode ? `<button class="btn" data-del="${r.id}">삭제</button>` : ''}`;
+  const ed = state.editMode;
+  if (r.incomplete) return ed
+    ? `라벨은 붙였지만 불량 내용이 비어 있어요. <button class="btn btn-pr" data-resume="${r.id}">불량 내용 적기</button> <button class="btn" data-del="${r.id}">삭제</button>`
+    : '라벨은 붙였지만 불량 내용을 아직 안 적었어요.';
   const ph = r.photos || [];
   const pics = ph.length ? `<div class="pcb-pics">${ph.map(p => `<a href="https://drive.google.com/file/d/${encodeURIComponent(p.id)}/view" target="_blank" rel="noopener"><img src="${thumb(p.id, 600)}" alt="불량 사진" loading="lazy"></a>`).join('')}</div>` : '<div class="pcb-nopic">사진 없음</div>';
-  return `<div class="pcb-expgrid">${pics}<div>
-    <dl class="pcb-kv"><dt>구분</dt><dd>${esc(r.cat)}</dd><dt>불량</dt><dd><b>${esc((r.symptoms || []).join(', '))}</b></dd>${r.note ? `<dt>내용</dt><dd>${esc(r.note)}</dd>` : ''}
-    <dt>버전·S/N</dt><dd class="pcb-mono">${esc(r.part_sn || '-')}</dd><dt>등록</dt><dd>${esc(r.found_date)} · ${esc(r.reporter || '-')}</dd></dl>
+  const kv = `<dl class="pcb-kv"><dt>구분</dt><dd>${esc(r.cat)}</dd><dt>불량</dt><dd><b>${esc((r.symptoms || []).join(', '))}</b></dd>${r.note ? `<dt>내용</dt><dd>${esc(r.note)}</dd>` : ''}
+    <dt>버전·S/N</dt><dd class="pcb-mono">${esc(r.part_sn || '-')}</dd><dt>등록</dt><dd>${esc(r.found_date)} · ${esc(r.reporter || '-')}</dd>
+    ${ed ? '' : `<dt>상태</dt><dd>${tag(r)}</dd>${r.lab_note ? `<dt>연구소</dt><dd>${esc(r.lab_note)}</dd>` : ''}`}</dl>`;
+  if (!ed) return `<div class="pcb-expgrid">${pics}<div>${kv}</div></div>`;
+  return `<div class="pcb-expgrid">${pics}<div>${kv}
     <div class="pcb-stsel">${STATUSES.map(s => `<button class="chip ${r.status === s ? 'on' : ''}" data-status="${esc(s)}" data-id="${r.id}">${s}</button>`).join('')}</div>
     <textarea class="pcb-labnote" rows="2" placeholder="연구소 원인 · 조치" data-labnote="${r.id}">${esc(r.lab_note || '')}</textarea>
     <div class="pcb-row-btns"><button class="btn" data-savelab="${r.id}">메모 저장</button>
-      <button class="btn" data-resume="${r.id}">내용·사진 수정</button>${state.editMode ? `<button class="btn" data-del="${r.id}">삭제</button>` : ''}</div></div></div>`;
+      <button class="btn" data-resume="${r.id}">내용·사진 수정</button><button class="btn" data-del="${r.id}">삭제</button></div></div></div>`;
 }
 
 async function updateRow(id, patch) {
@@ -267,59 +271,83 @@ async function saveSection(sec) {
   toast('설정 저장됨', 'ok'); renderPCB();
 }
 
-// ═══ 등록 안내 창 ═══
-let G = null;   // { step, cat, part, by, sym, note, photos(새 dataURL), rec, boards, busy }
+// ═══ 등록 (편집 모드) — 탭 아래 바로 등록 줄에서 구분을 누르면 번호 발급 + 오른쪽 서랍 ═══
+let G = null;   // { cat, rec, part, by, sym, note, photos(새 dataURL), boards, busy }
 const lastBy = () => { try { return localStorage.getItem('pcb_by'); } catch (e) { return null; } };
 
+function renderStrip() {
+  const el = $('pcbStrip'); if (!el) return;
+  const n = P.rows.filter(r => String(r.found_date) === ymd(new Date())).length;
+  el.innerHTML = `<span class="t">🔴 PCB 불량 등록</span>${P.set.cats.map((c, i) => `<button class="pcb-sc" data-scat="${i}">${esc(c.name)}</button>`).join('')}
+    <span class="sp"></span><span class="recent">${P.lastLabel ? `방금 <b>${esc(P.lastLabel)}</b> 등록 · ` : ''}오늘 ${n}건</span>`;
+}
+
 export async function openPcbGuide(opts = {}) {
+  if (!requireEdit()) return;
   if (!P.ready) await loadAll();
   if (P.missing) { toast('PCB 불량 DB가 아직 준비되지 않았어요', 'er'); return; }
-  G = { step: 0, cat: null, part: '', by: lastBy() || P.set.people[0] || '', sym: [], note: '', photos: [], boards: opts.boards || null };
+  G = { cat: null, rec: null, part: '', by: lastBy() || P.set.people[0] || '', sym: [], note: '', photos: [], boards: opts.boards || null };
   if (opts.resume) {
     const r = P.rows.find(x => x.id === opts.resume);
-    Object.assign(G, { step: 2, rec: r, cat: r.cat, sym: [...(r.symptoms || [])], note: r.note || '' });
+    Object.assign(G, { rec: r, cat: r.cat, part: r.part_sn || '', by: r.reporter || G.by, sym: [...(r.symptoms || [])], note: r.note || '' });
   }
-  $('pcbGuideBg').classList.add('show');
+  $('pcbGuideBg').classList.add('show'); $('pcbGuide').classList.add('show');
+  if (opts.cat && !G.rec) return issue(opts.cat);
   renderGuide();
 }
-function closeGuide() { $('pcbGuideBg').classList.remove('show'); G = null; if (state.curTab === 'pcb') renderPCB(); }
-
-function gFrame(body, foot) {
-  const names = ['무엇이 불량?', '라벨 붙이기', '불량 내용'];
-  $('pcbGuide').innerHTML = `<div class="pg-hd"><span class="pg-steps">${names.map((n, i) => `<span class="${i === G.step ? 'on' : i < G.step ? 'done' : ''}">${i + 1}. ${n}</span>`).join('')}</span><span class="x" data-g="close">닫기 ✕</span></div>
-    <div class="pg-bd">${body}</div>${foot ? `<div class="pg-ft">${foot}</div>` : ''}`;
+function closeGuide() {
+  if (G?.busy) return;
+  $('pcbGuideBg').classList.remove('show'); $('pcbGuide').classList.remove('show'); G = null;
+  renderStrip(); if (state.curTab === 'pcb') renderPCB();
 }
+const showErr = m => { const e = $('pgErr'); if (e) { e.textContent = m; e.style.display = 'block'; } };
+// 다시 그리기 전에 입력 중인 값 보존
+function grab() {
+  if (!G) return;
+  if ($('pgNote')) G.note = $('pgNote').value;
+  if ($('pgPart')) G.part = $('pgPart').value.trim();
+  if ($('pgBy')) G.by = $('pgBy').value;
+}
+
+// 번호는 구분을 누르는 순간 DB가 잠금 후 발급 → 동시에 눌러도 안 겹치고, 서랍을 닫아도 번호는 남음
+async function issue(cat) {
+  G.cat = cat; G.part = G.boards?.[cat] ?? G.part;
+  try { localStorage.setItem('pcb_by', G.by); } catch (e) { /* 저장 막힌 브라우저면 매번 선택 */ }
+  G.busy = '번호 발급 중…'; renderGuide();
+  const { data, error } = await sb().rpc('pcb_issue_label', { p_cat: cat, p_part: G.part, p_reporter: G.by });
+  G.busy = false;
+  if (error) { G.cat = null; renderGuide(); return showErr('번호 발급 실패: ' + error.message); }
+  G.rec = data; upsertRow(data); renderStrip(); renderGuide();
+}
+
 function renderGuide() {
-  const s = G;
-  if (s.step === 0) gFrame(`<h3>무엇이 불량인가요?</h3><div class="sub">고르면 바로 라벨 번호를 알려드려요</div>
-      <div class="pg-cats">${P.set.cats.map((c, i) => `<button data-gcat="${i}" class="${s.cat === c.name ? 'on' : ''}"><b>${esc(c.name)}</b><small>${esc(c.sub) || '&nbsp;'}</small></button>`).join('')}</div>
-      <div class="pg-2"><div><label>${s.cat === '듀얼배터리보드' ? '보드 버전' : '버전 · S/N'} (선택)</label><input id="pgPart" value="${esc(s.part)}" placeholder="${PART_PH[s.cat] || '버전 / S/N'}"></div>
-      <div><label>등록자</label><select id="pgBy">${P.set.people.map(p => `<option ${p === s.by ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select></div></div>
-      <div class="pg-warn" id="pgErr"></div>`,
-    `<span>${s.boards ? '생산관리대장에서 S/N을 가져왔어요' : ''}</span><button class="pg-go" data-g="issue" ${s.cat && !s.busy ? '' : 'disabled'}>${s.busy ? '발급 중…' : '라벨 번호 받기 →'}</button>`);
-  if (s.step === 1) gFrame(`<h3>이 번호로 라벨을 붙여주세요</h3><div class="sub">${esc(s.cat)}${s.part ? ' · ' + esc(s.part) : ''}</div>
-      <div class="pg-num">${esc(s.rec.label)}</div>
-      <ol class="pg-do"><li><span>라벨프린터에 <b>${esc(s.rec.label)}</b> 입력</span></li><li><span>출력</span></li><li><span>불량품의 <u>잘 보이는 곳</u>에 부착 (기존 불량 딱지 대신)</span></li></ol>`,
-    `<span>번호는 이미 발급됐어요</span><button class="pg-go" data-g="next">라벨 붙였어요 →</button>`);
-  if (s.step === 2) {
-    const cat = P.set.cats.find(c => c.name === s.rec.cat) || { quick: [] };
-    const old = s.rec.photos || [];
-    const canPhoto = P.set.drive?.url && P.token;
-    gFrame(`<h3>어떤 불량인지 적어주세요</h3><div class="sub"><b class="pg-labtxt">${esc(s.rec.label)}</b> · ${esc(s.rec.cat)} — 버튼으로 고르거나 직접 적어주세요</div>
-      <label>자주 나오는 불량 (여러 개 선택 가능)</label>
+  const s = G, box = $('pcbGuide');
+  if (!s.rec) {   // 구분 고르기 (생산관리대장 우클릭으로 들어온 경우)
+    box.innerHTML = `<div class="pd-head"><small>PCB 불량 등록</small><div class="pd-q">무엇이 불량인가요?</div><div class="pd-tip">누르면 바로 라벨 번호가 발급됩니다</div></div>
+      <div class="pd-body"><div class="pd-cats">${P.set.cats.map((c, i) => `<button data-gcat="${i}" ${s.busy ? 'disabled' : ''}>${esc(c.name)}</button>`).join('')}</div>
+        ${s.boards ? '<div class="pcb-note">생산관리대장의 버전·S/N을 가져옵니다</div>' : ''}<div class="pg-warn" id="pgErr"></div></div>
+      <div class="pd-foot"><button class="btn" data-g="close">닫기</button>${s.busy ? `<span class="pcb-note">${s.busy}</span>` : ''}</div>`;
+    return;
+  }
+  const cat = P.set.cats.find(c => c.name === s.rec.cat) || { quick: [] };
+  const old = s.rec.photos || [], canPhoto = P.set.drive?.url && P.token;
+  box.innerHTML = `<div class="pd-head"><small>${esc(s.rec.cat)} · 라벨 번호</small><div class="pd-num">${esc(s.rec.label)}</div>
+      <div class="pd-tip">① 라벨프린터에 이 번호 입력 → ② 출력해서 불량품에 부착 → ③ 아래 불량 내용 선택</div></div>
+    <div class="pd-body">
+      <label class="pd-l">어떤 불량인가요? (여러 개)</label>
       <div class="pg-chips">${cat.quick.map(q => `<button data-gq="${esc(q)}" class="${s.sym.includes(q) ? 'on' : ''}">${esc(q)}</button>`).join('')}</div>
-      <label>내용 (선택)</label><textarea id="pgNote" rows="3" placeholder="예: 전원 넣으면 LED 안 들어옴">${esc(s.note)}</textarea>
-      <label>사진 (선택 — 안 넣어도 돼요)</label>
+      <textarea id="pgNote" rows="2" placeholder="내용 메모 (선택)">${esc(s.note)}</textarea>
+      <div class="pd-2"><div><label class="pd-l">${s.rec.cat === '듀얼배터리보드' ? '보드 버전' : '버전 · S/N'} (선택)</label><input id="pgPart" value="${esc(s.part)}" placeholder="${PART_PH[s.rec.cat] || '버전 / S/N'}"></div>
+        <div><label class="pd-l">등록자</label><select id="pgBy">${P.set.people.map(p => `<option ${p === s.by ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select></div></div>
+      <label class="pd-l">사진 (선택)</label>
       ${canPhoto ? `<div class="pg-photo">${old.map(p => `<img src="${thumb(p.id, 200)}" alt="등록된 사진">`).join('')}${s.photos.map(p => `<img src="${p}" alt="새 사진">`).join('')}
         <label class="add">📷 사진 추가<input type="file" accept="image/*" capture="environment" id="pgFile" multiple hidden></label></div>`
         : '<div class="pcb-note">사진 업로드가 아직 설정되지 않았어요 (설정 › 사진 저장)</div>'}
-      <div class="pg-warn" id="pgErr"></div>`,
-      `<span>닫아도 번호는 남고, 내용은 나중에 적을 수 있어요</span><button class="pg-go" data-g="save" ${s.busy ? 'disabled' : ''}>${s.busy || '등록 완료 ✓'}</button>`);
-    $('pgFile')?.addEventListener('change', e => [...e.target.files].forEach(addPhoto));
-  }
-  if (s.step === 3) gFrame(`<div class="pg-ok"><div class="big">✓</div><h3>${esc(s.rec.label)} 등록 완료</h3>
-      <div class="sub" style="margin-top:8px">불량품은 <b>불량 보관함</b>에 넣어주세요.<br>연구소에서 이 번호로 검색해 확인합니다.</div>
-      <div class="pg-okbtns"><button class="pg-ghost" data-g="close">닫기</button><button class="pg-go" data-g="again">불량 하나 더</button></div></div>`);
+      <div class="pg-warn" id="pgErr"></div>
+    </div>
+    <div class="pd-foot"><button class="btn" data-g="close" ${s.busy ? 'disabled' : ''}>${s.rec.incomplete ? '나중에 적기' : '닫기'}</button>
+      <button class="pg-go" data-g="save" ${s.busy ? 'disabled' : ''}>${s.busy || '등록 완료 ✓'}</button></div>`;
+  $('pgFile')?.addEventListener('change', e => [...e.target.files].forEach(addPhoto));
 }
 
 // 사진은 긴 변 1000px JPEG로 줄여서 올림 (폰 사진 그대로면 수 MB)
@@ -331,8 +359,7 @@ function addPhoto(file) {
     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
     URL.revokeObjectURL(img.src);
     if (!G) return;
-    G.note = $('pgNote')?.value ?? G.note;
-    G.photos.push(c.toDataURL('image/jpeg', 0.7)); renderGuide();
+    grab(); G.photos.push(c.toDataURL('image/jpeg', 0.7)); renderGuide();
   };
   img.src = URL.createObjectURL(file);
 }
@@ -344,37 +371,24 @@ async function uploadPhoto(label, n, dataUrl) {
   return { id: j.id, name: j.name };
 }
 
-async function guideAction(a) {
-  const s = G;
-  if (a === 'close') return closeGuide();
-  if (a === 'again') return openPcbGuide({});
-  if (a === 'next') { s.step = 2; return renderGuide(); }
-  if (a === 'issue') {
-    s.part = $('pgPart').value.trim(); s.by = $('pgBy').value;
-    try { localStorage.setItem('pcb_by', s.by); } catch (e) { /* 저장 막힌 브라우저면 매번 선택 */ }
-    s.busy = true; renderGuide();
-    // 번호는 이 시점에 DB가 발급 → 중간에 닫아도 같은 번호를 다른 사람이 받지 않음
-    const { data, error } = await sb().rpc('pcb_issue_label', { p_cat: s.cat, p_part: s.part, p_reporter: s.by });
-    s.busy = false;
-    if (error) { renderGuide(); $('pgErr').textContent = '번호 발급 실패: ' + error.message; $('pgErr').style.display = 'block'; return; }
-    s.rec = data; upsertRow(data); s.step = 1; return renderGuide();
+async function save() {
+  const s = G; grab();
+  if (!s.sym.length && !s.note.trim()) return showErr('불량 내용을 하나 고르거나 적어주세요');
+  const photos = [...(s.rec.photos || [])];
+  let failed = 0;
+  for (let i = 0; i < s.photos.length; i++) {
+    s.busy = `사진 올리는 중 ${i + 1}/${s.photos.length}…`; renderGuide();
+    try { photos.push(await uploadPhoto(s.rec.label, photos.length + 1, s.photos[i])); } catch (e) { failed++; console.error(e); }
   }
-  if (a === 'save') {
-    s.note = $('pgNote').value.trim();
-    if (!s.sym.length && !s.note) { $('pgErr').textContent = '불량 내용을 하나 고르거나 적어주세요'; $('pgErr').style.display = 'block'; return; }
-    const photos = [...(s.rec.photos || [])];
-    let failed = 0;
-    for (let i = 0; i < s.photos.length; i++) {
-      s.busy = `사진 올리는 중 ${i + 1}/${s.photos.length}…`; renderGuide();
-      try { photos.push(await uploadPhoto(s.rec.label, photos.length + 1, s.photos[i])); } catch (e) { failed++; console.error(e); }
-    }
-    s.busy = '저장 중…'; renderGuide();
-    const rec = await updateRow(s.rec.id, { symptoms: s.sym.length ? s.sym : ['기타'], note: s.note || null, photos, incomplete: false });
-    s.busy = false;
-    if (!rec) return renderGuide();
-    if (failed) toast(`사진 ${failed}장은 올리지 못했어요 — 나중에 「내용·사진 수정」으로 다시 올려주세요`, 'er');
-    s.rec = rec; s.photos = []; s.step = 3; renderGuide();
-  }
+  s.busy = '저장 중…'; renderGuide();
+  const patch = { symptoms: s.sym.length ? s.sym : ['기타'], note: s.note.trim() || null, photos, part_sn: s.part || null, incomplete: false };
+  if (s.by && s.by !== s.rec.reporter) patch.reporter = s.by;
+  const rec = await updateRow(s.rec.id, patch);
+  s.busy = false;
+  if (!rec) return renderGuide();
+  if (failed) toast(`사진 ${failed}장은 올리지 못했어요 — 목록에서 「내용·사진 수정」으로 다시 올려주세요`, 'er');
+  else toast(`${rec.label} 등록 완료 — 불량품은 불량 보관함에 넣어주세요`, 'ok');
+  P.lastLabel = rec.label; s.photos = []; closeGuide();
 }
 
 // ═══ 메일 링크(#pcb?q=라벨)로 들어오면 바로 검색 ═══
@@ -390,7 +404,7 @@ function handleHash() {
 export async function initPCB() {
   const v = $('v-pcb'), bg = $('pcbGuideBg');
   if (!v || !bg) return;
-  $('pcbAddBtn')?.addEventListener('click', () => openPcbGuide());
+  $('pcbStrip')?.addEventListener('click', e => { const b = e.target.closest('[data-scat]'); if (b) openPcbGuide({ cat: P.set.cats[+b.dataset.scat].name }); });
 
   v.addEventListener('click', async e => {
     const t = e.target.closest('[data-sub],[data-fcat],[data-open],[data-status],[data-savelab],[data-resume],[data-del],[data-goto],[data-set],[data-rm],[data-addperson],[data-addcat],[data-save]');
@@ -437,23 +451,30 @@ export async function initPCB() {
   });
   v.addEventListener('toggle', e => { if (e.target.open) P.openSet = e.target.dataset.sec; }, true);
 
-  // 등록 안내 창
+  // 등록 서랍
   const box = $('pcbGuide');
   box.addEventListener('click', e => {
     if (!G) return;
     const t = e.target.closest('[data-g],[data-gcat],[data-gq]'); if (!t) return;
-    if (t.dataset.gcat !== undefined) {
-      G.cat = P.set.cats[+t.dataset.gcat].name; G.by = $('pgBy').value;
-      G.part = G.boards?.[G.cat] ?? $('pgPart').value;   // 대장에서 열었으면 고른 구분의 S/N 자동
-      return renderGuide();
-    }
-    if (t.dataset.gq !== undefined) { const q = t.dataset.gq; G.note = $('pgNote').value; G.sym = G.sym.includes(q) ? G.sym.filter(x => x !== q) : [...G.sym, q]; return renderGuide(); }
-    guideAction(t.dataset.g);
+    if (t.dataset.gcat !== undefined) { grab(); return issue(P.set.cats[+t.dataset.gcat].name); }
+    if (t.dataset.gq !== undefined) { grab(); const q = t.dataset.gq; G.sym = G.sym.includes(q) ? G.sym.filter(x => x !== q) : [...G.sym, q]; return renderGuide(); }
+    if (t.dataset.g === 'close') return closeGuide();
+    if (t.dataset.g === 'save') return save();
   });
   box.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') closeGuide(); });
-  bg.addEventListener('click', e => { if (e.target === bg && !G?.busy) closeGuide(); });
+  bg.addEventListener('click', closeGuide);
+
+  // 보기 ↔ 편집 모드가 바뀌면 목록 버튼을 다시 그림 (editmode.js가 body.edit-mode 토글, 등록 줄은 CSS로 숨김)
+  let mode = state.editMode;
+  new MutationObserver(() => {
+    if (state.editMode === mode) return;
+    mode = state.editMode;
+    if (!mode && G) { G.busy = false; closeGuide(); }
+    if (state.curTab === 'pcb') renderPCB();
+  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
   await loadAll();
+  renderStrip();
   if (state.curTab === 'pcb') renderPCB();
   handleHash();
   window.addEventListener('hashchange', handleHash);

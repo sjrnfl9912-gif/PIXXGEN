@@ -16,8 +16,8 @@ export function init() {
     if (!td || !td.closest('table.g tbody')) return;
     e.preventDefault();
     if (!state.sel || state.sel.td !== td) selCell(td);
-    // 생산관리대장에서만 「이 제품 PCB 불량 등록」 표시
-    const pcb = state.curTab === 'prod';
+    // 생산관리대장 + 편집 모드에서만 「이 제품 PCB 불량 등록」 표시
+    const pcb = state.curTab === 'prod' && state.editMode;
     ['ctxPcb', 'ctxPcbSep'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = pcb ? '' : 'none'; });
     ctx.style.left = e.clientX + 'px';
     ctx.style.top = e.clientY + 'px';
