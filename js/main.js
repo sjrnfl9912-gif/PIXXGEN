@@ -22,6 +22,7 @@ import { jumpToEnd } from './modules/lazy.js';
 import { initEditMode, requireEdit } from './services/editmode.js';
 import { ensureViewAccess } from './services/viewgate.js';
 import { initRunLog } from './services/runlog.js';
+import { initPCB, renderPCB } from './modules/pcb.js';
 
 // ═══ ROW OPERATIONS ═══
 export function addRow(type) {
@@ -123,6 +124,7 @@ function switchTab(t, skipRender) {
   document.getElementById('v-' + t)?.classList.add('active');
   // 다른 탭 DOM은 유지 — 재방문 시 재렌더 없이 즉시 표시. 데이터 변경 시 invalidateOtherTabs로 stale 표시됨.
   if (skipRender) return;
+  if (t === 'pcb') { renderPCB(); return; }   // PCB 불량은 자체 데이터·화면
   // 이미 렌더된 적 있고 stale 아님 → 재렌더 생략 (탭 전환 즉시)
   if (state.tabRendered[t]) return;
   // 통합취합본은 탭 들어갈 때마다 자동 취합 (수동 버튼 없이 최신 상태)
@@ -310,6 +312,7 @@ async function init() {
   await ensureViewAccess();
   initEditMode();
   initRunLog();
+  initPCB();   // 출하 데이터 로드와 별개로 진행 (기다리지 않음)
 
   // ═══ LOAD DATA ═══
   // Try cache first for instant display

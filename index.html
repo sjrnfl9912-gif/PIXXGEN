@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="css/kpi.css">
   <link rel="stylesheet" href="css/editmode.css?v=20261019c">
   <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="css/pcb.css?v=20261026">
 
   <!-- External Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -43,7 +44,9 @@
       <div class="tab" data-tab="merge">통합취합본<span class="cnt" id="cnt3">0</span></div>
       <div class="tab" data-tab="histneed">이력 필요<span class="cnt" id="cnt5">0</span></div>
       <div class="tab" data-tab="kpi">📊 KPI 통계</div>
+      <div class="tab tab-pcb" data-tab="pcb">🔴 PCB 불량<span class="cnt" id="cntPcb">0</span></div>
       <div class="tab-right">
+        <button class="btn btn-bad" id="pcbAddBtn" title="PCB 불량 등록 — 라벨 번호를 알려줍니다">🔴 불량 등록</button>
         <button class="btn" id="helpBtn" title="사용 설명서">❓ 사용법</button>
         <button class="btn" id="changelogBtn" title="업데이트 내역">🆕 업데이트</button>
         <button class="btn" id="manualRunBtn" title="스크립트 수동 실행">⚡ 수동 실행</button>
@@ -167,6 +170,20 @@
     <div class="kpi-wrap" id="kpiWrap"></div>
   </div>
 
+  <!-- ══ TAB: PCB 불량 ══ -->
+  <div id="v-pcb" class="tab-view">
+    <div class="toolbar">
+      <button class="pcb-sub on" data-sub="home">🔍 검색</button>
+      <button class="pcb-sub" data-sub="stats">📊 통계</button>
+      <button class="pcb-sub" data-sub="mail">✉ 주간보고 메일</button>
+      <button class="pcb-sub" data-sub="set">⚙ 설정</button>
+    </div>
+    <div id="pcbWrap"></div>
+  </div>
+
+  <!-- PCB 불량 등록 안내 창 -->
+  <div class="pcb-guide-bg" id="pcbGuideBg"><div class="pg" id="pcbGuide"></div></div>
+
   <!-- Context Menu -->
   <div class="ctx" id="ctx">
     <div class="ctx-i" data-action="copy">📋 복사<kbd>Ctrl+C</kbd></div>
@@ -175,6 +192,8 @@
     <div class="ctx-s"></div>
     <div class="ctx-i" data-action="addrow">➕ 행 추가</div>
     <div class="ctx-i red" data-action="delrow">🗑 행 삭제<kbd>Ctrl+-</kbd></div>
+    <div class="ctx-s" id="ctxPcbSep"></div>
+    <div class="ctx-i" data-action="pcbdefect" id="ctxPcb">🔴 이 제품 PCB 불량 등록</div>
   </div>
 
   <!-- Modal -->
@@ -493,6 +512,16 @@
           <!-- ▼ 새 항목은 이 아래에 추가 -->
 
           <div class="cl-entry">
+            <div class="cl-date">2026-10-26</div>
+            <ul class="cl-list">
+              <li><b>🔴 PCB 불량 등록</b> — 불량이 나오면 상단 「🔴 불량 등록」(또는 생산관리대장 행 오른쪽 클릭 → 「이 제품 PCB 불량 등록」)을 누르세요. ① 메인보드 / 듀얼배터리보드 / CPU 중 고르면 ② <b>라벨 번호</b>(예: 261026-03)를 알려줍니다 — 라벨프린터로 출력해 불량품에 붙이고 ③ 불량 내용을 고르거나 적으면 끝. 사진은 선택(폰이면 바로 촬영). 보기 비밀번호만으로 등록할 수 있습니다(편집 모드 불필요).</li>
+              <li><b>🔴 PCB 불량 탭</b> — 연구소는 라벨 번호로 검색해 사진·내용을 보고 처리 상태(연구소 확인·수리중·수리완료·폐기)와 원인·조치를 남길 수 있습니다. 「📊 통계」에 주별 건수·반복 불량·오래 미확인 건, 「✉ 주간보고 메일」에 매주 보낼 보고 메일 미리보기가 있습니다(자동 발송은 메일 연결 후 시작).</li>
+              <li><b>사진 저장</b> — 불량 사진은 회사 Google Drive 「PCB불량사진」 폴더에 라벨 번호 이름으로 저장되고, DB에는 파일 위치만 남아 출하 데이터 용량에 영향이 없습니다.</li>
+            </ul>
+          </div>
+
+
+          <div class="cl-entry">
             <div class="cl-date">2026-10-19</div>
             <ul class="cl-list">
               <li><b>🔒 사내 전용 — 보기 비밀번호</b> — 이제 조회도 보기 비밀번호를 입력해야 합니다(외부에서는 데이터가 보이지 않음). 한 번 입력하면 그 PC·브라우저에서는 다시 묻지 않습니다. 수정은 지금처럼 편집 모드 비밀번호가 따로 필요합니다.</li>
@@ -610,6 +639,6 @@
   <button class="fab-bottom" id="fabBottom" title="맨 아래로">⬇</button>
 
   <!-- Scripts -->
-  <script type="module" src="js/main.js?v=20261019c"></script>
+  <script type="module" src="js/main.js?v=20261026"></script>
 </body>
 </html>

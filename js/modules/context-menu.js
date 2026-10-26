@@ -16,6 +16,9 @@ export function init() {
     if (!td || !td.closest('table.g tbody')) return;
     e.preventDefault();
     if (!state.sel || state.sel.td !== td) selCell(td);
+    // 생산관리대장에서만 「이 제품 PCB 불량 등록」 표시
+    const pcb = state.curTab === 'prod';
+    ['ctxPcb', 'ctxPcbSep'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = pcb ? '' : 'none'; });
     ctx.style.left = e.clientX + 'px';
     ctx.style.top = e.clientY + 'px';
     ctx.classList.add('show');
@@ -41,5 +44,10 @@ export function init() {
       }
     }
     else if (action === 'delrow') deleteRows();
+    else if (action === 'pcbdefect') {
+      const id = state.sel?.td?.closest('tr')?.dataset.id;
+      const row = state.prodD.find(r => String(r._id) === id);
+      import('./pcb.js').then(m => m.openPcbGuide({ boards: row ? { 메인보드: row.main_board_sn || '', CPU: row.cpu_sn || '' } : null }));
+    }
   });
 }
