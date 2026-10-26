@@ -19,6 +19,8 @@ const $ = id => document.getElementById(id);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const thumb = (id, w = 400) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${w}`;
 const dstr = d => `${ymd(d).slice(5).replace('-', '/')}(${DAYS[d.getDay()]})`;
+// 등록 창 「버전 · S/N」 칸 안내 (듀얼배터리보드는 시리얼 없음)
+const PART_PH = { '메인보드': '예: V1.3 / MB40388', '듀얼배터리보드': '예: V2.1 (S/N 없음)', 'CPU': '예: CPU30412' };
 const isOpenStatus = r => r.status === '등록' || r.status === '연구소 확인';
 // 발송 일정용: 설정의 회사 휴무일 + 자동 공휴일(발송 PC가 구글 '대한민국의 휴일'에서 받아 저장)
 const withHolidays = R => ({ ...R, holidays: [...new Set([...(R.holidays || []), ...(P.set.holidays_auto?.dates || [])])] });
@@ -71,7 +73,7 @@ function renderHome(wrap) {
     wrap.innerHTML = `<div class="pcb-card pcb-search">
         <h2>PCB에 붙은 라벨 번호를 입력하세요</h2>
         <div class="pcb-sbox"><input id="pcbQ" placeholder="예: 261020-01" autocomplete="off"></div>
-        <div class="pcb-hint">부품 S/N · 불량 내용으로도 찾을 수 있어요</div>
+        <div class="pcb-hint">버전 · S/N · 불량 내용으로도 찾을 수 있어요</div>
         <div class="pcb-cats" id="pcbCats"></div></div>
       <div class="pcb-card pcb-list"><table><thead><tr><th style="width:110px">라벨 번호</th><th>구분 · 불량 내용</th><th style="width:130px">등록</th><th style="width:90px">상태</th></tr></thead><tbody id="pcbFeed"></tbody></table></div>`;
     const q = $('pcbQ'); q.value = P.q;
@@ -103,7 +105,7 @@ function detail(r) {
   const pics = ph.length ? `<div class="pcb-pics">${ph.map(p => `<a href="https://drive.google.com/file/d/${encodeURIComponent(p.id)}/view" target="_blank" rel="noopener"><img src="${thumb(p.id, 600)}" alt="불량 사진" loading="lazy"></a>`).join('')}</div>` : '<div class="pcb-nopic">사진 없음</div>';
   return `<div class="pcb-expgrid">${pics}<div>
     <dl class="pcb-kv"><dt>구분</dt><dd>${esc(r.cat)}</dd><dt>불량</dt><dd><b>${esc((r.symptoms || []).join(', '))}</b></dd>${r.note ? `<dt>내용</dt><dd>${esc(r.note)}</dd>` : ''}
-    <dt>부품 S/N</dt><dd class="pcb-mono">${esc(r.part_sn || '-')}</dd><dt>등록</dt><dd>${esc(r.found_date)} · ${esc(r.reporter || '-')}</dd></dl>
+    <dt>버전·S/N</dt><dd class="pcb-mono">${esc(r.part_sn || '-')}</dd><dt>등록</dt><dd>${esc(r.found_date)} · ${esc(r.reporter || '-')}</dd></dl>
     <div class="pcb-stsel">${STATUSES.map(s => `<button class="chip ${r.status === s ? 'on' : ''}" data-status="${esc(s)}" data-id="${r.id}">${s}</button>`).join('')}</div>
     <textarea class="pcb-labnote" rows="2" placeholder="연구소 원인 · 조치" data-labnote="${r.id}">${esc(r.lab_note || '')}</textarea>
     <div class="pcb-row-btns"><button class="btn" data-savelab="${r.id}">메모 저장</button>
@@ -291,7 +293,7 @@ function renderGuide() {
   const s = G;
   if (s.step === 0) gFrame(`<h3>무엇이 불량인가요?</h3><div class="sub">고르면 바로 라벨 번호를 알려드려요</div>
       <div class="pg-cats">${P.set.cats.map((c, i) => `<button data-gcat="${i}" class="${s.cat === c.name ? 'on' : ''}"><b>${esc(c.name)}</b><small>${esc(c.sub) || '&nbsp;'}</small></button>`).join('')}</div>
-      <div class="pg-2"><div><label>부품 S/N (선택)</label><input id="pgPart" value="${esc(s.part)}" placeholder="보드·CPU S/N"></div>
+      <div class="pg-2"><div><label>${s.cat === '듀얼배터리보드' ? '보드 버전' : '버전 · S/N'} (선택)</label><input id="pgPart" value="${esc(s.part)}" placeholder="${PART_PH[s.cat] || '버전 / S/N'}"></div>
       <div><label>등록자</label><select id="pgBy">${P.set.people.map(p => `<option ${p === s.by ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select></div></div>
       <div class="pg-warn" id="pgErr"></div>`,
     `<span>${s.boards ? '생산관리대장에서 S/N을 가져왔어요' : ''}</span><button class="pg-go" data-g="issue" ${s.cat && !s.busy ? '' : 'disabled'}>${s.busy ? '발급 중…' : '라벨 번호 받기 →'}</button>`);

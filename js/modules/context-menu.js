@@ -47,7 +47,7 @@ export function init() {
     else if (action === 'pcbdefect') {
       const id = state.sel?.td?.closest('tr')?.dataset.id;
       const row = state.prodD.find(r => String(r._id) === id);
-      import('./pcb.js').then(m => m.openPcbGuide({ boards: row ? { 메인보드: row.main_board_sn || '', CPU: row.cpu_sn || '' } : null }));
+      import('./pcb.js').then(m => m.openPcbGuide({ boards: row ? { 메인보드: [row.main_board_ver, row.main_board_sn].filter(Boolean).join(' / '), CPU: row.cpu_sn || '' } : null }));
     }
   });
 }
