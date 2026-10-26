@@ -103,7 +103,7 @@ export function buildReportEmail(p, s, opt) {
   </table>` : `<div style="padding:18px;text-align:center;font-size:14px;color:${C.ts};border:1px solid ${C.bd};border-radius:6px">금주 PCB 불량 발생 건은 없습니다.</div>`}</td></tr>
   ${attachCount ? `<tr><td style="padding:8px 24px 0;font-size:12px;color:${C.ts}">📎 불량 사진 ${attachCount}장을 첨부했습니다 (파일명 = 라벨 번호).</td></tr>` : ''}
   <tr><td style="padding:22px 24px 6px;font-size:14px;line-height:1.8;color:${C.tx}">${para(s.closing)}</td></tr>
-  <tr><td style="padding:10px 24px 24px;font-size:13px;line-height:1.7;color:${C.tx}"><div style="border-top:1px solid #eef0f4;padding-top:12px">${para(s.signature)}</div></td></tr>
+  ${String(s.signature || '').trim() ? `<tr><td style="padding:10px 24px 24px;font-size:13px;line-height:1.7;color:${C.tx}"><div style="border-top:1px solid #eef0f4;padding-top:12px">${para(s.signature)}</div></td></tr>` : '<tr><td style="height:14px"></td></tr>'}
   <tr><td style="padding:10px 24px;background:${C.ra};font-size:11px;color:${C.ts};border-top:1px solid ${C.bd}">이 메일은 PIXXGEN 통합 출하 관리 시스템에서 자동 발송되었습니다.</td></tr>
 </table></td></tr></table></body></html>`;
 }
