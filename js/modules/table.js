@@ -7,6 +7,7 @@ import { dbInsert, dbUpdate } from '../db.js';
 import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
 import { cellHtml, refreshModelOpts } from './cell.js';
+import { DATE_FIELDS, normDate, normField } from './date.js';
 import { mountRows } from './lazy.js';
 import { requireEdit } from '../services/editmode.js';
 
@@ -388,7 +389,7 @@ async function saveUnitEditModal() {
   const prodChanges = {};
   document.querySelectorAll('#unitBg [data-side]').forEach(inp => {
     if (inp.readOnly || inp.disabled) return;
-    const newV = inp.value.trim();
+    const newV = normField(inp.dataset.f, inp.value.trim());
     const oldV = (inp.tagName === 'SELECT')
       ? Array.from(inp.options).find(o => o.defaultSelected)?.value || ''
       : inp.defaultValue;
@@ -705,7 +706,7 @@ async function saveHnForm() {
   const obj = {};
   area.querySelectorAll('[data-pf]').forEach(inp => {
     const v = inp.value.trim();
-    obj[inp.dataset.pf] = v === '' ? null : v;
+    obj[inp.dataset.pf] = v === '' ? null : normField(inp.dataset.pf, v);
   });
   if (!obj.tft_sn) { toast('TFT S/N은 반드시 입력해야 합니다', 'er'); return; }
   if (!obj.worker) { toast('작업자를 반드시 입력해야 합니다 — 생산관리대장 필터에서 가려지지 않게', 'er'); return; }
@@ -1125,6 +1126,11 @@ export function initHistNeed() {
     area.addEventListener('click', e => {
       if (e.target.closest('.hn-save')) saveHnForm();
       else if (e.target.closest('.hn-skip')) hnSkip();
+    });
+    // 날짜 칸은 입력을 마치면 바로 2026-05-30 형식으로 보여줌 (260530 등으로 입력해도 됨)
+    area.addEventListener('focusout', e => {
+      const pf = e.target.dataset?.pf;
+      if (pf && DATE_FIELDS.has(pf)) e.target.value = normDate(e.target.value);
     });
   }
 

@@ -4,6 +4,7 @@
 import { state, pushUndo, trackUpdate, markDupDirty, rebuildTft } from '../state.js';
 import { saveCacheDebounced } from '../services/storage.js';
 import { setCellText, refreshModelOpts } from './cell.js';
+import { normField } from './date.js';
 import { requireEdit } from '../services/editmode.js';
 
 // td(편집 가능 셀)에 input을 만들어 편집 시작. clear=true면 빈 칸으로 시작(첫 타이핑).
@@ -34,7 +35,7 @@ export function endEdit() {
   state.editing = false;
   if (!inp) return;
   const td = inp.closest('td') || state.sel.td;
-  const nv = inp.value;
+  const nv = normField(td.dataset.f, inp.value);   // 날짜 칸: 260530 → 2026-05-30
   const ov = td.dataset.v || '';
   // input 제거 + 텍스트 복원
   inp.remove();

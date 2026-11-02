@@ -5,6 +5,7 @@
 //   값은 data-v 속성에 보관, 클릭/편집할 때만 <input>을 임시 생성한다.
 // ═══════════════════════════════════════
 import { state } from '../state.js';
+import { normField } from './date.js';
 
 export function escAttr(v) {
   if (v == null) return '';
@@ -39,7 +40,7 @@ export function commitCellValue(td, nv) {
   const t = td.dataset.t, f = td.dataset.f, rawId = td.dataset.id;
   const id = String(rawId).startsWith('new_') ? rawId : +rawId;
   const ov = td.dataset.v || '';
-  const val = nv == null ? '' : String(nv);
+  const val = nv == null ? '' : normField(f, String(nv));   // 붙여넣기·채우기도 날짜 형식 통일
   td.dataset.v = val;
   setCellText(td, val);
   const arr = t === 's' ? state.shipD : t === 'p' ? state.prodD : state.mergeD;
