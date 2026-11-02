@@ -597,8 +597,10 @@ function renderQueue() {
     const tftPart = q.tft
       ? '<span class="qc-mono qc-tft">' + esc(q.tft) + '</span>'
       : '<span class="qc-tft-na">TFT 없음</span>';
+    const pno = (q.tft && state.tftMap[q.tft]?.prod_no) || '';   // 종이에 옮겨 적기 쉽게 맨 앞에 크게
     return '<div class="hn-qchip' + (q.done ? ' done' : '') + (i === hnSel ? ' on' : '') + '" data-qi="' + i + '" title="' + tip + '">'
       + (q.done ? '✓ ' : '')
+      + (pno ? '<span class="qc-pno">' + esc(pno) + '</span>' : '<span class="qc-pno none">생산번호 없음</span>')
       + '<b>' + esc(ship.product_name || '?') + '</b>'
       + ' · <span class="qc-mono">' + esc(q.det) + '</span>'
       + ' · ' + tftPart

@@ -550,7 +550,10 @@ tr.grp-start td {
 }
 .hn-qchip:hover { border-color: var(--pr); }
 .hn-qchip.on { border-color: var(--pr); background: #eef3ff; box-shadow: 0 0 0 2px rgba(59, 109, 224, .15); }
-.hn-qchip.done { opacity: .65; }
+.hn-qchip.done { background: #f7f9f7; }
+.hn-qchip.done b, .hn-qchip.done .qc-mono { opacity: .65; }   /* 완료 건도 생산번호는 진하게 */
+.hn-qchip .qc-pno { font-family: ui-monospace, Consolas, monospace; font-size: 13px; font-weight: 700; background: #1f3864; color: #fff; border-radius: 4px; padding: 1px 7px; margin-right: 6px; }
+.hn-qchip .qc-pno.none { background: #eef0f4; color: #9aa3b2; font-size: 10.5px; font-weight: 500; font-family: inherit; }
 .hn-qchip .qc-mono { font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; }
 .hn-qchip .qc-tft { color: var(--pr); font-weight: 500; }
 .hn-qchip .qc-tft-na { color: #b88; font-size: 10px; font-style: italic; }
