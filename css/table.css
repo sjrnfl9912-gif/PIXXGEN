@@ -477,6 +477,9 @@ tr.grp-start td {
   outline: none;
   border-color: var(--pr);
 }
+/* 보강 대상 빈 칸 */
+.hn-fld.hn-need span { color: #c2410c; }
+.hn-fld.hn-need input { border-color: #f97316; background: #fff7ed; }
 .hn-form-f {
   margin-top: 12px;
   display: flex;
