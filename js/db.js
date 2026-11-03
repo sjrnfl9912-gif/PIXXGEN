@@ -58,7 +58,7 @@ export async function dbDelete(table, ids) {
   return true;
 }
 
-export async function dbFetchAll(table) {
+export async function dbFetchAll(table, orderBy = 'id', cols = '*') {
   if (!supabase) return [];
   let all = [],
     from = 0,
@@ -66,8 +66,8 @@ export async function dbFetchAll(table) {
   while (true) {
     const { data, error } = await supabase
       .from(table)
-      .select('*')
-      .order('id')
+      .select(cols)
+      .order(orderBy)
       .range(from, from + size - 1);
     if (error) throw error;
     if (!data || !data.length) break;

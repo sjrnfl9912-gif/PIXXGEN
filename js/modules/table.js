@@ -517,15 +517,16 @@ function isThinProd(p) {
 
 // 출하 폴더 TFT가 대장에 없을 때, 어느 출하와도 안 묶인 대장 TFT 중 1~2글자 차이로 유일하게 짝이 되는 것 (오기입 추정)
 //   대장(tftMap)·TFT 매칭(tftmD)이 바뀔 때만 다시 계산
-let _sugg = { map: new Map(), tftMap: null, tftmD: null };
+//   서버 확인: 대장 TFT가 서버(자재 출고 이력·검사대기 등)에 자기 폴더로 있으면 진짜 다른 TFT → 후보에서 제외
+let _sugg = { map: new Map(), tftMap: null, tftmD: null, srv: null };
 function tftSuggestions() {
-  if (_sugg.tftMap === state.tftMap && _sugg.tftmD === state.tftmD) return _sugg.map;
+  if (_sugg.tftMap === state.tftMap && _sugg.tftmD === state.tftmD && _sugg.srv === state.serverTft) return _sugg.map;
   const folder = new Set();
   state.tftmD.forEach(t => { if (t.tft_sn) folder.add(t.tft_sn); });
   const folderOnly = [...folder].filter(t => !state.tftMap[t]);
-  const ledgerOnly = Object.keys(state.tftMap).filter(t => !folder.has(t));
+  const ledgerOnly = Object.keys(state.tftMap).filter(t => !folder.has(t) && !state.serverTft?.has(t));
   const targets = [...new Set(state.shipD.map(s => state.detTftMap[s.detector_sn]).filter(t => t && !state.tftMap[t]))];
-  _sugg = { map: suggestPairs(folderOnly, ledgerOnly, 2, targets), tftMap: state.tftMap, tftmD: state.tftmD };
+  _sugg = { map: suggestPairs(folderOnly, ledgerOnly, 2, targets), tftMap: state.tftMap, tftmD: state.tftmD, srv: state.serverTft };
   return _sugg.map;
 }
 
@@ -706,7 +707,8 @@ function renderHnForm() {
       + ' → 출하 폴더 <span class="hn-mono hn-copy" data-copy="' + esc(q.tft) + '" title="클릭하면 복사">' + esc(q.tft) + '</span>'
       + ' <span class="hn-sub-note">(생산번호 ' + esc(gp.prod_no || '-') + ' · 작업자 ' + esc(gp.worker || '-') + ' · 완료 ' + esc(gp.completed_date || '-')
       + ' · CPU ' + esc(gp.cpu_sn || '-') + ')</span>'
-      + '<button class="hn-guess-fix">🔗 대장 TFT를 ' + esc(q.tft) + '로 고쳐 연결</button></div>'
+      + '<button class="hn-guess-fix">🔗 대장 TFT를 ' + esc(q.tft) + '로 고쳐 연결</button>'
+      + '<div class="hn-srv">' + serverCheckText(guess.ledger, q.tft) + '</div></div>'
     : '';
   // 방금 오기입 수정한 건 — 담당자에게 보낼 문구
   const fixHtml = lastTftFix && lastTftFix.det === q.det
@@ -810,6 +812,14 @@ async function saveHnForm() {
   renderHistNeed();
 }
 
+// 서버 확인 결과 한 줄 (server_tft: 매일 TFT 매칭 때 「0.0 TFT 정보 관리」 폴더 이름에서 수집)
+function serverCheckText(ledger, folderTft) {
+  if (!state.serverTft) return '⚠ 서버 TFT 목록을 아직 못 받음 — 대장 값이 실제로 다른 유닛인지 서버에서 확인 후 연결하세요';
+  const src = state.serverTft.get(folderTft) || '';
+  return '✓ 서버 확인: 대장 값 <b>' + esc(ledger) + '</b>은 서버 폴더에 없음'
+    + (src.includes('자재') ? ' · 출하 값 ' + esc(folderTft) + '은 <b>자재 출고 이력에 있음</b>' : '');
+}
+
 // a에서 b와 다른 글자를 빨간색으로 (대장 값의 틀린 자리 표시)
 function diffMark(a, b) {
   let i = 0, j = 0;
@@ -847,7 +857,9 @@ async function applyTftGuess() {
     + '생산번호 ' + (p.prod_no || '-') + ' · 작업자 ' + (p.worker || '-') + ' · 제작완료 ' + (p.completed_date || '-') + '\n'
     + '제품 ' + (ship.product_name || '-') + ' · 디텍터 ' + q.det + '\n'
     + '생산관리대장 TFT  ' + g.ledger + '  →  ' + q.tft + ' 로 수정했습니다.\n'
-    + '근거: 출하 폴더의 TFT가 ' + q.tft + ' 이고, 대장 값(' + g.ledger + ')과 ' + g.dist + '글자 다름 (오기입으로 판단)' };
+    + '근거: 출하 폴더의 TFT가 ' + q.tft + ' 이고, 대장 값(' + g.ledger + ')과 ' + g.dist + '글자 다름'
+    + (state.serverTft ? ', 대장 값은 서버 어디에도 폴더가 없음' + ((state.serverTft.get(q.tft) || '').includes('자재') ? ', 출하 값은 자재 출고 이력에 있음' : '') : '')
+    + ' (오기입으로 판단)' };
   toast('대장 TFT ' + g.ledger + ' → ' + q.tft + ' 수정, 연결됨 (비고 1에 기록)', 'ok');
   renderHistNeed();
 }

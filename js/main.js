@@ -89,6 +89,7 @@ async function fullReload() {
     state.prodD = pData.map(r => ({ ...r, _id: r.id }));
     state.tftmD = tData;
     state.folderIssues = fiData || [];
+    loadServerTft();
     // dirty 상태 초기화 (DB 데이터로 완전 교체했으므로)
     state.dirty = { updates: {}, inserts: { ship: [], prod: [] }, deletes: { ship: [], prod: [] } };
     state.hasChanges = false;
@@ -152,6 +153,15 @@ function pasteFromClipboard(type) {
   } else {
     toast('이 브라우저는 클립보드 읽기를 지원하지 않습니다 — Ctrl+V를 사용하세요', 'info');
   }
+}
+
+// 서버 TFT 목록 (server_tft: 매일 TFT 매칭 때 서버 폴더 이름에서 수집) — 받으면 이력 필요 추정을 다시 계산
+async function loadServerTft() {
+  try {
+    const rows = await dbFetchAll('server_tft', 'tft_sn', 'tft_sn,sources');
+    state.serverTft = rows.length ? new Map(rows.map(r => [r.tft_sn, r.sources || ''])) : null;
+  } catch (e) { state.serverTft = null; }   // 표가 아직 없으면 서버 확인 없이 동작 (안내 문구로 표시)
+  renderHistNeedTable();
 }
 
 // ═══ INIT ═══
@@ -361,6 +371,7 @@ async function init() {
 
   // Init realtime after data loaded
   initRealtime();
+  loadServerTft();   // 오기입 추정 안전장치 — 화면을 막지 않게 뒤에서 받음
 
   // Post-render: init resize on visible tables
   setTimeout(() => { initResize('b1'); initResize('b2'); initResize('b3'); initResize('b4'); }, 100);
