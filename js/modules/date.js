@@ -13,5 +13,9 @@ export function normDate(v) {
   return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
 }
 
-// 날짜 칸이면 정리, 아니면 그대로
-export const normField = (f, v) => (DATE_FIELDS.has(f) ? normDate(v) : v);
+// 같은 사람의 다른 이름 → 대표 이름 (작업자 필터·수정 이력 집계가 갈라지지 않게)
+export const WORKER_ALIAS = { '이형섭': '이다니엘' };
+
+// 날짜 칸이면 날짜 정리, 작업자 칸이면 대표 이름으로, 나머지는 그대로
+export const normField = (f, v) => (DATE_FIELDS.has(f) ? normDate(v)
+  : f === 'worker' ? (WORKER_ALIAS[String(v ?? '').trim()] ?? v) : v);

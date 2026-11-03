@@ -12,4 +12,10 @@ describe('날짜 입력 정리', () => {
     expect(normField('worker', '260530')).toBe('260530');
     expect(normField('completed_date', '260530')).toBe('2026-05-30');
   });
+
+  test('작업자 다른 이름 → 대표 이름', () => {
+    expect(normField('worker', '이형섭')).toBe('이다니엘');
+    expect(normField('worker', ' 이형섭 ')).toBe('이다니엘');
+    expect(normField('worker', '김남식')).toBe('김남식');
+  });
 });
