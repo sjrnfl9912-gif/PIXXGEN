@@ -1,4 +1,11 @@
-import { snDist, suggestPairs } from './fuzzy.js';
+import { snDist, suggestPairs, describeFix } from './fuzzy.js';
+
+test('수정 설명', () => {
+  expect(describeFix('CF415179AAA', 'CF415179AAAA')).toBe('A 하나 빠짐');
+  expect(describeFix('QJ4160MOPAAA', 'QJ4160M0PAAA')).toBe('영문 O → 숫자 0');
+  expect(describeFix('Q5518499PAAAA', 'Q5518499PAAA')).toBe('A 하나 더 씀');
+  expect(describeFix('AB12', 'BA12')).toBe('AB 순서 바뀜');
+});
 
 describe('TFT 오기입 추정', () => {
   test('거리', () => {

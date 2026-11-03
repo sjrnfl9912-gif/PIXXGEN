@@ -18,6 +18,20 @@ export function snDist(a, b, cap = 2) {
   return Math.min(p1[b.length], cap + 1);
 }
 
+// 무엇이 틀렸는지 한 줄 설명 (수정 이력·담당자 안내용). before = 틀린 값, after = 고친 값
+const LOOK = { 'O0': '영문 O → 숫자 0', '0O': '숫자 0 → 영문 O', 'I1': '영문 I → 숫자 1', '1I': '숫자 1 → 영문 I' };
+export function describeFix(before, after) {
+  let i = 0, j = 0;
+  while (i < before.length && i < after.length && before[i] === after[i]) i++;
+  while (j < before.length - i && j < after.length - i && before[before.length - 1 - j] === after[after.length - 1 - j]) j++;
+  const b = before.slice(i, before.length - j), a = after.slice(i, after.length - j);
+  if (!b && a) return a + ' ' + (a.length === 1 ? '하나' : a.length + '글자') + ' 빠짐';
+  if (b && !a) return b + ' ' + (b.length === 1 ? '하나' : b.length + '글자') + ' 더 씀';
+  if (b.length === 1 && a.length === 1) return LOOK[b + a] || b + ' → ' + a;
+  if (b.length === 2 && a.length === 2 && b[0] === a[1] && b[1] === a[0]) return b + ' 순서 바뀜';
+  return b + ' → ' + a;
+}
+
 // 출하 폴더 TFT(대장에 없음) 각각에 대해, 어느 출하와도 안 묶인 대장 TFT 중 가장 가까운 것 하나.
 //   서로 유일한 짝일 때만 제안 (비슷한 번호가 여럿이면 추정하지 않음)
 //   folderTfts: 대장에 없는 폴더 TFT 목록 / ledgerTfts: 어느 폴더와도 안 묶인 대장 TFT 목록

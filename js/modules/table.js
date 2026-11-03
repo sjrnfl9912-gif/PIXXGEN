@@ -3,12 +3,12 @@
 // ═══════════════════════════════════════
 import { SHIP_FIELDS, SHIP_HEADS, PROD_FIELDS, PROD_HEADS, MERGE_HEADS, MERGE_VC_START, TFTM_FIELDS, TFTM_HEADS } from '../config.js';
 import { state, markDupDirty, rebuildTft, rebuildDetTft, invalidateOtherTabs } from '../state.js';
-import { dbInsert, dbUpdate } from '../db.js';
+import { dbInsert, dbUpdate, dbFetchAll } from '../db.js';
 import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
 import { cellHtml, refreshModelOpts, hlText } from './cell.js';
 import { DATE_FIELDS, normDate, normField } from './date.js';
-import { suggestPairs } from './fuzzy.js';
+import { suggestPairs, describeFix } from './fuzzy.js';
 import { mountRows } from './lazy.js';
 import { requireEdit } from '../services/editmode.js';
 
@@ -853,15 +853,72 @@ async function applyTftGuess() {
   saveCache(state.shipD, state.prodD);
   hnQueueSave();
   const ship = hnShipByDet(q.det);
-  lastTftFix = { det: q.det, text: '[TFT 오기입 수정 안내]\n'
-    + '생산번호 ' + (p.prod_no || '-') + ' · 작업자 ' + (p.worker || '-') + ' · 제작완료 ' + (p.completed_date || '-') + '\n'
-    + '제품 ' + (ship.product_name || '-') + ' · 디텍터 ' + q.det + '\n'
-    + '생산관리대장 TFT  ' + g.ledger + '  →  ' + q.tft + ' 로 수정했습니다.\n'
-    + '근거: 출하 폴더의 TFT가 ' + q.tft + ' 이고, 대장 값(' + g.ledger + ')과 ' + g.dist + '글자 다름'
-    + (state.serverTft ? ', 대장 값은 서버 어디에도 폴더가 없음' + ((state.serverTft.get(q.tft) || '').includes('자재') ? ', 출하 값은 자재 출고 이력에 있음' : '') : '')
-    + ' (오기입으로 판단)' };
-  toast('대장 TFT ' + g.ledger + ' → ' + q.tft + ' 수정, 연결됨 (비고 1에 기록)', 'ok');
+  const what = describeFix(g.ledger, q.tft);
+  const reason = '출하 폴더 TFT 기준(' + g.dist + '글자 차이)'
+    + (state.serverTft ? ', 대장 값은 서버 폴더에 없음' + ((state.serverTft.get(q.tft) || '').includes('자재') ? ', 출하 값은 자재 출고 이력에 있음' : '') : '');
+  // 수정 이력 표에 한 줄 (웹에서는 추가만 가능, 지울 수 없음) — 「🧾 수정 이력」에서 모아 봄
+  const logged = await dbInsert('fix_log', { kind: 'TFT 오기입', prod_id: id, prod_no: p.prod_no || null, worker: p.worker || null,
+    completed_date: p.completed_date || null, product: ship.product_name || null, detector_sn: q.det,
+    before_val: g.ledger, after_val: q.tft, what, reason });
+  lastTftFix = { det: q.det, text: '[TFT 오기입 수정 안내] ' + new Date().toLocaleDateString('sv-SE') + '\n'
+    + fixLine({ worker: p.worker, prod_no: p.prod_no, completed_date: p.completed_date, before_val: g.ledger, after_val: q.tft, what })
+    + '\n근거: ' + reason };
+  toast('대장 TFT ' + g.ledger + ' → ' + q.tft + ' 수정, 연결됨' + (logged ? ' (수정 이력에 기록)' : ' — ⚠ 수정 이력 저장 실패(비고 1에는 기록됨)'), logged ? 'ok' : 'er');
   renderHistNeed();
+}
+
+// 수정 이력 한 줄 (카톡 형식) — 작업자 / 생산번호 / 완료 : 이전 → 새값 (무엇이 틀렸나)
+function fixLine(r) {
+  return '- ' + [r.worker || '작업자 없음', r.prod_no ? '생산번호 ' + r.prod_no : '', r.completed_date ? '완료 ' + r.completed_date : '']
+    .filter(Boolean).join(' / ') + ' : ' + r.before_val + ' → ' + r.after_val + (r.what ? ' (' + r.what + ')' : '');
+}
+
+// ── 🧾 수정 이력 — 오기입 수정을 날짜별로 모아 보고, 작업자별 건수 집계 ──
+let fixLogRows = [], fixLogWorker = '';
+async function openFixLog() {
+  document.getElementById('fixLogBg')?.classList.add('show');
+  const body = document.getElementById('fixLogBody');
+  body.innerHTML = '<p class="fl-note">불러오는 중...</p>';
+  try { fixLogRows = await dbFetchAll('fix_log', 'fixed_at'); }
+  catch (e) { body.innerHTML = '<p class="fl-note">수정 이력 표가 아직 없습니다 (setup\\sql\\09_수정이력.sql 실행 필요)</p>'; return; }
+  fixLogWorker = '';
+  renderFixLog();
+}
+function renderFixLog() {
+  const body = document.getElementById('fixLogBody');
+  const errs = fixLogRows.filter(r => r.kind === 'TFT 오기입');
+  const byWorker = {};
+  errs.forEach(r => { const w = r.worker || '작업자 없음'; byWorker[w] = (byWorker[w] || 0) + 1; });
+  const rows = fixLogRows.filter(r => !fixLogWorker || (r.worker || '작업자 없음') === fixLogWorker);
+  const byDate = {};
+  rows.forEach(r => { const d = new Date(r.fixed_at).toLocaleDateString('sv-SE'); (byDate[d] ||= []).push(r); });
+  let h = '<div class="fl-sum"><b>오기입 ' + errs.length + '건</b> · 작업자별 '
+    + '<span class="chip' + (!fixLogWorker ? ' on' : '') + '" data-flw="">전체</span>'
+    + Object.entries(byWorker).sort((a, b) => b[1] - a[1]).map(([w, n]) =>
+      '<span class="chip' + (fixLogWorker === w ? ' on' : '') + '" data-flw="' + esc(w) + '">' + esc(w) + ' <b>' + n + '</b></span>').join('')
+    + '</div>';
+  if (!rows.length) h += '<p class="fl-note">아직 기록이 없습니다.</p>';
+  for (const d of Object.keys(byDate).sort().reverse()) {
+    const list = byDate[d];
+    h += '<div class="fl-day"><div class="fl-dh">' + d + ' · ' + list.length + '건 <button class="fl-copy" data-fld="' + d + '">📋 이 날짜 카톡 문구 복사</button></div><ul>'
+      + list.map(r => '<li class="' + (r.kind === '되돌림' ? 'fl-undo' : '') + '">'
+        + (r.kind === '되돌림' ? '<span class="fl-tag">되돌림</span> ' : '') + '<b>' + esc(r.worker || (r.kind === '되돌림' ? '' : '작업자 없음')) + '</b>'
+        + (r.prod_no ? ' / 생산번호 ' + esc(r.prod_no) : '') + (r.completed_date ? ' / 완료 ' + esc(r.completed_date) : '')
+        + ' : <code>' + esc(r.before_val) + '</code> → <code>' + esc(r.after_val) + '</code>'
+        + (r.what ? ' <span class="fl-what">(' + esc(r.what) + ')</span>' : '')
+        + '<div class="fl-note">' + esc([r.product, r.detector_sn && '디텍터 ' + r.detector_sn, r.reason].filter(Boolean).join(' · ')) + '</div></li>').join('')
+      + '</ul></div>';
+  }
+  body.innerHTML = h;
+}
+function fixLogKakao(d) {
+  const list = fixLogRows.filter(r => new Date(r.fixed_at).toLocaleDateString('sv-SE') === d);
+  const errs = list.filter(r => r.kind === 'TFT 오기입'), undo = list.filter(r => r.kind === '되돌림');
+  const cnt = {}; errs.forEach(r => { const w = r.worker || '작업자 없음'; cnt[w] = (cnt[w] || 0) + 1; });
+  return '[TFT 오기입 수정 안내] ' + d + '\n생산관리대장 TFT가 출하 폴더 TFT와 달라 아래처럼 수정했습니다.\n'
+    + errs.map(fixLine).join('\n')
+    + (undo.length ? '\n\n※ 정정 (잘못 고쳤다가 원래대로)\n' + undo.map(r => '- ' + (r.prod_no ? '생산번호 ' + r.prod_no + ' : ' : '') + r.before_val + ' → ' + r.after_val + ' (' + (r.reason || r.what || '') + ')').join('\n') : '')
+    + '\n\n작업자별: ' + Object.entries(cnt).map(([w, n]) => w + ' ' + n + '건').join(' · ');
 }
 let lastTftFix = null;   // { det, text } — 방금 수정한 건의 담당자 안내 문구
 
@@ -1244,6 +1301,18 @@ export function initHistNeed() {
       if (pf && DATE_FIELDS.has(pf)) e.target.value = normDate(e.target.value);
     });
   }
+
+  // 🧾 수정 이력 창
+  document.getElementById('fixLogBtn')?.addEventListener('click', openFixLog);
+  const flBg = document.getElementById('fixLogBg');
+  document.getElementById('fixLogClose')?.addEventListener('click', () => flBg?.classList.remove('show'));
+  flBg?.addEventListener('click', e => {
+    if (e.target === flBg) { flBg.classList.remove('show'); return; }
+    const w = e.target.closest('[data-flw]');
+    if (w) { fixLogWorker = w.dataset.flw; renderFixLog(); return; }
+    const c = e.target.closest('[data-fld]');
+    if (c) copyCellText(fixLogKakao(c.dataset.fld));
+  });
 
   // 월 칩 — 예상출하일 기준 월별로 보기
   document.getElementById('hnMonthChips')?.addEventListener('click', e => {
