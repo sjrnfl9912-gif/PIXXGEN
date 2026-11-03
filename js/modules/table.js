@@ -651,7 +651,9 @@ function renderHnForm() {
   }
 
   // 같은 큐 항목을 다시 그리는 경우 입력 중이던 값/포커스 스냅샷
-  const sameItem = area.dataset.formDet === q.det;
+  // 같은 건이라도 새 입력 ↔ 수정 모드가 바뀌었으면(예: 오기입 연결 직후) 이전 입력값을 덮어쓰지 않고 DB 값을 보여줌
+  const formKey = q.det + '|' + (isEdit ? 'edit' : 'new');
+  const sameItem = area.dataset.formDet === formKey;
   const snap = {};
   let focusedField = null, caret = null;
   if (sameItem) {
@@ -715,7 +717,7 @@ function renderHnForm() {
     + '<div class="hn-form-f">' + skipBtn
     + '<button class="hn-save">' + saveTxt + '</button></div>'
     + '</div>';
-  area.dataset.formDet = q.det;
+  area.dataset.formDet = formKey;
   // 포커스/캐럿 복원 — 입력 흐름을 깨지 않음. 첫 진입이면 첫 입력칸에 포커스.
   if (focusedField) {
     const fi = area.querySelector('[data-pf="' + focusedField + '"]');
