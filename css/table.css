@@ -629,3 +629,6 @@ tr.grp-start td {
   background: #bfc6d4;
   border-radius: 3px;
 }
+
+/* 검색어 일치 부분 표시 */
+mark.hl { background: #fde047; color: inherit; padding: 0; border-radius: 2px; }

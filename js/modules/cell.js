@@ -12,11 +12,24 @@ export function escAttr(v) {
   return String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// 편집 가능 데이터 셀 HTML (input 없음). 표시 텍스트 = data-v = 원본값.
-export function cellHtml(id, t, f, v, extraCls) {
+// 검색어와 일치하는 부분을 <mark>로 (대소문자 무시, 여러 번이면 모두). q는 소문자.
+export function hlText(v, q) {
+  const str = v == null ? '' : String(v);
+  if (!q) return escAttr(str);
+  const lo = str.toLowerCase();
+  let i = 0, k, out = '';
+  while ((k = lo.indexOf(q, i)) >= 0) {
+    out += escAttr(str.slice(i, k)) + '<mark class="hl">' + escAttr(str.slice(k, k + q.length)) + '</mark>';
+    i = k + q.length;
+  }
+  return out + escAttr(str.slice(i));
+}
+
+// 편집 가능 데이터 셀 HTML (input 없음). 표시 텍스트 = data-v = 원본값. q: 검색어(소문자) 있으면 일치 부분 표시
+export function cellHtml(id, t, f, v, extraCls, q) {
   const s = escAttr(v);
   return '<td class="cw' + (extraCls ? ' ' + extraCls : '') + '" data-id="' + escAttr(id)
-    + '" data-t="' + t + '" data-f="' + f + '" data-v="' + s + '">' + s + '</td>';
+    + '" data-t="' + t + '" data-f="' + f + '" data-v="' + s + '">' + (q ? hlText(v, q) : s) + '</td>';
 }
 
 // 셀 원본값 (편집 가능 셀이 아니면 빈 문자열)
@@ -25,12 +38,10 @@ export function cellValue(td) { return td && td.dataset ? (td.dataset.v || '') :
 // 편집 가능 셀 여부 — data-f 보유 = ship/prod 데이터 셀 (rn·읽기전용 셀은 false)
 export function isEditableCell(td) { return !!(td && td.dataset && td.dataset.f); }
 
-// 표시 텍스트만 교체 (.fh 등 자식 요소는 보존)
+// 표시 텍스트만 교체 (.fh 등 자식 요소는 보존, 검색 표시 <mark>는 지움)
 export function setCellText(td, s) {
   const str = s == null ? '' : String(s);
-  for (const n of td.childNodes) {
-    if (n.nodeType === 3) { n.nodeValue = str; return; }
-  }
+  for (const n of [...td.childNodes]) if (n.nodeType === 3 || n.nodeName === 'MARK') n.remove();
   td.insertBefore(document.createTextNode(str), td.firstChild);
 }
 

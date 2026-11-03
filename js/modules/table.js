@@ -6,7 +6,7 @@ import { state, markDupDirty, rebuildTft, rebuildDetTft, invalidateOtherTabs } f
 import { dbInsert, dbUpdate } from '../db.js';
 import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
-import { cellHtml, refreshModelOpts } from './cell.js';
+import { cellHtml, refreshModelOpts, hlText } from './cell.js';
 import { DATE_FIELDS, normDate, normField } from './date.js';
 import { suggestPairs } from './fuzzy.js';
 import { mountRows } from './lazy.js';
@@ -132,7 +132,7 @@ export function renderShipmentTable() {
     const cells = ['<tr data-id="' + esc(r._id) + '"' + trCls + '><td class="rn" data-row-idx="' + i + '" data-tb="b1">' + (i + 1) + '</td>'];
     for (let j = 0; j < SHIP_FIELDS.length; j++) {
       const f = SHIP_FIELDS[j], dup = isDupCell(f, r[f], state.shipDups);
-      cells.push(cellHtml(r._id, 's', f, r[f], dup ? 'dup-cell' : ''));
+      cells.push(cellHtml(r._id, 's', f, r[f], dup ? 'dup-cell' : '', q));
     }
     cells.push('</tr>');
     rows.push(cells.join(''));
@@ -197,7 +197,7 @@ export function renderProductionTable() {
     const cells = ['<tr data-id="' + esc(r._id) + '"' + trCls + '><td class="rn" data-row-idx="' + i + '" data-tb="b2">' + (i + 1) + '</td>'];
     for (let j = 0; j < PROD_FIELDS.length; j++) {
       const f = PROD_FIELDS[j], dup = isDupCell(f, r[f], state.prodDups);
-      cells.push(cellHtml(r._id, 'p', f, r[f], dup ? 'dup-cell' : ''));
+      cells.push(cellHtml(r._id, 'p', f, r[f], dup ? 'dup-cell' : '', q));
     }
     cells.push('</tr>');
     rows.push(cells.join(''));
@@ -233,7 +233,7 @@ function fieldInputHtml(f, v, baseAttrs) {
 }
 
 // 읽기 전용 셀 HTML 빌더
-function readCell(field, value, baseClass) {
+function readCell(field, value, baseClass, q) {
   if (value == null || value === '') {
     return '<td class="' + baseClass + '"></td>';
   }
@@ -247,7 +247,7 @@ function readCell(field, value, baseClass) {
     cls += ' long';
     attrs = ' title="' + s + '"';
   }
-  return '<td class="' + cls + '"' + attrs + '>' + s + '</td>';
+  return '<td class="' + cls + '"' + attrs + '>' + (q ? hlText(value, q) : s) + '</td>';
 }
 
 export function renderMergeTable() {
@@ -288,7 +288,7 @@ export function renderMergeTable() {
       + '<span class="rn-num">' + (i + 1) + '</span><span class="rn-edit-icon">✏</span></td>'];
     // 검사포장 컬럼 — 읽기 전용 텍스트로 렌더 (편집은 모달에서)
     for (let j = 0; j < SHIP_FIELDS.length; j++) {
-      cells.push(readCell(SHIP_FIELDS[j], r[SHIP_FIELDS[j]], 'cw'));
+      cells.push(readCell(SHIP_FIELDS[j], r[SHIP_FIELDS[j]], 'cw', q));
     }
     // 생산 컬럼 — 매칭 없으면 안내, 있으면 텍스트
     for (let j = 0; j < PROD_VL_FIELDS.length; j++) {
@@ -298,7 +298,7 @@ export function renderMergeTable() {
         // 모델명은 미입력이 정상(매칭 실패 아님) → 빈칸
         cells.push(f === 'model_name' ? '<td class="v"></td>' : '<td class="v"><span class="vl-miss">매칭없음</span></td>'); continue;
       }
-      cells.push(readCell(f, p[f], 'v'));
+      cells.push(readCell(f, p[f], 'v', q));
     }
     cells.push('</tr>');
     rows.push(cells.join(''));
@@ -489,7 +489,7 @@ export function renderTftmTable() {
     const cells = ['<tr><td class="rn">' + (i + 1) + '</td>'];
     // 읽기 전용 텍스트 렌더 (input 제거) + S/N 컬럼 클릭 복사
     for (let j = 0; j < TFTM_FIELDS.length; j++) {
-      cells.push(readCell(TFTM_FIELDS[j], r[TFTM_FIELDS[j]], 'cw'));
+      cells.push(readCell(TFTM_FIELDS[j], r[TFTM_FIELDS[j]], 'cw', q));
     }
     cells.push('</tr>');
     rows.push(cells.join(''));

@@ -15,7 +15,7 @@ export function startEdit(td, clear) {
   state.editing = true;
   const v = td.dataset.v || '';
   // 기존 텍스트 노드 제거 (.fh 등 자식 요소는 보존)
-  for (const n of [...td.childNodes]) { if (n.nodeType === 3) n.remove(); }
+  for (const n of [...td.childNodes]) { if (n.nodeType === 3 || n.nodeName === 'MARK') n.remove(); }
   const inp = document.createElement('input');
   inp.className = 'c edit';
   inp.type = 'text';

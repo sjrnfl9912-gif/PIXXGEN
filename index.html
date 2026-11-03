@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/buttons.css">
-  <link rel="stylesheet" href="css/table.css?v=20261103c">
+  <link rel="stylesheet" href="css/table.css?v=20261103d">
   <link rel="stylesheet" href="css/modals.css">
   <link rel="stylesheet" href="css/kpi.css">
   <link rel="stylesheet" href="css/editmode.css?v=20261019c">
@@ -524,6 +524,7 @@
           <div class="cl-entry">
             <div class="cl-date">2026-11-03</div>
             <ul class="cl-list">
+              <li><b>검색어 노란색 표시</b> — 검사포장 출하이력·생산관리대장·통합취합본·TFT 매칭에서 검색하면 칸 안의 일치하는 글자가 노란색으로 표시돼, 어느 칸이 걸렸는지 바로 보입니다.</li>
               <li><b>🔗 대장 TFT 오기입 추정</b> — 출하 폴더 TFT가 생산관리대장에 없을 때, 대장에 <b>어느 출하와도 연결 안 된 1~2글자 다른 TFT</b>가 있으면 이력 필요 목록에 「대장 오기입 의심」과 대장 값을 표시합니다(예: 폴더 CF415179AAAA ↔ 대장 CF415179AAA, 0↔O 혼동 등). 큐에 넣어 열면 대장 기록(작업자·완료일·CPU)을 보여주고 「대장 TFT를 고쳐 연결」 버튼으로 새로 쓰지 않고 바로 연결합니다. 비슷한 번호가 여러 개라 짝이 애매하면 추정하지 않습니다.</li>
               <li><b>이력 필요 탭 스크롤 수정</b> — 작업 큐가 많고 입력 폼이 열려 있으면 아래 목록·「출하 예정」이 화면 밖으로 밀려 내려갈 수 없던 문제 수정. 이제 탭 전체가 위아래로 스크롤됩니다.</li>
               <li><b>이력 필요 목록 월별 보기</b> — 「전체 이력 필요 목록」 위에 예상출하일 기준 월 칩(2026년 1월 31 · 2월 16 …)이 생겼습니다. 누르면 그 달만, 「전체」는 모두. 목록도 예상출하일 순으로 정렬. 예상출하일이 비어 있는 건은 「날짜 없음」.</li>
@@ -679,6 +680,6 @@
   <button class="fab-bottom" id="fabBottom" title="맨 아래로">⬇</button>
 
   <!-- Scripts -->
-  <script type="module" src="js/main.js?v=20261103c"></script>
+  <script type="module" src="js/main.js?v=20261103d"></script>
 </body>
 </html>
