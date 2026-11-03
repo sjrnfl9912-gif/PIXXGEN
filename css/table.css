@@ -584,6 +584,10 @@ tr.grp-start td {
   border-radius: 6px;
 }
 .hn-list-tw { max-height: 340px; }
+/* 이력 필요 탭은 큐·폼이 길어지면 아래 목록이 화면 밖으로 밀림 → 탭 전체를 스크롤 (다른 탭은 표 안에서만 스크롤) */
+#v-histneed.tab-view { overflow-y: auto; }
+#v-histneed > * { flex-shrink: 0; }
+.hn-list-section .hn-list-tw { max-height: 65vh; }
 
 /* ── RESIZE ── */
 .resizer {
