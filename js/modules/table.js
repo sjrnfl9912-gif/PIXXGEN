@@ -702,13 +702,19 @@ function renderHnForm() {
   const gp = guess && state.tftMap[guess.ledger];
   const guessHtml = gp
     ? '<div class="hn-guess-box">⚠ 생산관리대장에 <b>' + guess.dist + '글자 다른</b> 기록이 있어요 — 같은 제품이면 새로 쓰지 말고 연결하세요<br>'
-      + '대장 <span class="hn-mono">' + diffMark(guess.ledger, q.tft) + '</span> → 출하 폴더 <span class="hn-mono">' + esc(q.tft) + '</span>'
+      + '대장 <span class="hn-mono hn-copy" data-copy="' + esc(guess.ledger) + '" title="클릭하면 복사">' + diffMark(guess.ledger, q.tft) + '</span>'
+      + ' → 출하 폴더 <span class="hn-mono hn-copy" data-copy="' + esc(q.tft) + '" title="클릭하면 복사">' + esc(q.tft) + '</span>'
       + ' <span class="hn-sub-note">(생산번호 ' + esc(gp.prod_no || '-') + ' · 작업자 ' + esc(gp.worker || '-') + ' · 완료 ' + esc(gp.completed_date || '-')
       + ' · CPU ' + esc(gp.cpu_sn || '-') + ')</span>'
       + '<button class="hn-guess-fix">🔗 대장 TFT를 ' + esc(q.tft) + '로 고쳐 연결</button></div>'
     : '';
+  // 방금 오기입 수정한 건 — 담당자에게 보낼 문구
+  const fixHtml = lastTftFix && lastTftFix.det === q.det
+    ? '<div class="hn-fixlog">✓ 대장 TFT를 고치고 비고 1에 수정 기록을 남겼습니다. '
+      + '<button class="hn-fixcopy">📋 담당자에게 보낼 문구 복사</button><pre>' + esc(lastTftFix.text) + '</pre></div>'
+    : '';
 
-  area.innerHTML = '<div class="hn-form' + (isEdit ? ' hn-form-edit' : '') + '">'
+  area.innerHTML = '<div class="hn-form' + (isEdit ? ' hn-form-edit' : '') + '">' + fixHtml
     + '<div class="hn-form-h">' + headIcon + ' ' + esc(ship.product_name || '') + ' / 디텍터 ' + esc(q.det)
     + ' · TFT ' + esc(q.tft || '(없음 — 직접 입력)') + ' ' + headTag
     + '<span class="hn-form-pos">큐 ' + (hnSel + 1) + ' / ' + hnQueue.length + '</span></div>'
@@ -822,7 +828,11 @@ async function applyTftGuess() {
   if (!requireEdit()) return;
   if (state.tftMap[q.tft]) { toast('이미 ' + q.tft + ' 생산기록이 있습니다', 'info'); renderHistNeed(); return; }
   const id = p.id != null ? p.id : p._id;
-  const updated = await dbUpdate('production', id, { tft_sn: q.tft });
+  // 수정 이력: 비고 1 뒤에 이어 붙임 (기존 'ECO완료' 등 보존) — 대장에서 누가 봐도 왜 바뀌었는지 보이게
+  const today = new Date().toISOString().slice(0, 10);
+  const memo = '[' + today + '] TFT 오기입 수정 ' + g.ledger + '→' + q.tft;
+  const note1 = p.note1 ? p.note1 + ' / ' + memo : memo;
+  const updated = await dbUpdate('production', id, { tft_sn: q.tft, note1 });
   if (!updated) { toast('수정 실패 — 다시 시도해주세요', 'er'); return; }
   const idx = state.prodD.findIndex(x => (x.id != null ? x.id : x._id) === id);
   if (idx >= 0) state.prodD[idx] = { ...updated, _id: updated.id };
@@ -832,9 +842,16 @@ async function applyTftGuess() {
   invalidateOtherTabs();
   saveCache(state.shipD, state.prodD);
   hnQueueSave();
-  toast('대장 TFT ' + g.ledger + ' → ' + q.tft + ' 수정, 연결됨', 'ok');
+  const ship = hnShipByDet(q.det);
+  lastTftFix = { det: q.det, text: '[TFT 오기입 수정 안내]\n'
+    + '생산번호 ' + (p.prod_no || '-') + ' · 작업자 ' + (p.worker || '-') + ' · 제작완료 ' + (p.completed_date || '-') + '\n'
+    + '제품 ' + (ship.product_name || '-') + ' · 디텍터 ' + q.det + '\n'
+    + '생산관리대장 TFT  ' + g.ledger + '  →  ' + q.tft + ' 로 수정했습니다.\n'
+    + '근거: 출하 폴더의 TFT가 ' + q.tft + ' 이고, 대장 값(' + g.ledger + ')과 ' + g.dist + '글자 다름 (오기입으로 판단)' };
+  toast('대장 TFT ' + g.ledger + ' → ' + q.tft + ' 수정, 연결됨 (비고 1에 기록)', 'ok');
   renderHistNeed();
 }
+let lastTftFix = null;   // { det, text } — 방금 수정한 건의 담당자 안내 문구
 
 // 저장 없이 다음 미완료 큐로
 function hnSkip() {
@@ -1206,6 +1223,8 @@ export function initHistNeed() {
       if (e.target.closest('.hn-save')) saveHnForm();
       else if (e.target.closest('.hn-skip')) hnSkip();
       else if (e.target.closest('.hn-guess-fix')) applyTftGuess();
+      else if (e.target.closest('.hn-fixcopy') && lastTftFix) copyCellText(lastTftFix.text);
+      else if (e.target.closest('.hn-copy')) copyCellText(e.target.closest('.hn-copy').dataset.copy);
     });
     // 날짜 칸은 입력을 마치면 바로 2026-05-30 형식으로 보여줌 (260530 등으로 입력해도 됨)
     area.addEventListener('focusout', e => {

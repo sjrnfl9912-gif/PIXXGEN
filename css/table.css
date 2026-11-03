@@ -389,6 +389,10 @@ tr.grp-start td {
 .hn-guess-box .hn-diff-gap { color: #dc2626; font-size: 10px; }
 .hn-guess-fix { margin-left: 8px; background: #dc2626; color: #fff; border: 0; border-radius: 5px; padding: 4px 10px; font-size: 12px; font-family: inherit; cursor: pointer; }
 .hn-guess-fix:hover { background: #b91c1c; }
+.hn-guess-box .hn-copy { cursor: pointer; border-bottom: 1px dashed #b91c1c; }
+.hn-fixlog { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 8px 10px; margin: 0 0 10px; font-size: 12px; color: #065f46; }
+.hn-fixlog pre { margin: 6px 0 0; font-family: inherit; font-size: 11.5px; white-space: pre-wrap; color: #1f2937; background: #fff; border-radius: 4px; padding: 6px 8px; }
+.hn-fixcopy { margin-left: 6px; background: #059669; color: #fff; border: 0; border-radius: 5px; padding: 3px 10px; font-size: 12px; font-family: inherit; cursor: pointer; }
 .hn-month-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 8px; }
 .hn-month-chips .chip b { margin-left: 2px; }
 /* S/N 칸 — 클릭하면 복사 */

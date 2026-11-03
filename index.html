@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/buttons.css">
-  <link rel="stylesheet" href="css/table.css?v=20261103d">
+  <link rel="stylesheet" href="css/table.css?v=20261103f">
   <link rel="stylesheet" href="css/modals.css">
   <link rel="stylesheet" href="css/kpi.css">
   <link rel="stylesheet" href="css/editmode.css?v=20261019c">
@@ -524,6 +524,7 @@
           <div class="cl-entry">
             <div class="cl-date">2026-11-03</div>
             <ul class="cl-list">
+              <li><b>오기입 수정 기록 · 담당자 안내</b> — 「대장 TFT를 고쳐 연결」을 누르면 그 기록의 「비고 1」 뒤에 <code>[날짜] TFT 오기입 수정 이전값→새값</code>이 자동으로 남고(기존 비고는 유지), 폼 위에 담당 작업자에게 보낼 안내 문구와 「복사」 버튼이 나옵니다. 안내 상자의 대장·폴더 TFT 값은 클릭하면 정확히 복사됩니다(0과 O 혼동 방지).</li>
               <li><b>오기입 연결 직후 폼 표시 수정</b> — 「대장 TFT를 고쳐 연결」을 누른 뒤 폼에 기존 기록 값(CPU·보드·작업자 등)이 빈칸으로 보이던 문제 수정. 연결 자체와 DB 값은 정상이었음.</li>
               <li><b>검색어 노란색 표시</b> — 검사포장 출하이력·생산관리대장·통합취합본·TFT 매칭에서 검색하면 칸 안의 일치하는 글자가 노란색으로 표시돼, 어느 칸이 걸렸는지 바로 보입니다.</li>
               <li><b>🔗 대장 TFT 오기입 추정</b> — 출하 폴더 TFT가 생산관리대장에 없을 때, 대장에 <b>어느 출하와도 연결 안 된 1~2글자 다른 TFT</b>가 있으면 이력 필요 목록에 「대장 오기입 의심」과 대장 값을 표시합니다(예: 폴더 CF415179AAAA ↔ 대장 CF415179AAA, 0↔O 혼동 등). 큐에 넣어 열면 대장 기록(작업자·완료일·CPU)을 보여주고 「대장 TFT를 고쳐 연결」 버튼으로 새로 쓰지 않고 바로 연결합니다. 비슷한 번호가 여러 개라 짝이 애매하면 추정하지 않습니다.</li>
@@ -681,6 +682,6 @@
   <button class="fab-bottom" id="fabBottom" title="맨 아래로">⬇</button>
 
   <!-- Scripts -->
-  <script type="module" src="js/main.js?v=20261103e"></script>
+  <script type="module" src="js/main.js?v=20261103f"></script>
 </body>
 </html>
