@@ -784,6 +784,7 @@ function hnSkip() {
 }
 
 // 전체 이력 필요 목록 (하단 접이식 참고용) — 미출하(pending) 건은 제외
+let hnMonth = 'all';   // 이력 필요 목록 월 필터 (예상출하일 yyyy-MM)
 export function renderHistNeedTable() {
   // 통합 검색 — 상단 S/N 입력창 하나가 곧 「전체 이력 필요 목록」의 필터.
   const q = (document.getElementById('hnScan')?.value || '').trim().toLowerCase();
@@ -791,6 +792,16 @@ export function renderHistNeedTable() {
   let list = work;
   if (q) list = list.filter(x => [x.ship.product_name, x.ship.detector_sn, x.tft, x.ship.company]
     .some(v => v && String(v).toLowerCase().includes(q)));
+  // 예상출하일 월별 칩 — 검색 결과 기준 건수, 월 순서로 정렬
+  const monthOf = x => String(x.ship.planned_ship_date || '').slice(0, 7) || '날짜 없음';
+  list = [...list].sort((a, b) => monthOf(a).localeCompare(monthOf(b)) || String(a.ship.planned_ship_date || '').localeCompare(String(b.ship.planned_ship_date || '')));
+  const mc = {}; list.forEach(x => { const m = monthOf(x); mc[m] = (mc[m] || 0) + 1; });
+  if (hnMonth !== 'all' && !mc[hnMonth]) hnMonth = 'all';
+  const mbox = document.getElementById('hnMonthChips');
+  if (mbox) mbox.innerHTML = '<div class="chip' + (hnMonth === 'all' ? ' on' : '') + '" data-month="all">전체 ' + list.length + '</div>'
+    + Object.keys(mc).sort().map(m => '<div class="chip' + (hnMonth === m ? ' on' : '') + '" data-month="' + esc(m) + '">'
+      + esc(m.length === 7 ? m.slice(0, 4) + '년 ' + +m.slice(5) + '월' : m) + ' <b>' + mc[m] + '</b></div>').join('');
+  if (hnMonth !== 'all') list = list.filter(x => monthOf(x) === hnMonth);
   state.histNeedList = list;
   const p5 = document.getElementById('p5'), cnt5 = document.getElementById('cnt5');
   if (p5) p5.textContent = list.length + '건';
@@ -1135,6 +1146,14 @@ export function initHistNeed() {
       if (pf && DATE_FIELDS.has(pf)) e.target.value = normDate(e.target.value);
     });
   }
+
+  // 월 칩 — 예상출하일 기준 월별로 보기
+  document.getElementById('hnMonthChips')?.addEventListener('click', e => {
+    const c = e.target.closest('[data-month]');
+    if (!c) return;
+    hnMonth = c.dataset.month;
+    renderHistNeedTable();
+  });
 
   // 하단 목록 — S/N 셀 클릭 복사 / [＋ 큐에] 버튼
   document.getElementById('b5')?.addEventListener('click', e => {

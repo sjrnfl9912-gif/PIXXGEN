@@ -380,6 +380,8 @@ tr.grp-start td {
   gap: 6px;
 }
 .hn-list-h #p5 { color: #999; font-weight: 500; }
+.hn-month-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 8px; }
+.hn-month-chips .chip b { margin-left: 2px; }
 /* S/N 칸 — 클릭하면 복사 */
 #t5 td.hn-copy, #t6 td.hn-copy { cursor: pointer; }
 #t5 td.hn-copy:hover, #t6 td.hn-copy:hover {
