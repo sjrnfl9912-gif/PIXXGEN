@@ -95,7 +95,8 @@ export function getSelVals() {
   const vals = [];
   for (let r = r1; r <= r2; r++) {
     const rv = []; const tr = tb.children[r];
-    for (let c = c1; c <= c2; c++) { const td = tr?.children[c]; rv.push(td?.dataset?.v || ''); }
+    // 편집 칸은 원본값(data-v), 읽기 전용 칸(이력 필요·통합취합본·TFT 매칭)은 보이는 글자
+    for (let c = c1; c <= c2; c++) { const td = tr?.children[c]; rv.push(td?.dataset?.v !== undefined ? td.dataset.v : (td?.textContent || '').trim()); }
     vals.push(rv);
   }
   return vals;

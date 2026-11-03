@@ -6,7 +6,7 @@ import { state, markDupDirty, rebuildTft, rebuildDetTft, invalidateOtherTabs } f
 import { dbInsert, dbUpdate, dbFetchAll } from '../db.js';
 import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
-import { cellHtml, refreshModelOpts, hlText } from './cell.js';
+import { cellHtml, refreshModelOpts, hlText, qTerms, matchQ } from './cell.js';
 import { DATE_FIELDS, normDate, normField } from './date.js';
 import { suggestPairs, describeFix } from './fuzzy.js';
 import { mountRows } from './lazy.js';
@@ -113,7 +113,9 @@ export function renderShipmentTable() {
   const q = (document.getElementById('q1')?.value || '').toLowerCase();
   let d = state.shipD;
   if (state.shipFilt !== 'all') d = d.filter(r => r.product_name && r.product_name.toUpperCase().includes(state.shipFilt));
-  if (q) d = d.filter(r => Object.values(r).some(v => v && String(v).toLowerCase().includes(q)));
+  const terms = qTerms(q);
+  if (terms.length) d = d.filter(r => Object.values(r).some(v => matchQ(v, terms)));
+  notifyMissing('ship', terms, state.shipD);
   let groupInfo = null;
   if (state.dupMode.ship) {
     d = d.filter(r => rowHasDup(r, state.shipDups, SHIP_SN_FIELDS));
@@ -169,7 +171,9 @@ export function renderProductionTable() {
   let d = state.prodD;
   if (state.workerFilt !== 'all') d = d.filter(r => r.worker === state.workerFilt);
   if (state.prodYearFilt !== 'all') d = d.filter(r => prodYear(r) === state.prodYearFilt);
-  if (q) d = d.filter(r => Object.values(r).some(v => v && String(v).toLowerCase().includes(q)));
+  const terms = qTerms(q);
+  if (terms.length) d = d.filter(r => Object.values(r).some(v => matchQ(v, terms)));
+  notifyMissing('prod', terms, state.prodD);
   let groupInfo = null;
   if (state.dupMode.prod) {
     d = d.filter(r => rowHasDup(r, state.prodDups, PROD_SN_FIELDS));
@@ -253,20 +257,21 @@ function readCell(field, value, baseClass, q) {
 export function renderMergeTable() {
   const q = (document.getElementById('q3')?.value || '').toLowerCase();
   let d = state.mergeD;
-  if (q) {
+  const terms = qTerms(q);
+  if (terms.length) {
     // 검사포장 자체 필드 + 조인된 TFT/생산 필드 모두에서 검색
     //  (TFT S/N·작업자·완제품 제작완료일 등 통합취합본 화면에 보이는 칸도 검색 대상)
     d = d.filter(r => {
       for (const v of Object.values(r)) {
-        if (v && String(v).toLowerCase().includes(q)) return true;
+        if (matchQ(v, terms)) return true;
       }
       const tftSn = state.detTftMap[r.detector_sn];
-      if (tftSn && String(tftSn).toLowerCase().includes(q)) return true;
+      if (matchQ(tftSn, terms)) return true;
       const p = state.tftMap[tftSn];
       if (p) {
         for (let j = 0; j < PROD_VL_FIELDS.length; j++) {
           const v = p[PROD_VL_FIELDS[j]];
-          if (v && String(v).toLowerCase().includes(q)) return true;
+          if (matchQ(v, terms)) return true;
         }
       }
       return false;
@@ -477,7 +482,8 @@ export function initMergeEditClicks() {
 export function renderTftmTable() {
   const q = (document.getElementById('q4')?.value || '').toLowerCase();
   let d = state.tftmD;
-  if (q) d = d.filter(r => TFTM_FIELDS.some(f => r[f] && String(r[f]).toLowerCase().includes(q)));
+  const terms = qTerms(q);
+  if (terms.length) d = d.filter(r => TFTM_FIELDS.some(f => matchQ(r[f], terms)));
   state.tftmFiltered = d;
   const p4 = document.getElementById('p4'), cnt4 = document.getElementById('cnt4');
   if (p4) p4.textContent = d.length + '건';
@@ -933,14 +939,26 @@ function hnSkip() {
 }
 
 // 전체 이력 필요 목록 (하단 접이식 참고용) — 미출하(pending) 건은 제외
+// 다중 검색(검색 단어 2개 이상)일 때 못 찾은 단어 안내 — 같은 검색어로 다시 그릴 때는 반복하지 않음
+const _missKey = {};
+function notifyMissing(tab, terms, rows) {
+  const key = terms.length > 1 ? terms.join(',') : '';
+  if (_missKey[tab] === key) return;
+  _missKey[tab] = key;
+  if (!key) return;
+  const miss = terms.filter(t => !rows.some(r => Object.values(r).some(v => matchQ(v, [t]))));
+  toast(terms.length + '개 중 ' + (terms.length - miss.length) + '개 찾음'
+    + (miss.length ? ' · 못 찾음: ' + miss.map(m => m.toUpperCase()).join(', ') : ''), miss.length ? 'er' : 'ok');
+}
+
 let hnMonth = 'all';   // 이력 필요 목록 월 필터 (예상출하일 yyyy-MM)
 export function renderHistNeedTable() {
   // 통합 검색 — 상단 S/N 입력창 하나가 곧 「전체 이력 필요 목록」의 필터.
   const q = (document.getElementById('hnScan')?.value || '').trim().toLowerCase();
   const work = histNeedList().filter(x => !x.pending);   // 작업 대상만
   let list = work;
-  if (q) list = list.filter(x => [x.ship.product_name, x.ship.detector_sn, x.tft, x.ship.company]
-    .some(v => v && String(v).toLowerCase().includes(q)));
+  const terms = qTerms(q);
+  if (terms.length) list = list.filter(x => [x.ship.product_name, x.ship.detector_sn, x.tft, x.ship.company].some(v => matchQ(v, terms)));
   // 예상출하일 월별 칩 — 검색 결과 기준 건수, 월 순서로 정렬
   const monthOf = x => String(x.ship.planned_ship_date || '').slice(0, 7) || '날짜 없음';
   list = [...list].sort((a, b) => monthOf(a).localeCompare(monthOf(b)) || String(a.ship.planned_ship_date || '').localeCompare(String(b.ship.planned_ship_date || '')));
@@ -1104,8 +1122,8 @@ function renderHnDiag() {
   const q = raw.toLowerCase();
   const work = histNeedList().filter(x => !x.pending);
 
-  // 빈 입력 — 1줄 컴팩트
-  if (!q) {
+  // 빈 입력·다중 검색(쉼표) — 1줄 컴팩트 (S/N 하나 진단은 단일 검색일 때만)
+  if (!q || q.includes(',')) {
     diag.className = 'hn-diag muted';
     diag.innerHTML = '<span class="hnd-ic">📋</span><b>전체 이력 필요 목록 ' + work.length + '건</b>'
       + '<span class="hnd-sep">·</span><span class="hnd-meta">S/N을 입력하면 실시간으로 좁아집니다</span>';

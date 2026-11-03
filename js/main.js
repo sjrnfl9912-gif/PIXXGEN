@@ -206,6 +206,15 @@ async function init() {
   const dR3 = debounce(() => { import('./modules/table.js').then(t => t.renderAll()); }, 200);
   const dR4 = debounce(() => renderAll(), 200);
   const dR5 = debounce(() => renderHistNeedTable(), 200);   // 이력 필요 목록만 (큐·폼 포커스 보존)
+  // 다중 검색: 엑셀 등에서 여러 줄(S/N 목록)을 붙여넣으면 줄바꿈·탭을 쉼표로 바꿔 넣음 → 하나라도 맞는 행 표시
+  //   (입력창은 줄바꿈을 그냥 지워 붙여버리므로 직접 처리)
+  ['q1', 'q2', 'q3', 'q4', 'hnScan'].forEach(id => document.getElementById(id)?.addEventListener('paste', e => {
+    const t = e.clipboardData?.getData('text') || '';
+    if (!/[\r\n\t]/.test(t.trim())) return;
+    e.preventDefault();
+    e.target.value = t.split(/[\r\n\t]+/).map(s => s.trim()).filter(Boolean).join(', ');
+    e.target.dispatchEvent(new Event('input', { bubbles: true }));
+  }));
   document.getElementById('q1')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR1(); });
   document.getElementById('q2')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR2(); });
   document.getElementById('q3')?.addEventListener('input', e => { e.target.parentElement.classList.toggle('has-val', !!e.target.value); dR3(); });

@@ -12,15 +12,28 @@ export function escAttr(v) {
   return String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// 검색어와 일치하는 부분을 <mark>로 (대소문자 무시, 여러 번이면 모두). q는 소문자.
+// 검색어 → 검색 단어들. 쉼표가 있으면 여러 개(다중 검색: 하나라도 맞으면 표시), 없으면 통째로 하나. q는 소문자.
+//   여러 줄을 붙여넣으면 검색창이 줄바꿈을 쉼표로 바꿔 줌 (main.js 붙여넣기 처리)
+export function qTerms(q) {
+  if (!q) return [];
+  return q.includes(',') ? [...new Set(q.split(',').map(s => s.trim()).filter(Boolean))] : [q];
+}
+// 값이 검색 단어 중 하나라도 포함하나
+export const matchQ = (v, terms) => v != null && v !== '' && terms.some(t => String(v).toLowerCase().includes(t));
+
+// 검색어와 일치하는 부분을 <mark>로 (대소문자 무시, 여러 번·여러 단어 모두). q는 소문자.
 export function hlText(v, q) {
   const str = v == null ? '' : String(v);
-  if (!q) return escAttr(str);
+  const terms = qTerms(q);
+  if (!terms.length) return escAttr(str);
   const lo = str.toLowerCase();
-  let i = 0, k, out = '';
-  while ((k = lo.indexOf(q, i)) >= 0) {
-    out += escAttr(str.slice(i, k)) + '<mark class="hl">' + escAttr(str.slice(k, k + q.length)) + '</mark>';
-    i = k + q.length;
+  let i = 0, out = '';
+  while (i < str.length) {
+    let k = -1, len = 0;
+    for (const t of terms) { const j = lo.indexOf(t, i); if (j >= 0 && (k < 0 || j < k || (j === k && t.length > len))) { k = j; len = t.length; } }
+    if (k < 0) break;
+    out += escAttr(str.slice(i, k)) + '<mark class="hl">' + escAttr(str.slice(k, k + len)) + '</mark>';
+    i = k + len;
   }
   return out + escAttr(str.slice(i));
 }
