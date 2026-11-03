@@ -380,6 +380,15 @@ tr.grp-start td {
   gap: 6px;
 }
 .hn-list-h #p5 { color: #999; font-weight: 500; }
+/* 대장 TFT 오기입 추정 */
+.hn-badge.hn-guess { background: #fee2e2; color: #b91c1c; }
+.hn-guess-v { font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; color: #b91c1c; margin-top: 2px; }
+.hn-guess-box { background: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 8px 10px; margin: 6px 0 10px; font-size: 12px; line-height: 1.7; }
+.hn-guess-box .hn-mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; font-weight: 600; }
+.hn-guess-box .hn-diff { background: #fecaca; color: #991b1b; border-radius: 2px; padding: 0 1px; }
+.hn-guess-box .hn-diff-gap { color: #dc2626; font-size: 10px; }
+.hn-guess-fix { margin-left: 8px; background: #dc2626; color: #fff; border: 0; border-radius: 5px; padding: 4px 10px; font-size: 12px; font-family: inherit; cursor: pointer; }
+.hn-guess-fix:hover { background: #b91c1c; }
 .hn-month-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 8px; }
 .hn-month-chips .chip b { margin-left: 2px; }
 /* S/N 칸 — 클릭하면 복사 */

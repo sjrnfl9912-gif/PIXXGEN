@@ -8,6 +8,7 @@ import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
 import { cellHtml, refreshModelOpts } from './cell.js';
 import { DATE_FIELDS, normDate, normField } from './date.js';
+import { suggestPairs } from './fuzzy.js';
 import { mountRows } from './lazy.js';
 import { requireEdit } from '../services/editmode.js';
 
@@ -514,8 +515,23 @@ function isThinProd(p) {
   return THIN_FIELDS.some(f => !p[f]);
 }
 
+// 출하 폴더 TFT가 대장에 없을 때, 어느 출하와도 안 묶인 대장 TFT 중 1~2글자 차이로 유일하게 짝이 되는 것 (오기입 추정)
+//   대장(tftMap)·TFT 매칭(tftmD)이 바뀔 때만 다시 계산
+let _sugg = { map: new Map(), tftMap: null, tftmD: null };
+function tftSuggestions() {
+  if (_sugg.tftMap === state.tftMap && _sugg.tftmD === state.tftmD) return _sugg.map;
+  const folder = new Set();
+  state.tftmD.forEach(t => { if (t.tft_sn) folder.add(t.tft_sn); });
+  const folderOnly = [...folder].filter(t => !state.tftMap[t]);
+  const ledgerOnly = Object.keys(state.tftMap).filter(t => !folder.has(t));
+  const targets = [...new Set(state.shipD.map(s => state.detTftMap[s.detector_sn]).filter(t => t && !state.tftMap[t]))];
+  _sugg = { map: suggestPairs(folderOnly, ledgerOnly, 2, targets), tftMap: state.tftMap, tftmD: state.tftmD };
+  return _sugg.map;
+}
+
 function histNeedList() {
   const today = new Date().toISOString().slice(0, 10);   // yyyy-MM-dd
+  const sugg = tftSuggestions();
   const out = [];
   for (const s of state.shipD) {
     const det = s.detector_sn;
@@ -528,7 +544,8 @@ function histNeedList() {
     else continue;                       // 정상 연동 + 데이터 충분 → 목록에서 제외
     const psd = String(s.planned_ship_date || '').trim();
     const pending = (status === 'no-tft') && psd && psd > today;   // 미출하 (예상출하일 미래)
-    out.push({ ship: s, tft: tft || '', status, pending });
+    const guess = status === 'no-prod' ? sugg.get(tft) : null;    // { ledger, dist } 대장 오기입 추정
+    out.push({ ship: s, tft: tft || '', status, pending, guess });
   }
   return out;
 }
@@ -678,10 +695,22 @@ function renderHnForm() {
   const saveTxt  = isThin ? '💾 보강 저장하고 다음' : isEdit ? '💾 수정 저장' : '💾 저장하고 다음';
   const skipBtn  = q.done ? '' : '<button class="hn-skip">건너뛰기 ▶</button>';
 
+  // 새로 입력하기 전에: 대장에 1~2글자 다른 기록이 있으면 오기입일 수 있음 → 그 기록을 고쳐 연결하도록 안내
+  const guess = !isEdit && q.tft ? tftSuggestions().get(q.tft) : null;
+  const gp = guess && state.tftMap[guess.ledger];
+  const guessHtml = gp
+    ? '<div class="hn-guess-box">⚠ 생산관리대장에 <b>' + guess.dist + '글자 다른</b> 기록이 있어요 — 같은 제품이면 새로 쓰지 말고 연결하세요<br>'
+      + '대장 <span class="hn-mono">' + diffMark(guess.ledger, q.tft) + '</span> → 출하 폴더 <span class="hn-mono">' + esc(q.tft) + '</span>'
+      + ' <span class="hn-sub-note">(생산번호 ' + esc(gp.prod_no || '-') + ' · 작업자 ' + esc(gp.worker || '-') + ' · 완료 ' + esc(gp.completed_date || '-')
+      + ' · CPU ' + esc(gp.cpu_sn || '-') + ')</span>'
+      + '<button class="hn-guess-fix">🔗 대장 TFT를 ' + esc(q.tft) + '로 고쳐 연결</button></div>'
+    : '';
+
   area.innerHTML = '<div class="hn-form' + (isEdit ? ' hn-form-edit' : '') + '">'
     + '<div class="hn-form-h">' + headIcon + ' ' + esc(ship.product_name || '') + ' / 디텍터 ' + esc(q.det)
     + ' · TFT ' + esc(q.tft || '(없음 — 직접 입력)') + ' ' + headTag
     + '<span class="hn-form-pos">큐 ' + (hnSel + 1) + ' / ' + hnQueue.length + '</span></div>'
+    + guessHtml
     + '<div class="hn-form-grid">' + fields + '</div>'
     + '<div class="hn-form-f">' + skipBtn
     + '<button class="hn-save">' + saveTxt + '</button></div>'
@@ -773,6 +802,38 @@ async function saveHnForm() {
   renderHistNeed();
 }
 
+// a에서 b와 다른 글자를 빨간색으로 (대장 값의 틀린 자리 표시)
+function diffMark(a, b) {
+  let i = 0, j = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  while (j < a.length - i && j < b.length - i && a[a.length - 1 - j] === b[b.length - 1 - j]) j++;
+  const mid = a.slice(i, a.length - j);
+  return esc(a.slice(0, i)) + (mid ? '<span class="hn-diff">' + esc(mid) + '</span>' : '<span class="hn-diff-gap">▾</span>') + esc(a.slice(a.length - j));
+}
+
+// 오기입 추정 연결 — 대장 기록의 TFT를 출하 폴더 값으로 고침
+async function applyTftGuess() {
+  const q = (hnSel >= 0) ? hnQueue[hnSel] : null;
+  const g = q && tftSuggestions().get(q.tft);
+  const p = g && state.tftMap[g.ledger];
+  if (!p) return;
+  if (!requireEdit()) return;
+  if (state.tftMap[q.tft]) { toast('이미 ' + q.tft + ' 생산기록이 있습니다', 'info'); renderHistNeed(); return; }
+  const id = p.id != null ? p.id : p._id;
+  const updated = await dbUpdate('production', id, { tft_sn: q.tft });
+  if (!updated) { toast('수정 실패 — 다시 시도해주세요', 'er'); return; }
+  const idx = state.prodD.findIndex(x => (x.id != null ? x.id : x._id) === id);
+  if (idx >= 0) state.prodD[idx] = { ...updated, _id: updated.id };
+  q.done = true;
+  rebuildTft();
+  markDupDirty();
+  invalidateOtherTabs();
+  saveCache(state.shipD, state.prodD);
+  hnQueueSave();
+  toast('대장 TFT ' + g.ledger + ' → ' + q.tft + ' 수정, 연결됨', 'ok');
+  renderHistNeed();
+}
+
 // 저장 없이 다음 미완료 큐로
 function hnSkip() {
   let next = -1;
@@ -825,6 +886,9 @@ export function renderHistNeedTable() {
     const x = list[i], s = x.ship;
     const badge = x.status === 'thin'
       ? '<span class="hn-badge hn-thin">데이터 보강</span>'
+      : x.guess
+        ? '<span class="hn-badge hn-guess" title="생산관리대장 TFT가 ' + x.guess.dist + '글자 다름 — 큐에 넣어 확인 후 연결">대장 오기입 의심</span>'
+          + '<div class="hn-guess-v">대장: ' + esc(x.guess.ledger) + '</div>'
       : x.status === 'no-prod'
         ? '<span class="hn-badge hn-noprod">생산기록 없음</span>'
         : '<span class="hn-badge hn-notft">TFT매칭 없음</span>';
@@ -1139,6 +1203,7 @@ export function initHistNeed() {
     area.addEventListener('click', e => {
       if (e.target.closest('.hn-save')) saveHnForm();
       else if (e.target.closest('.hn-skip')) hnSkip();
+      else if (e.target.closest('.hn-guess-fix')) applyTftGuess();
     });
     // 날짜 칸은 입력을 마치면 바로 2026-05-30 형식으로 보여줌 (260530 등으로 입력해도 됨)
     area.addEventListener('focusout', e => {
