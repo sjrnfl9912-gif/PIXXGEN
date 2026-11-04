@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════
 import { SHIP_FIELDS, SHIP_HEADS, PROD_FIELDS, PROD_HEADS, MERGE_HEADS, MERGE_VC_START, TFTM_FIELDS, TFTM_HEADS } from '../config.js';
 import { state, markDupDirty, rebuildTft, rebuildDetTft, invalidateOtherTabs } from '../state.js';
-import { dbInsert, dbUpdate, dbFetchAll } from '../db.js';
+import { dbInsert, dbUpdate, dbFetchAll, dbDelete } from '../db.js';
 import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
 import { cellHtml, refreshModelOpts, hlText, qTerms, matchQ } from './cell.js';
@@ -552,7 +552,8 @@ function histNeedList() {
     const psd = String(s.planned_ship_date || '').trim();
     const pending = (status === 'no-tft') && psd && psd > today;   // 미출하 (예상출하일 미래)
     const guess = status === 'no-prod' ? sugg.get(tft) : null;    // { ledger, dist } 대장 오기입 추정
-    out.push({ ship: s, tft: tft || '', status, pending, guess });
+    const noCard = state.histFlags?.get(det) || null;             // 이력카드 실물 없음 표시 (hist_flags)
+    out.push({ ship: s, tft: tft || '', status, pending, guess, noCard });
   }
   return out;
 }
@@ -702,7 +703,8 @@ function renderHnForm() {
   const headTag  = isThin ? '<span class="hn-form-edit-tag">보강 — 기존 기록에 빈 칸만 채우면 됩니다</span>'
                  : isEdit ? '<span class="hn-form-edit-tag">수정 모드</span>' : '';
   const saveTxt  = isThin ? '💾 보강 저장하고 다음' : isEdit ? '💾 수정 저장' : '💾 저장하고 다음';
-  const skipBtn  = q.done ? '' : '<button class="hn-skip">건너뛰기 ▶</button>';
+  const skipBtn  = q.done ? '' : (state.histFlags ? '<button class="hn-nocard" title="이력카드 실물을 못 찾아 지금 작성할 수 없을 때 — 작업 목록에서 빼서 따로 모아둠">📭 이력카드 없음</button>' : '')
+    + '<button class="hn-skip">건너뛰기 ▶</button>';
 
   // 새로 입력하기 전에: 대장에 1~2글자 다른 기록이 있으면 오기입일 수 있음 → 그 기록을 고쳐 연결하도록 안내
   const guess = !isEdit && q.tft ? tftSuggestions().get(q.tft) : null;
@@ -955,7 +957,9 @@ let hnMonth = 'all';   // 이력 필요 목록 월 필터 (예상출하일 yyyy-
 export function renderHistNeedTable() {
   // 통합 검색 — 상단 S/N 입력창 하나가 곧 「전체 이력 필요 목록」의 필터.
   const q = (document.getElementById('hnScan')?.value || '').trim().toLowerCase();
-  const work = histNeedList().filter(x => !x.pending);   // 작업 대상만
+  const all = histNeedList();
+  const work = all.filter(x => !x.pending && !x.noCard);   // 작업 대상만 (이력카드 없음 표시한 건 제외)
+  renderNoCard(all.filter(x => x.noCard));
   let list = work;
   const terms = qTerms(q);
   if (terms.length) list = list.filter(x => [x.ship.product_name, x.ship.detector_sn, x.tft, x.ship.company].some(v => matchQ(v, terms)));
@@ -1011,6 +1015,55 @@ export function renderHistNeedTable() {
       + '</tr>');
   }
   b5.innerHTML = rows.join('');
+}
+
+// 📭 이력카드 없음 — 실물 못 찾아 보류한 건 (표시일 순)
+function renderNoCard(list) {
+  const p8 = document.getElementById('p8'), b8 = document.getElementById('b8'), th8 = document.getElementById('th8');
+  const box = document.getElementById('hnNoCardBox');
+  if (box) box.style.display = state.histFlags ? '' : 'none';   // 표(SQL 11)가 없으면 숨김
+  if (p8) p8.textContent = list.length + '건';
+  if (!b8) return;
+  if (th8 && !th8.childElementCount) {
+    th8.innerHTML = '<tr><th class="hn-th" style="width:36px">#</th><th class="hn-th">품명</th><th class="hn-th">디텍터 S/N</th>'
+      + '<th class="hn-th">TFT S/N</th><th class="hn-th">예상 출하일</th><th class="hn-th">업체 &amp; 병원명</th>'
+      + '<th class="hn-th">표시일</th><th class="hn-th">메모</th><th class="hn-th" style="width:120px">작업</th></tr>';
+  }
+  if (!list.length) { b8.innerHTML = '<tr><td colspan="9" class="hn-empty">없음</td></tr>'; return; }
+  list = [...list].sort((a, b) => String(b.noCard.flagged_at).localeCompare(String(a.noCard.flagged_at)));
+  b8.innerHTML = list.map((x, i) => '<tr><td class="hn-rn">' + (i + 1) + '</td>'
+    + '<td class="hn-c">' + esc(x.ship.product_name) + '</td>'
+    + '<td class="hn-c hn-mono hn-copy" data-copy="' + esc(x.ship.detector_sn) + '">' + esc(x.ship.detector_sn) + '</td>'
+    + '<td class="hn-c hn-mono hn-copy" data-copy="' + esc(x.tft) + '">' + esc(x.tft) + '</td>'
+    + '<td class="hn-c">' + esc(x.ship.planned_ship_date) + '</td><td class="hn-c">' + esc(x.ship.company) + '</td>'
+    + '<td class="hn-c">' + esc(new Date(x.noCard.flagged_at).toLocaleDateString('sv-SE')) + '</td>'
+    + '<td class="hn-c">' + esc(x.noCard.memo || '') + '</td>'
+    + '<td class="hn-c"><button class="hn-unflag" data-fid="' + x.noCard.id + '" data-det="' + esc(x.ship.detector_sn) + '">↩ 다시 작업 대상으로</button></td></tr>').join('');
+}
+
+// 입력 폼 「📭 이력카드 없음」 — 표시하고 큐에서 빼고 다음 건으로
+async function markNoCard() {
+  const q = (hnSel >= 0) ? hnQueue[hnSel] : null;
+  if (!q || !state.histFlags) return;
+  if (!requireEdit()) return;
+  const memo = prompt('이력카드 없음으로 표시합니다.\n메모 (선택) — 예: 1~3월 카드 박스 확인함', '');
+  if (memo === null) return;   // 취소
+  const row = await dbInsert('hist_flags', { detector_sn: q.det, memo: memo.trim() || null });
+  if (!row) { toast('표시 실패 — 다시 시도해주세요', 'er'); return; }
+  state.histFlags.set(q.det, row);
+  hnQueue.splice(hnSel, 1);
+  hnSel = hnQueue.findIndex(x => !x.done);
+  hnQueueSave();
+  toast('📭 ' + q.det + ' 이력카드 없음으로 표시 — 아래 「이력카드 없음」에 모음', 'ok');
+  renderHistNeed();
+}
+
+async function unmarkNoCard(id, det) {
+  if (!requireEdit()) return;
+  if (!(await dbDelete('hist_flags', [id]))) { toast('해제 실패 — 다시 시도해주세요', 'er'); return; }
+  state.histFlags?.delete(det);
+  toast(det + ' 다시 작업 대상으로', 'ok');
+  renderHistNeed();
 }
 
 // 출하 예정 목록 (미출하 — 예상출하일이 아직 안 지난 건, 작업 대상 아님)
@@ -1310,6 +1363,7 @@ export function initHistNeed() {
       if (e.target.closest('.hn-save')) saveHnForm();
       else if (e.target.closest('.hn-skip')) hnSkip();
       else if (e.target.closest('.hn-guess-fix')) applyTftGuess();
+      else if (e.target.closest('.hn-nocard')) markNoCard();
       else if (e.target.closest('.hn-fixcopy') && lastTftFix) copyCellText(lastTftFix.text);
       else if (e.target.closest('.hn-copy')) copyCellText(e.target.closest('.hn-copy').dataset.copy);
     });
@@ -1319,6 +1373,14 @@ export function initHistNeed() {
       if (pf && DATE_FIELDS.has(pf)) e.target.value = normDate(e.target.value);
     });
   }
+
+  // 📭 이력카드 없음 목록 — S/N 복사 / 다시 작업 대상으로
+  document.getElementById('b8')?.addEventListener('click', e => {
+    const cp = e.target.closest('.hn-copy');
+    if (cp) { copyCellText(cp.dataset.copy); return; }
+    const u = e.target.closest('.hn-unflag');
+    if (u) unmarkNoCard(+u.dataset.fid, u.dataset.det);
+  });
 
   // 🧾 수정 이력 창
   document.getElementById('fixLogBtn')?.addEventListener('click', openFixLog);

@@ -90,6 +90,7 @@ async function fullReload() {
     state.tftmD = tData;
     state.folderIssues = fiData || [];
     loadServerTft();
+    loadHistFlags();
     // dirty 상태 초기화 (DB 데이터로 완전 교체했으므로)
     state.dirty = { updates: {}, inserts: { ship: [], prod: [] }, deletes: { ship: [], prod: [] } };
     state.hasChanges = false;
@@ -161,6 +162,15 @@ async function loadServerTft() {
     const rows = await dbFetchAll('server_tft', 'tft_sn', 'tft_sn,sources');
     state.serverTft = rows.length ? new Map(rows.map(r => [r.tft_sn, r.sources || ''])) : null;
   } catch (e) { state.serverTft = null; }   // 표가 아직 없으면 서버 확인 없이 동작 (안내 문구로 표시)
+  renderHistNeedTable();
+}
+
+// 이력카드 없음 표시 (hist_flags) — 이력 필요 작업 목록에서 빼고 따로 모아 보여줌
+async function loadHistFlags() {
+  try {
+    const rows = await dbFetchAll('hist_flags');
+    state.histFlags = new Map(rows.map(r => [r.detector_sn, r]));
+  } catch (e) { state.histFlags = null; }   // 표가 아직 없으면 표시 기능만 꺼짐
   renderHistNeedTable();
 }
 
@@ -381,6 +391,7 @@ async function init() {
   // Init realtime after data loaded
   initRealtime();
   loadServerTft();   // 오기입 추정 안전장치 — 화면을 막지 않게 뒤에서 받음
+  loadHistFlags();
 
   // Post-render: init resize on visible tables
   setTimeout(() => { initResize('b1'); initResize('b2'); initResize('b3'); initResize('b4'); }, 100);
