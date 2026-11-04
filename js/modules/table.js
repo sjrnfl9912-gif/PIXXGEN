@@ -689,6 +689,8 @@ function renderHnForm() {
       panel_type: 'AL(1.5T)',   // 표준값(거의 모든 케이스), MG는 선택 시 변경
     };
   }
+  // 모델명이 비어 있으면 출하이력 제품명을 기본값으로(다르면 고쳐 쓰면 됨)
+  if (!prefill.model_name) prefill.model_name = ship.product_name || '';
 
   let fields = '';
   for (let j = 0; j < PROD_FIELDS.length; j++) {
