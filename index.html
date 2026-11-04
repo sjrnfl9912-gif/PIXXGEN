@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/buttons.css">
-  <link rel="stylesheet" href="css/table.css?v=20261104">
+  <link rel="stylesheet" href="css/table.css?v=20261104b">
   <link rel="stylesheet" href="css/modals.css">
   <link rel="stylesheet" href="css/kpi.css">
   <link rel="stylesheet" href="css/editmode.css?v=20261019c">
@@ -157,7 +157,8 @@
     </div>
     <div id="hnFormArea"></div>
     <div class="hn-list-section">
-      <div class="hn-list-h">📂 전체 이력 필요 목록 <span id="p5">0건</span></div>
+      <div class="hn-list-h">📂 전체 이력 필요 목록 <span id="p5">0건</span>
+        <button class="hn-nocard hn-bulk" id="hnBulkNoCard" style="display:none" title="검색·월 칩으로 좁힌 지금 목록 전체를 한 번에 표시">📭 이력카드 없음</button></div>
       <div class="hn-month-chips" id="hnMonthChips"></div>
       <div class="tw hn-list-tw"><table class="g" id="t5"><thead id="th5"></thead><tbody id="b5"></tbody></table></div>
     </div>
@@ -540,6 +541,7 @@
             <div class="cl-date">2026-11-04</div>
             <ul class="cl-list">
               <li><b>📭 이력카드 없음 표시</b> — 이력 필요 입력 폼의 「📭 이력카드 없음」을 누르면(메모 선택) 그 건이 작업 목록에서 빠지고 아래 「이력카드 없음」 칸에 표시일·메모와 함께 모입니다. 카드를 찾으면 「다시 작업 대상으로」. 모든 PC에서 같이 보입니다(편집 모드).</li>
+              <li><b>📭 여러 건 한 번에</b> — 검색(예: 「레메디」)이나 월 칩으로 목록을 좁힌 뒤, 목록 제목 옆 「📭 보이는 N건 이력카드 없음」을 누르면 보이는 건 전부를 한 번에 표시합니다. 확인 창에 건수와 대상 S/N이 나오고, 메모는 모든 건에 같이 들어갑니다.</li>
             </ul>
           </div>
 
@@ -710,6 +712,6 @@
   <button class="fab-bottom" id="fabBottom" title="맨 아래로">⬇</button>
 
   <!-- Scripts -->
-  <script type="module" src="js/main.js?v=20261104"></script>
+  <script type="module" src="js/main.js?v=20261104b"></script>
 </body>
 </html>

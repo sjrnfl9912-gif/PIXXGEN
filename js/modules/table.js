@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════
 import { SHIP_FIELDS, SHIP_HEADS, PROD_FIELDS, PROD_HEADS, MERGE_HEADS, MERGE_VC_START, TFTM_FIELDS, TFTM_HEADS } from '../config.js';
 import { state, markDupDirty, rebuildTft, rebuildDetTft, invalidateOtherTabs } from '../state.js';
-import { dbInsert, dbUpdate, dbFetchAll, dbDelete } from '../db.js';
+import { dbInsert, dbBulkInsert, dbUpdate, dbFetchAll, dbDelete } from '../db.js';
 import { toast } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
 import { cellHtml, refreshModelOpts, hlText, qTerms, matchQ } from './cell.js';
@@ -976,6 +976,8 @@ export function renderHistNeedTable() {
   state.histNeedList = list;
   const p5 = document.getElementById('p5'), cnt5 = document.getElementById('cnt5');
   if (p5) p5.textContent = list.length + '건';
+  const bulk = document.getElementById('hnBulkNoCard');
+  if (bulk) { bulk.style.display = state.histFlags && list.length ? '' : 'none'; bulk.textContent = '📭 보이는 ' + list.length + '건 이력카드 없음'; }
   if (cnt5) cnt5.textContent = work.length;   // 탭 배지 = 작업 대상 수 (미출하 제외)
 
   const th5 = document.getElementById('th5');
@@ -1055,6 +1057,29 @@ async function markNoCard() {
   hnSel = hnQueue.findIndex(x => !x.done);
   hnQueueSave();
   toast('📭 ' + q.det + ' 이력카드 없음으로 표시 — 아래 「이력카드 없음」에 모음', 'ok');
+  renderHistNeed();
+}
+
+// 지금 보이는 목록(검색·월 칩 결과) 전체를 한 번에 이력카드 없음으로 — 예: 검색 「레메디」 후 일괄
+async function bulkNoCard() {
+  const list = state.histNeedList || [];
+  if (!state.histFlags || !list.length) return;
+  if (!requireEdit()) return;
+  const dets = list.map(x => x.ship.detector_sn);
+  const q = (document.getElementById('hnScan')?.value || '').trim();
+  const memo = prompt('📭 지금 보이는 ' + dets.length + '건을 이력카드 없음으로 표시합니다.'
+    + (q || hnMonth !== 'all' ? '' : '\n⚠ 검색·월 칩으로 좁히지 않은 「전체」 목록입니다!')
+    + '\n대상: ' + dets.slice(0, 5).join(', ') + (dets.length > 5 ? ' 외 ' + (dets.length - 5) + '건' : '')
+    + '\n\n메모 (선택, 모든 건에 같이 들어감) — 확인을 누르면 표시', q ? '검색: ' + q : '');
+  if (memo === null) return;   // 취소
+  const rows = await dbBulkInsert('hist_flags', dets.map(d => ({ detector_sn: d, memo: memo.trim() || null })));
+  if (!rows.length) { toast('표시 실패 — 다시 시도해주세요 (이미 표시된 건이 섞였을 수 있음)', 'er'); return; }
+  rows.forEach(r => state.histFlags.set(r.detector_sn, r));
+  const done = new Set(rows.map(r => r.detector_sn));
+  hnQueue = hnQueue.filter(x => !done.has(x.det));
+  hnSel = hnQueue.findIndex(x => !x.done);
+  hnQueueSave();
+  toast('📭 ' + rows.length + '건 이력카드 없음으로 표시 — 아래 「이력카드 없음」에 모음', 'ok');
   renderHistNeed();
 }
 
@@ -1373,6 +1398,8 @@ export function initHistNeed() {
       if (pf && DATE_FIELDS.has(pf)) e.target.value = normDate(e.target.value);
     });
   }
+
+  document.getElementById('hnBulkNoCard')?.addEventListener('click', bulkNoCard);
 
   // 📭 이력카드 없음 목록 — S/N 복사 / 다시 작업 대상으로
   document.getElementById('b8')?.addEventListener('click', e => {

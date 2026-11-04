@@ -468,6 +468,7 @@ tr.grp-start td {
 /* 📭 이력카드 없음 */
 .hn-nocard { margin-right: auto; padding: 6px 12px; font-size: 12px; font-family: inherit; background: #fff; color: #6b7280; border: 1px dashed #9ca3af; border-radius: 6px; cursor: pointer; }
 .hn-nocard:hover { color: #374151; border-color: #374151; }
+.hn-list-h .hn-bulk { margin: 0 0 0 auto; padding: 4px 11px; font-weight: 500; }
 .hn-unflag { padding: 3px 9px; font-size: 11px; font-family: inherit; background: #fff; color: var(--pr); border: 1px solid var(--pr); border-radius: 4px; cursor: pointer; }
 .hn-unflag:hover { background: var(--pl); }
 
