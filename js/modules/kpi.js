@@ -14,6 +14,96 @@ export function initKPI() {
   });
   const ySel = document.getElementById('kpiYear');
   if (ySel) ySel.addEventListener('change', () => renderKPI());
+  const wrap = document.getElementById('kpiWrap');
+  if (wrap) wrap.addEventListener('click', e => {
+    const nav = e.target.closest('[data-kw]');
+    if (nav) { const v = nav.dataset.kw; state.kpiWeek = v === 'now' ? ymd(monOf(new Date())) : ymd(addDays(new Date(state.kpiWeek), +v * 7)); state.kpiCell = null; renderWeek(); return; }
+    const row = e.target.closest('[data-kwk]');
+    if (row) { state.kpiWeek = row.dataset.kwk; state.kpiCell = null; renderWeek(); document.getElementById('kpiWeek')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    const cell = e.target.closest('[data-kc]');
+    if (cell) { state.kpiCell = state.kpiCell === cell.dataset.kc ? null : cell.dataset.kc; renderWeek(); }
+  });
+}
+
+// ── 주간 생산 일정 ──
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const monOf = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; };
+const isoWeek = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() + 3 - (x.getDay() + 6) % 7); const y1 = new Date(x.getFullYear(), 0, 4); return 1 + Math.round(((x - y1) / 864e5 - 3 + (y1.getDay() + 6) % 7) / 7); };
+const NO_MODEL = '모델 미기재';
+const modelOf = r => (r.model_name || '').trim() || NO_MODEL;
+const PAL = ['#3b6de0', '#16a34a', '#d97706', '#9333ea', '#0891b2', '#db2777', '#65a30d', '#b45309'];
+function modelColor(m) { if (m === NO_MODEL) return '#94a3b8'; let h = 0; for (const c of m) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PAL[h % PAL.length]; }
+const chip = (m, n) => `<span class="kw-m" style="--mc:${modelColor(m)}" title="${esc(m)}">${esc(m)} <b>${n}</b></span>`;
+function countBy(rows, f) { const o = new Map(); rows.forEach(r => { const k = f(r); o.set(k, (o.get(k) || 0) + 1); }); return [...o].sort((a, b) => b[1] - a[1]); }
+
+function renderWeek() {
+  const box = document.getElementById('kpiWeek'); if (!box) return;
+  if (!state.kpiWeek) state.kpiWeek = ymd(monOf(new Date()));
+  const mon = new Date(state.kpiWeek + 'T00:00:00');
+  const days = [...Array(7)].map((_, i) => ymd(addDays(mon, i)));
+  const rows = state.prodD.filter(r => r.completed_date && days.includes(r.completed_date.slice(0, 10)));
+  // 주말은 그 주에 작업이 있을 때만 표시
+  const shown = days.filter((d, i) => i < 5 || rows.some(r => r.completed_date.startsWith(d)));
+  const workers = [...new Set(rows.map(r => r.worker || '(작업자 없음)'))].sort();
+  const wk = r => r.worker || '(작업자 없음)';
+  const DN = ['월', '화', '수', '목', '금', '토', '일'], today = ymd(new Date());
+
+  let h = `<div class="kpi-sec-h">🗓 주간 생산 일정 <span class="kw-nav">`
+    + `<button data-kw="-1">◀</button><b>${mon.getFullYear()}년 ${isoWeek(mon)}주차 · ${days[0].slice(5).replace('-', '/')} ~ ${days[6].slice(5).replace('-', '/')}</b>`
+    + `<button data-kw="1">▶</button><button data-kw="now">이번 주</button></span><span class="kw-tot">${rows.length}대</span></div>`;
+  if (!rows.length) { box.innerHTML = h + '<div class="kpi-empty">이 주에는 생산 기록이 없습니다</div>'; return; }
+
+  h += '<div style="overflow-x:auto"><table class="kt kw"><thead><tr><th class="tl">작업자</th>';
+  shown.forEach(d => { const i = days.indexOf(d); h += `<th class="${d === today ? 'kw-today' : ''}">${DN[i]} ${d.slice(5).replace('-', '/')}</th>`; });
+  h += '<th style="background:#1a3352">주 합계</th></tr></thead><tbody>';
+  const cellHtml = (list, key) => {
+    if (!list.length) return '<td class="kw-c kw-0">·</td>';
+    return `<td class="kw-c${state.kpiCell === key ? ' kw-sel' : ''}" data-kc="${esc(key)}"><div class="kw-n">${list.length}대</div>`
+      + countBy(list, modelOf).map(([m, n]) => chip(m, n)).join('') + '</td>';
+  };
+  workers.forEach(w => {
+    const mine = rows.filter(r => wk(r) === w);
+    h += `<tr><td class="wn">${esc(w)}</td>`;
+    shown.forEach(d => { h += cellHtml(mine.filter(r => r.completed_date.startsWith(d)), w + '|' + d); });
+    h += cellHtml(mine, w + '|*').replace('kw-c', 'kw-c tc') + '</tr>';
+  });
+  h += '<tr class="tr"><td class="wn" style="background:var(--hd);color:var(--ht)">합계</td>';
+  shown.forEach(d => { h += cellHtml(rows.filter(r => r.completed_date.startsWith(d)), '*|' + d); });
+  h += cellHtml(rows, '*|*') + '</tr></tbody></table></div>';
+
+  // 클릭한 칸의 상세(생산번호·TFT 등)
+  if (state.kpiCell) {
+    const [cw, cd] = state.kpiCell.split('|');
+    const sel = rows.filter(r => (cw === '*' || wk(r) === cw) && (cd === '*' || r.completed_date.startsWith(cd)))
+      .sort((a, b) => a.completed_date.localeCompare(b.completed_date) || wk(a).localeCompare(wk(b)));
+    h += `<div class="kw-det"><div class="kw-det-h">${cw === '*' ? '전체' : esc(cw)} · ${cd === '*' ? '이번 주' : cd} — ${sel.length}대 <button data-kc="${esc(state.kpiCell)}">닫기 ✕</button></div>`
+      + '<table class="kt"><thead><tr><th>완료일</th><th>작업자</th><th class="tl">모델명</th><th>생산번호</th><th>TFT S/N</th><th>CPU S/N</th><th>F/W</th></tr></thead><tbody>'
+      + sel.map(r => `<tr><td>${esc(r.completed_date.slice(0, 10))}</td><td>${esc(wk(r))}</td><td class="tl">${chip(modelOf(r), '').replace(' <b></b>', '')}</td><td>${esc(r.prod_no || '-')}</td><td class="kw-mono">${esc(r.tft_sn || '-')}</td><td class="kw-mono">${esc(r.cpu_sn || '-')}</td><td>${esc(r.detector_fw || '-')}</td></tr>`).join('')
+      + '</tbody></table></div>';
+  }
+  box.innerHTML = h;
+}
+
+// 선택 기간(연도·반기)의 주별 요약 — 행을 누르면 위 주간 일정으로 이동
+function weekSummaryHtml(data, workers) {
+  const byWeek = new Map();
+  data.forEach(r => { const k = ymd(monOf(new Date(r.completed_date.slice(0, 10) + 'T00:00:00'))); if (!byWeek.has(k)) byWeek.set(k, []); byWeek.get(k).push(r); });
+  if (!byWeek.size) return '';
+  const weeks = [...byWeek.keys()].sort().reverse();
+  const max = Math.max(...[...byWeek.values()].map(v => v.length), 1);
+  let h = '<div class="kpi-sec"><div class="kpi-sec-h">📅 주별 생산 요약 <span style="font-weight:400;opacity:.7">— 행을 누르면 그 주 일정으로</span></div><div style="overflow-x:auto"><table class="kt kw-sum"><thead><tr><th class="tl">주차</th><th>기간</th><th>합계</th>';
+  workers.forEach(w => h += `<th>${esc(w)}</th>`);
+  h += '<th class="tl">모델 구성</th></tr></thead><tbody>';
+  weeks.forEach(k => {
+    const list = byWeek.get(k), m = new Date(k + 'T00:00:00');
+    h += `<tr data-kwk="${k}"${state.kpiWeek === k ? ' class="kw-cur"' : ''}><td class="tl">${isoWeek(m)}주</td><td>${k.slice(5).replace('-', '/')} ~ ${ymd(addDays(m, 6)).slice(5).replace('-', '/')}</td>`
+      + `<td class="kw-bar" style="--p:${Math.round(list.length / max * 100)}%"><b>${list.length}</b></td>`;
+    workers.forEach(w => { const n = list.filter(r => r.worker === w).length; h += `<td>${n || '<span style="opacity:.3">-</span>'}</td>`; });
+    h += `<td class="tl">${countBy(list, modelOf).map(([mm, n]) => chip(mm, n)).join('')}</td></tr>`;
+  });
+  return h + '</tbody></table></div></div>';
 }
 
 export function renderKPI() {
@@ -63,6 +153,9 @@ export function renderKPI() {
   }
   h += '</div>';
 
+  h += '<div class="kpi-sec" id="kpiWeek"></div>';
+  h += weekSummaryHtml(data, workers);
+
   // Half-year table
   if (!state.kpiH) {
     h += '<div class="kpi-sec"><div class="kpi-sec-h">📊 반기별 작업자 생산 현황</div><table class="kt"><thead><tr>';
@@ -101,4 +194,5 @@ export function renderKPI() {
     h += '</div></div>';
   }
   wrap.innerHTML = h;
+  renderWeek();
 }

@@ -236,3 +236,26 @@ table.kt tr.tr div[style*="opacity"] {
   color: var(--ts);
   font-size: 13px;
 }
+
+/* ── 주간 생산 일정 ── */
+.kw-nav { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; }
+.kw-nav button { background: rgba(255,255,255,.12); color: inherit; border: 1px solid rgba(255,255,255,.25); border-radius: 4px; padding: 1px 8px; font-size: 11px; cursor: pointer; }
+.kw-nav button:hover { background: rgba(255,255,255,.25); }
+.kw-tot { margin-left: auto; font-weight: 700; }
+table.kw td.kw-c { vertical-align: top; text-align: left; min-width: 110px; cursor: pointer; }
+table.kw td.kw-0 { color: #cbd5e1; text-align: center; cursor: default; }
+table.kw td.kw-sel { outline: 2px solid var(--pr); outline-offset: -2px; }
+table.kw th.kw-today { background: #3b6de0; }
+.kw-n { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
+.kw-m { display: inline-block; margin: 0 3px 3px 0; padding: 1px 6px; border-radius: 10px; font-size: 10px; line-height: 1.5; white-space: nowrap;
+  color: var(--mc); background: color-mix(in srgb, var(--mc) 12%, #fff); border: 1px solid color-mix(in srgb, var(--mc) 35%, #fff); }
+.kw-m b { font-weight: 700; }
+table.kt tr.tr .kw-m { background: rgba(255,255,255,.92); }
+.kw-det { border-top: 1px solid var(--bd); }
+.kw-det-h { padding: 7px 14px; font-size: 11px; font-weight: 600; background: #eef2ff; display: flex; align-items: center; gap: 8px; }
+.kw-det-h button { margin-left: auto; border: 1px solid var(--bd); background: #fff; border-radius: 4px; padding: 1px 8px; font-size: 10px; cursor: pointer; }
+.kw-mono { font-family: Consolas, monospace; font-size: 10px; }
+table.kw-sum tbody tr { cursor: pointer; }
+table.kw-sum tr.kw-cur td { background: #eef2ff; }
+table.kw-sum td.kw-bar { background: linear-gradient(90deg, rgba(59,109,224,.18) var(--p), transparent var(--p)); min-width: 70px; }
+table.kt td.tl { text-align: left; }
