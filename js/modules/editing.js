@@ -27,6 +27,8 @@ export function startEdit(td, clear) {
   state.sel.inp = inp;
   inp.focus();
   if (!clear) inp.setSelectionRange(inp.value.length, inp.value.length);
+  // 모델명: 편집 열면 목록을 바로 펼침(빈 칸이면 전체 목록, 입력 중이면 걸러짐)
+  if (td.dataset.f === 'model_name') { try { inp.showPicker(); } catch (e) {} }
 }
 
 export function endEdit() {
