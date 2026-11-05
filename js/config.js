@@ -8,7 +8,7 @@ export const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 export const TEAM_EMAIL = 'editor@pixxgen.internal';
 
 // 일일 서버 스냅샷 위치 (사내망 경로 — 실행 기록 서랍에서 복사)
-export const SNAPSHOT_PATH = '\\\\SERVER03\\Fab_Sync\\99. 기타 - 팀원 임시 폴더\\홍승범\\PIXXGEN\\snapshots\\';
+export const SNAPSHOT_PATH = '\\\\SERVER03\\Fab_Sync\\1. 재고\\2026년 출하이력\\PIXXGEN 자동백업\\snapshots\\';
 
 // supabase 전역 객체를 export (HTML 로드 완료 후 사용)
 export const getSupabase = () => {
