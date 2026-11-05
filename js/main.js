@@ -175,6 +175,52 @@ async function loadHistFlags() {
 }
 
 // ═══ INIT ═══
+// ── 새 버전 감지 ──
+// index.html의 main.js?v= 값이 지금 실행 중인 버전과 다르면 배포된 것.
+const APP_VER = new URL(import.meta.url).searchParams.get('v') || '';
+// 안쪽 모듈(js/modules/*.js 등)은 ?v가 없어 최대 10분 캐시됨 → 이미 받은 js/css를 새로 받아 둔 뒤 새로고침
+// shortcut: 아직 한 번도 안 불러온 지연 로드 모듈은 못 비움, 그런 모듈이 바뀌면 여전히 Ctrl+F5 필요할 수 있음
+async function hardReload() {
+  const urls = performance.getEntriesByType('resource').map(e => e.name)
+    .filter(u => u.startsWith(location.origin) && /\.(js|css)(\?|$)/.test(u));
+  await Promise.allSettled(urls.map(u => fetch(u, { cache: 'reload' })));
+  location.reload();
+}
+async function latestVer() {
+  try {
+    const html = await (await fetch('index.html', { cache: 'no-store' })).text();
+    const v = (html.match(/main\.js\?v=([\w.-]+)/) || [])[1];
+    const what = (html.slice(html.indexOf('class="cl-list"')).match(/<li><b>([^<]+)<\/b>/) || [])[1] || '';   // 업데이트 내역 맨 위 항목
+    return v ? { v, what } : null;
+  } catch (e) { return null; }
+}
+function showUpdateBar(what) {
+  if (document.getElementById('updBar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'updBar';
+  bar.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#1d4ed8;color:#fff;padding:8px 14px;border-radius:0 0 10px 10px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.25);display:flex;gap:10px;align-items:center';
+  bar.innerHTML = '🔄 새 버전이 올라왔어요' + (what ? ' <span style="opacity:.8;font-size:12px">— ' + what.replace(/[<>&]/g, '') + '</span>' : '')
+    + ' <button style="background:#fff;color:#1d4ed8;border:0;border-radius:6px;padding:4px 10px;font-weight:700;cursor:pointer">지금 새로고침</button>';
+  bar.querySelector('button').onclick = () => {
+    if (state.hasChanges && !confirm('저장하지 않은 변경이 있습니다. 그래도 새로고침할까요?')) return;
+    state.hasChanges = false;
+    hardReload();
+  };
+  document.body.appendChild(bar);
+}
+// 반환값 true = 새로고침 중(초기화 중단)
+async function initUpdateCheck() {
+  // 새 main.js를 받았지만 지난번 버전이 남아 있으면 → 안쪽 모듈 캐시를 비우고 한 번 새로고침
+  let prev = null;
+  try { prev = localStorage.getItem('pixx_ver'); if (!prev || APP_VER > prev) localStorage.setItem('pixx_ver', APP_VER); } catch (e) {}
+  // 더 새 버전일 때만(버전 = 날짜 문자열) — 캐시된 옛 index.html이 와도 무한 새로고침 안 되게
+  if (prev && APP_VER > prev) { await hardReload(); return true; }
+  const check = async () => { const l = await latestVer(); if (l && l.v !== APP_VER) showUpdateBar(l.what); };
+  setInterval(check, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  return false;
+}
+
 async function init() {
   // Tab navigation
   document.querySelectorAll('.tab[data-tab]').forEach(tab => {
@@ -335,6 +381,9 @@ async function init() {
 
   // Beforeunload warning
   window.addEventListener('beforeunload', e => { if (state.hasChanges) { e.preventDefault(); e.returnValue = ''; } });
+
+  // 새 버전 배포 감지 — 구버전 화면이면 상단 안내 + 한 번에 새로고침
+  if (await initUpdateCheck()) return;
 
   // ═══ INIT MODULES ═══
   initSelection();
