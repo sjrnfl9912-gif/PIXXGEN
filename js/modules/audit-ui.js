@@ -156,7 +156,7 @@ export function renderAuditQueue() {
   // TFT 중복이면 두 디텍터 카드가 같은 생산기록을 보여줌 — 그 경우 수정은 막혀 있음
   const cards = g.ships.map(s => {
     const p = prodOf(s);
-    return card(esc(s.detector_sn), esc(s.product_name) + ' · ' + esc(norm(s.company).slice(0, 28)) + ' · 예상출하 ' + esc(s.planned_ship_date || '-'), p, g, s.detector_sn);
+    return card(esc(s.detector_sn) + (norm(s.mgmt_no) ? ' <span class="aq-mg">관리번호 ' + esc(s.mgmt_no) + '</span>' : ''), esc(s.product_name) + ' · ' + esc(norm(s.company).slice(0, 28)) + ' · 예상출하 ' + esc(s.planned_ship_date || '-'), p, g, s.detector_sn);
   }).concat(peersOf(g).map(p => {
     const dets = detsOfTft(p.tft_sn);
     return card('TFT ' + esc(p.tft_sn || '없음') + ' 생산기록', dets.length ? '출하 폴더 디텍터 ' + esc(dets.join(', ')) + ' (2026 출하 대장 밖)' : '출하 기록 없음 — 재고이거나 이전 연도', p, g, dets[0]);

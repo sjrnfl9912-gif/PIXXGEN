@@ -704,3 +704,6 @@ td.ok-cell { background: #f0fdf4 !important; color: #15803d; }
 .aq-cp:hover { color: var(--pr, #2563eb); }
 .aq-go { float: right; border: 1px solid #c7d2fe; background: #eef2ff; color: #3730a3; border-radius: 5px; font-size: 11px; padding: 3px 8px; cursor: pointer; margin-left: 8px; }
 .aq-go:hover { background: #e0e7ff; }
+#b3 td[data-pf] { cursor: cell; }
+#b3 td input.merge-inl { width: 100%; min-width: 90px; border: 1px solid #2563eb; border-radius: 3px; padding: 1px 4px; font: inherit; background: #fff; }
+.aq-mg { font-weight: 500; font-size: 11px; color: #4b5563; background: #f1f5f9; border-radius: 4px; padding: 1px 6px; margin-left: 6px; }

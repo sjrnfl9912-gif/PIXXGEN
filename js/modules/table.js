@@ -11,7 +11,7 @@ import { DATE_FIELDS, normDate, normField } from './date.js';
 import { suggestPairs, describeFix } from './fuzzy.js';
 import { mountRows } from './lazy.js';
 import { requireEdit } from '../services/editmode.js';
-import { getAudit, hasProblem, auditCount, logFixes, renderAuditQueue, isAuditQueueOpen } from './audit-ui.js';
+import { getAudit, hasProblem, auditCount, logFixes, renderAuditQueue, isAuditQueueOpen, FLABEL } from './audit-ui.js';
 
 function colL(n) { let s = ''; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; }
 function esc(v) { if (v == null) return ''; return String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -318,16 +318,18 @@ export function renderMergeTable() {
       const is = issueOf(xs, SHIP_FIELDS[j]);
       cells.push(readCell(SHIP_FIELDS[j], r[SHIP_FIELDS[j]], 'cw' + (is ? is.cls : ''), q, is?.tip));
     }
-    // 생산 컬럼 — 매칭 없으면 안내, 있으면 텍스트
+    // 생산 컬럼 — 매칭 없으면 안내, 있으면 텍스트. 생산기록이 있으면 더블클릭 수정(TFT 제외 — 연결 키라 모달에서)
+    const editAt = state.tftMap[tftSn] && ' data-pf="{f}" data-sid="' + r._id + '" ';
+    const ed = (html, f) => (editAt && f !== 'tft_sn' ? html.replace('<td ', '<td' + editAt.replace('{f}', f)) : html);
     for (let j = 0; j < PROD_VL_FIELDS.length; j++) {
       const f = PROD_VL_FIELDS[j];
       if (!tftSn) { cells.push('<td class="v"><span class="vl-na">-</span></td>'); continue; }
       if (p[f] == null || p[f] === '') {
         // 모델명은 미입력이 정상(매칭 실패 아님) → 빈칸
-        cells.push(f === 'model_name' ? '<td class="v"></td>' : '<td class="v"><span class="vl-miss">매칭없음</span></td>'); continue;
+        cells.push(ed(f === 'model_name' ? '<td class="v"></td>' : '<td class="v"><span class="vl-miss">매칭없음</span></td>', f)); continue;
       }
       const is = issueOf(xs, f);
-      cells.push(readCell(f, p[f], 'v' + (is ? is.cls : ''), q, is?.tip));
+      cells.push(ed(readCell(f, p[f], 'v' + (is ? is.cls : ''), q, is?.tip), f));
     }
     cells.push('</tr>');
     rows.push(cells.join(''));
@@ -500,12 +502,48 @@ async function saveUnitEditModal() {
 }
 
 // 통합취합본 「✏」 클릭 위임 핸들러 (한 번 등록)
+// 통합취합본 표 생산 칸 더블클릭 → 그 자리에서 수정 (Enter/칸 밖 클릭 = 저장, Esc = 취소). 수정 이력에 남음
+function startMergeInlineEdit(td) {
+  const f = td.dataset.pf, ship = state.shipD.find(s => String(s._id) === td.dataset.sid);
+  const p = ship && state.tftMap[state.detTftMap[ship.detector_sn]];
+  if (!p) return;
+  const old = p[f] == null ? '' : String(p[f]);
+  td.innerHTML = '<input class="merge-inl" value="' + esc(old) + '">';
+  const inp = td.firstChild;
+  inp.focus(); inp.select();
+  let done = false;
+  const finish = async save => {
+    if (done) return; done = true;
+    const v = normField(f, inp.value.trim());
+    if (!save || v === old) { renderMergeTable(); return; }
+    const ch = { [f]: v === '' ? null : v }, before = { ...p };
+    inp.disabled = true;
+    const updated = await dbUpdate('production', p.id != null ? p.id : p._id, ch);
+    if (!updated) { toast('저장 실패 — 다시 시도해주세요', 'er'); renderMergeTable(); return; }
+    Object.assign(p, updated, { _id: updated.id });
+    const nLog = await logFixes(before, ship.detector_sn, ship.product_name, ch, getAudit().get(ship._id), '통합취합본 표에서 직접 수정');
+    rebuildTft(); markDupDirty(); invalidateOtherTabs(); saveCache(state.shipD, state.prodD);
+    renderMergeTable();
+    toast((FLABEL[f] || f) + ' 저장: ' + (old || '(빈칸)') + ' → ' + (v || '(빈칸)') + (nLog ? ' · 수정 이력에 기록' : ' · ⚠ 수정 이력 저장 실패'), nLog ? 'ok' : 'er');
+  };
+  inp.addEventListener('keydown', e => {
+    e.stopPropagation();   // 표 단축키로 새지 않게
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') finish(false);
+  });
+  inp.addEventListener('blur', () => finish(true));
+}
+
 export function initMergeEditClicks() {
   document.getElementById('b3')?.addEventListener('click', e => {
     const trigger = e.target.closest('.merge-rn-edit');
     if (!trigger) return;
     e.stopPropagation();
     openUnitEditModal(trigger.dataset.id);
+  });
+  document.getElementById('b3')?.addEventListener('dblclick', e => {
+    const td = e.target.closest('td[data-pf]');
+    if (!td || td.querySelector('input') || !requireEdit()) return;
+    startMergeInlineEdit(td);
   });
   document.getElementById('unitClose')?.addEventListener('click', closeUnitEditModal);
   document.getElementById('unitCancel')?.addEventListener('click', closeUnitEditModal);
