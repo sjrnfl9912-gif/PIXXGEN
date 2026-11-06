@@ -687,7 +687,7 @@ td.ok-cell { background: #f0fdf4 !important; color: #15803d; }
 .aq-card { border: 1px solid var(--bd); border-radius: 8px; overflow: hidden; }
 .aq-ch { background: #f6f8fb; padding: 7px 10px; border-bottom: 1px solid var(--bd); font-weight: 600; font-size: 13px; }
 .aq-ch small { display: block; font-weight: 400; color: var(--ts); font-size: 10.5px; }
-.aq-kv { display: grid; grid-template-columns: 86px 1fr; gap: 3px 8px; padding: 8px 10px; align-items: center; }
+.aq-kv { display: grid; grid-template-columns: 86px 1fr 22px; gap: 3px 6px; padding: 8px 10px; align-items: center; }
 .aq-kv span { color: var(--ts); font-size: 11px; }
 .aq-kv input { border: 1px solid #e5e7eb; border-radius: 4px; padding: 3px 6px; font-size: 12px; width: 100%; background: #fff; }
 .aq-kv input[readonly] { border-color: transparent; background: transparent; }
@@ -700,3 +700,7 @@ td.ok-cell { background: #f0fdf4 !important; color: #15803d; }
 .aq-act input { flex: 1; min-width: 220px; border: 1px solid var(--bd); border-radius: 5px; padding: 6px 8px; font-size: 12px; }
 .aq-empty { padding: 20px; text-align: center; color: var(--ts); }
 @media (max-width: 760px) { .aq-body { grid-template-columns: 1fr; grid-template-rows: 220px 1fr; } }
+.aq-cp { border: 0; background: none; color: #9ca3af; cursor: pointer; font-size: 13px; padding: 0; line-height: 1; }
+.aq-cp:hover { color: var(--pr, #2563eb); }
+.aq-go { float: right; border: 1px solid #c7d2fe; background: #eef2ff; color: #3730a3; border-radius: 5px; font-size: 11px; padding: 3px 8px; cursor: pointer; margin-left: 8px; }
+.aq-go:hover { background: #e0e7ff; }

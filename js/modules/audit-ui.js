@@ -93,10 +93,12 @@ function card(head, sub, p, g, det) {
   const kv = CARD_F.map(f => {
     const v = p ? p[f] : '', hit = g.fs.has(f) ? (g.kind === 'odd' ? ' odd' : g.kind === 'ok' ? ' okv' : ' hit') : '';
     const ro = lock || !EDIT_F.has(f) || !p;
-    return '<span>' + (f === 'prod_no' ? '생산번호' : FLABEL[f]) + '</span><input class="' + hit.trim() + '" value="' + esc(v) + '"'
-      + (ro ? ' readonly tabindex="-1"' : ' data-pid="' + esc(pid(p)) + '" data-f="' + f + '" data-det="' + esc(det || '') + '"') + '>';
+    return '<span>' + FLABEL[f] + '</span><input class="' + hit.trim() + '" value="' + esc(v) + '"'
+      + (ro ? ' readonly tabindex="-1"' : ' data-pid="' + esc(pid(p)) + '" data-f="' + f + '" data-det="' + esc(det || '') + '"') + '>'
+      + '<button class="aq-cp" data-aq="copy" title="복사" tabindex="-1">⧉</button>';
   }).join('');
-  return '<div class="aq-card"><div class="aq-ch">' + head + '<small>' + sub + '</small></div>'
+  const go = p && p.tft_sn ? '<button class="aq-go" data-aq="goprod" data-tft="' + esc(p.tft_sn) + '" title="생산관리대장에서 이 TFT로 검색">생산관리대장 ↗</button>' : '';
+  return '<div class="aq-card"><div class="aq-ch">' + go + head + '<small>' + sub + '</small></div>'
     + (p ? '<div class="aq-kv">' + kv + '</div>' : '<div class="aq-none">생산기록 없음 (TFT 매칭 없음)</div>') + '</div>';
 }
 // 행 복사 — 어느 쪽이 복사된 건지 단서: 완료일 > 실제 출하일, 출하 기록 없는 TFT
@@ -216,6 +218,13 @@ function checkKakao() {
   copyCellText(txt);
 }
 
+// 생산관리대장 탭으로 가서 그 TFT로 검색 — 통합취합본 탭은 그대로라 돌아오면 점검 큐 그대로
+function goProd(tft) {
+  const q = document.getElementById('q2');
+  q.value = tft; q.dispatchEvent(new Event('input'));
+  document.querySelector('.tab[data-tab="prod"]').click();
+}
+
 export function initAuditQueue() {
   document.getElementById('dupChip3')?.addEventListener('click', e => {
     state.auditMode = !state.auditMode;
@@ -230,6 +239,8 @@ export function initAuditQueue() {
   });
   document.getElementById('aqRight')?.addEventListener('click', async e => {
     const b = e.target.closest('[data-aq]'); if (!b) return;
+    if (b.dataset.aq === 'copy') { copyCellText(b.previousElementSibling.value); return; }   // 고치던 값이면 고친 값으로
+    if (b.dataset.aq === 'goprod') { goProd(b.dataset.tft); return; }
     const gs = groups(), g = gs[qSel]; if (!g) return;
     if (b.dataset.aq === 'save') {
       b.disabled = true;
