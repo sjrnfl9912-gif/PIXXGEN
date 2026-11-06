@@ -11,6 +11,7 @@ import { DATE_FIELDS, normDate, normField } from './date.js';
 import { suggestPairs, describeFix } from './fuzzy.js';
 import { mountRows } from './lazy.js';
 import { requireEdit } from '../services/editmode.js';
+import { getAudit, hasProblem, auditCount, logFixes, renderAuditQueue, isAuditQueueOpen } from './audit-ui.js';
 
 function colL(n) { let s = ''; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; }
 function esc(v) { if (v == null) return ''; return String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -24,7 +25,7 @@ function legacyCopyText(text) {
     const r = document.execCommand('copy'); document.body.removeChild(ta); return r;
   } catch (e) { return false; }
 }
-function copyCellText(text) {
+export function copyCellText(text) {
   text = String(text || '').trim();
   if (!text) return;
   const ok = () => toast('복사됨: ' + text, 'ok');
@@ -237,7 +238,8 @@ function fieldInputHtml(f, v, baseAttrs) {
 }
 
 // 읽기 전용 셀 HTML 빌더
-function readCell(field, value, baseClass, q) {
+// tip: 이력 점검 결과(중복·형식 이상 이유) — 마우스 올리면 보임
+function readCell(field, value, baseClass, q, tip) {
   if (value == null || value === '') {
     return '<td class="' + baseClass + '"></td>';
   }
@@ -246,10 +248,12 @@ function readCell(field, value, baseClass, q) {
   let attrs = '';
   if (COPY_COLS.has(field)) {
     cls += ' mono copy';
-    attrs = ' data-copy="' + s + '" title="클릭 복사"';
+    attrs = ' data-copy="' + s + '" title="' + (tip ? esc(tip) + ' · ' : '') + '클릭 복사"';
   } else if (LONG_COLS.has(field)) {
     cls += ' long';
     attrs = ' title="' + s + '"';
+  } else if (tip) {
+    attrs = ' title="' + esc(tip) + '"';
   }
   return '<td class="' + cls + '"' + attrs + '>' + (q ? hlText(value, q) : s) + '</td>';
 }
@@ -277,23 +281,42 @@ export function renderMergeTable() {
       return false;
     });
   }
+  // 이력 점검 — 중복 S/N(빨강)·형식 이상(주황)·재입고 연결(초록). ⚠ 칩이 켜져 있으면 문제 행만, 같은 문제끼리 묶어서
+  const audit = getAudit();
+  const nProb = auditCount(), dc3 = document.getElementById('dupCnt3');
+  if (dc3) { dc3.textContent = nProb; dc3.style.display = nProb ? '' : 'none'; }
+  const gKey = r => { const xs = audit.get(r._id); return (xs.find(x => x.kind === 'dup') || xs.find(x => x.kind === 'odd') || xs[0]).key; };
+  if (state.auditMode) {
+    d = d.filter(r => hasProblem(audit.get(r._id)));
+    d = d.map(r => [gKey(r), r]).sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).map(x => x[1]);
+  }
+  const issueOf = (xs, f) => {
+    const m = xs ? xs.filter(x => x.f === f) : [];
+    if (!m.length) return null;
+    return { cls: m.some(x => x.kind === 'dup') ? ' dup-cell' : m.some(x => x.kind === 'odd') ? ' odd-cell' : ' ok-cell', tip: m.map(x => x.msg).join(' / ') };
+  };
   state.mergeFiltered = d;
   const p3 = document.getElementById('p3'), cnt3 = document.getElementById('cnt3');
   if (p3) p3.textContent = d.length + '건';
   if (cnt3) cnt3.textContent = state.mergeD.length;
   mkHead('th3', 'b3', MERGE_HEADS, MERGE_VC_START);
   const rows = [];
+  let prevKey = null;
   for (let i = 0; i < d.length; i++) {
     const r = d[i];
+    const xs = audit.get(r._id);
     // 통합취합본 조인: 검사포장 디텍터 S/N → tft_match → TFT S/N → 생산
     const tftSn = state.detTftMap[r.detector_sn];
     const p = state.tftMap[tftSn] || {};
+    let trCls = '';
+    if (state.auditMode) { const k = gKey(r); if (prevKey !== null && k !== prevKey) trCls = ' class="grp-start"'; prevKey = k; }
     // 행 번호 칸 = 편집 트리거 (좌측 고정, 항상 보임)
-    const cells = ['<tr><td class="rn merge-rn-edit" data-id="' + r._id + '" title="클릭하면 유닛 상세 편집">'
+    const cells = ['<tr' + trCls + '><td class="rn merge-rn-edit" data-id="' + r._id + '" title="클릭하면 유닛 상세 편집">'
       + '<span class="rn-num">' + (i + 1) + '</span><span class="rn-edit-icon">✏</span></td>'];
     // 검사포장 컬럼 — 읽기 전용 텍스트로 렌더 (편집은 모달에서)
     for (let j = 0; j < SHIP_FIELDS.length; j++) {
-      cells.push(readCell(SHIP_FIELDS[j], r[SHIP_FIELDS[j]], 'cw', q));
+      const is = issueOf(xs, SHIP_FIELDS[j]);
+      cells.push(readCell(SHIP_FIELDS[j], r[SHIP_FIELDS[j]], 'cw' + (is ? is.cls : ''), q, is?.tip));
     }
     // 생산 컬럼 — 매칭 없으면 안내, 있으면 텍스트
     for (let j = 0; j < PROD_VL_FIELDS.length; j++) {
@@ -303,13 +326,15 @@ export function renderMergeTable() {
         // 모델명은 미입력이 정상(매칭 실패 아님) → 빈칸
         cells.push(f === 'model_name' ? '<td class="v"></td>' : '<td class="v"><span class="vl-miss">매칭없음</span></td>'); continue;
       }
-      cells.push(readCell(f, p[f], 'v', q));
+      const is = issueOf(xs, f);
+      cells.push(readCell(f, p[f], 'v' + (is ? is.cls : ''), q, is?.tip));
     }
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
-  mountRows('b3', rows, q);
+  mountRows('b3', rows, q + '|' + state.auditMode);
   state.tabRendered.merge = true;
+  if (isAuditQueueOpen()) renderAuditQueue();
 }
 
 // ═══ 통합취합본 — 유닛 상세 편집 모달 ═══
@@ -360,6 +385,21 @@ function openUnitEditModal(shipId) {
         + fieldInputHtml(f, v, 'data-side="p" data-f="' + f + '"') + '</div>';
     }).join('');
   }
+
+  // 이력 점검 결과 — 이 유닛의 중복·형식 이상을 맨 위에, 해당 칸은 빨갛게
+  const issues = getAudit().get(ship._id) || [];
+  unitEditState.issues = issues;
+  const LB = { detector_sn: '디텍터', tft_sn: 'TFT', scintillator: 'Scintillator', cpu_sn: 'CPU', main_board_sn: 'BOARD S/N', main_board_ver: 'BOARD VER', aed_sn: 'AED' };
+  const box = document.getElementById('unitIssues');
+  box.hidden = !issues.length;
+  box.className = 'unit-issues' + (hasProblem(issues) ? '' : ' ok');
+  box.innerHTML = '<b>' + (hasProblem(issues) ? '⚠ 이 유닛의 이력 문제' : '✔ 재입고 연결') + '</b><ul>'
+    // 중복·재입고 문구는 이미 「BOARD 중복 — …」처럼 칸 이름으로 시작 → 형식 이상만 칸 이름을 붙임
+    + issues.map(x => '<li>' + (x.kind === 'odd' ? '<b>' + (LB[x.f] || x.f) + '</b> ' : '') + esc(x.msg) + '</li>').join('') + '</ul>'
+    + (issues.some(x => x.f === 'tft_sn' && x.kind === 'dup') ? '<p>※ TFT는 출하완료 폴더 이름에서 매일 다시 만들어져 여기서 못 고칩니다 → 실물 TFT 라벨 확인 후 출하 폴더명 수정</p>' : '');
+  issues.forEach(x => { if (x.kind !== 'ok') document.querySelector('#unitProdGrid [data-f="' + x.f + '"]')?.parentElement.classList.add('bad'); });
+  const reasonInp = document.getElementById('unitReason');
+  if (reasonInp) reasonInp.value = '';
 
   document.getElementById('unitInfo').textContent = '';
   // 변경 추적 — 입력/선택 변하면 .changed 토글
@@ -429,10 +469,15 @@ async function saveUnitEditModal() {
       if (!updated) throw new Error('출하 정보 저장 실패');
       Object.assign(shipRow, updated, { _id: updated.id });
     }
+    let nLog = 0;
     if (nProd > 0 && prodRow) {
+      const before = { ...prodRow };
       const updated = await dbUpdate('production', prodRow.id != null ? prodRow.id : prodRow._id, prodChanges);
       if (!updated) throw new Error('생산 정보 저장 실패');
       Object.assign(prodRow, updated, { _id: updated.id });
+      // 수정 이력 — 칸마다 한 줄 (이전값·새값·점검 이유·사유)
+      nLog = await logFixes(before, shipRow.detector_sn, shipRow.product_name, prodChanges, unitEditState.issues,
+        document.getElementById('unitReason')?.value.trim());
     }
     rebuildTft();
     rebuildDetTft();
@@ -442,7 +487,8 @@ async function saveUnitEditModal() {
     const parts = [];
     if (nShip) parts.push('출하 ' + nShip + '개 필드');
     if (nProd) parts.push('생산 ' + nProd + '개 필드');
-    toast('저장 완료 — ' + parts.join(', '), 'ok');
+    const logOk = nLog === nProd;
+    toast('저장 완료 — ' + parts.join(', ') + (nProd ? (logOk ? ' · 수정 이력에 기록' : ' · ⚠ 수정 이력 일부 저장 실패') : ''), logOk ? 'ok' : 'er');
     closeUnitEditModal();
     renderMergeTable();
   } catch (e) {
@@ -896,7 +942,7 @@ async function openFixLog() {
 }
 function renderFixLog() {
   const body = document.getElementById('fixLogBody');
-  const errs = fixLogRows.filter(r => r.kind === 'TFT 오기입');
+  const errs = fixLogRows.filter(r => r.kind !== '되돌림');   // TFT 오기입 + 이력 수정(통합취합본 점검)
   const byWorker = {};
   errs.forEach(r => { const w = r.worker || '작업자 없음'; byWorker[w] = (byWorker[w] || 0) + 1; });
   const rows = fixLogRows.filter(r => !fixLogWorker || (r.worker || '작업자 없음') === fixLogWorker);
@@ -923,9 +969,12 @@ function renderFixLog() {
 }
 function fixLogKakao(d) {
   const list = fixLogRows.filter(r => new Date(r.fixed_at).toLocaleDateString('sv-SE') === d);
-  const errs = list.filter(r => r.kind === 'TFT 오기입'), undo = list.filter(r => r.kind === '되돌림');
+  const errs = list.filter(r => r.kind !== '되돌림'), undo = list.filter(r => r.kind === '되돌림');
   const cnt = {}; errs.forEach(r => { const w = r.worker || '작업자 없음'; cnt[w] = (cnt[w] || 0) + 1; });
-  return '[TFT 오기입 수정 안내] ' + d + '\n생산관리대장 TFT가 출하 폴더 TFT와 달라 아래처럼 수정했습니다.\n'
+  const head = errs.every(r => r.kind === 'TFT 오기입')
+    ? '[TFT 오기입 수정 안내] ' + d + '\n생산관리대장 TFT가 출하 폴더 TFT와 달라 아래처럼 수정했습니다.\n'
+    : '[생산 이력 수정 안내] ' + d + '\n생산관리대장 값이 다른 기록과 겹치거나 형식이 틀려 아래처럼 수정했습니다.\n';
+  return head
     + errs.map(fixLine).join('\n')
     + (undo.length ? '\n\n※ 정정 (잘못 고쳤다가 원래대로)\n' + undo.map(r => '- ' + (r.prod_no ? '생산번호 ' + r.prod_no + ' : ' : '') + r.before_val + ' → ' + r.after_val + ' (' + (r.reason || r.what || '') + ')').join('\n') : '')
     + '\n\n작업자별: ' + Object.entries(cnt).map(([w, n]) => w + ' ' + n + '건').join(' · ');

@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/buttons.css">
-  <link rel="stylesheet" href="css/table.css?v=20261105a">
-  <link rel="stylesheet" href="css/modals.css">
+  <link rel="stylesheet" href="css/table.css?v=20261106a">
+  <link rel="stylesheet" href="css/modals.css?v=20261106a">
   <link rel="stylesheet" href="css/kpi.css?v=20261105a">
   <link rel="stylesheet" href="css/editmode.css?v=20261019c">
   <link rel="stylesheet" href="css/responsive.css">
@@ -119,9 +119,15 @@
     <div class="toolbar">
       <div class="sbox" id="sb3"><input placeholder="검색..." id="q3" /><button class="s-clear">&times;</button></div>
       <button class="btn btn-pr" id="buildMergeBtn">🔄 출하+생산 취합</button>
+      <div class="chip dup" id="dupChip3" title="다른 유닛과 같은 S/N(중복)·형식이 이상한 값이 있는 행만 같은 문제끼리 묶어 보기">⚠ 중복·이상<span class="dup-badge" id="dupCnt3" style="display:none">0</span></div>
+      <button class="btn" id="auditQBtn" title="문제 한 건씩 관련 기록을 나란히 놓고 비교하며 고치기">🔍 점검 큐</button>
       <span class="pill" id="p3">0건</span>
     </div>
     <div class="tw"><table class="g" id="t3"><thead id="th3"></thead><tbody id="b3"></tbody></table></div>
+    <div class="aq" id="auditQ" hidden>
+      <div class="aq-top"><span class="pill" id="aqProg"></span><button class="btn" id="aqKakao" title="「🔍 실물 확인으로」 넘긴 건을 작업자별로 묶어 복사">📋 실물 확인 요청 카톡 문구</button><span class="aq-note">빨강 = 같은 값이 다른 기록에도 있음 · 주황 = 형식 이상 · 고치면 🧾 수정 이력에 남음</span></div>
+      <div class="aq-body"><div class="aq-l" id="aqList"></div><div class="aq-r" id="aqRight"></div></div>
+    </div>
   </div>
 
   <!-- ══ TAB: TFT 매칭 ══ -->
@@ -273,6 +279,7 @@
         <button class="unit-x" id="unitClose" title="닫기">&times;</button>
       </div>
       <div class="unit-body">
+        <div class="unit-issues" id="unitIssues" hidden></div>
         <div class="unit-sec">
           <div class="unit-sec-h">
             <span class="unit-badge unit-badge-ship">검사포장</span> 출하 정보
@@ -292,6 +299,7 @@
       </div>
       <div class="unit-f">
         <span class="unit-info" id="unitInfo"></span>
+        <input class="unit-reason" id="unitReason" placeholder="수정 사유 (🧾 수정 이력에 남음) — 예: 실물 라벨 확인">
         <button class="btn" id="unitCancel">취소</button>
         <button class="btn btn-pr" id="unitSave">💾 변경 저장</button>
       </div>
@@ -538,6 +546,16 @@
           <!-- ▼ 새 항목은 이 아래에 추가 -->
 
           <div class="cl-entry">
+            <div class="cl-date">2026-11-06</div>
+            <ul class="cl-list">
+              <li><b>⚠ 통합취합본 중복·이상 점검</b> — 통합취합본에서 다른 유닛과 같은 S/N(TFT·CPU·보드·AED·디텍터)은 빨강, 형식이 이상한 값(? 표시, 한글 섞임, BOARD S/N·VER 칸 바뀜, TFT 12자리 아님 등)은 주황, 재입고로 연결된 건은 초록으로 표시됩니다. 칸에 마우스를 올리면 이유가 나오고, 「⚠ 중복·이상」 칩을 누르면 문제 행만 같은 문제끼리 묶어 보여줍니다.</li>
+              <li><b>🔍 점검 큐</b> — 문제 한 건씩 관련 기록을 카드로 나란히 놓고 비교·수정합니다. 2026 출하 대장에 없는 생산기록(재고·이전 연도 출하)도 같이 보여 어느 쪽이 틀렸는지 판단하기 쉽습니다. 모르는 건은 「🔍 실물 확인으로」 넘기고, 작업자별 확인 요청 카톡 문구를 한 번에 복사합니다.</li>
+              <li><b>🧾 수정 이력 자동 기록</b> — 유닛 상세 편집·점검 큐에서 생산 칸을 고치면 칸마다 이전값·새값·점검 이유·수정 사유가 수정 이력에 남습니다. 수정 이력의 작업자별 건수에도 같이 집계됩니다.</li>
+              <li><b>📂 TFT 매칭 정확도</b> — 출하 폴더 바깥 이름의 TFT가 틀려도 안쪽 원본 폴더의 TFT로 연결합니다(같은 TFT가 두 유닛에 잡히던 문제 해결). 선지원RMA 폴더는 원래 출하 폴더가 없을 때만 씁니다.</li>
+            </ul>
+          </div>
+
+          <div class="cl-entry">
             <div class="cl-date">2026-11-05</div>
             <ul class="cl-list">
               <li><b>📁 백업 위치 이사</b> — 통합취합본·날짜별 기록이 「1. 재고\2026년 출하이력」으로 옮겨졌습니다. 다른 팀은 <b>PIXXGEN 통합취합본_최신.xlsx</b> 하나만 열면 되고(매일 17:30 자동 갱신), 날짜별 기록은 「PIXXGEN 자동백업\snapshots」에 있습니다.</li>
@@ -724,6 +742,6 @@
   <button class="fab-bottom" id="fabBottom" title="맨 아래로">⬇</button>
 
   <!-- Scripts -->
-  <script type="module" src="js/main.js?v=20261105d"></script>
+  <script type="module" src="js/main.js?v=20261106a"></script>
 </body>
 </html>

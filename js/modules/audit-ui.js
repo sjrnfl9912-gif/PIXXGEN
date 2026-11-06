@@ -1,0 +1,227 @@
+// ═══ 통합취합본 이력 점검 — 계산 캐시 · 수정 이력 기록 · 🔍 점검 큐 화면 ═══
+//  표 강조/⚠ 칩/유닛 모달은 table.js, 판정 규칙은 audit.js
+import { state, rebuildTft, markDupDirty, invalidateOtherTabs } from '../state.js';
+import { auditMerge } from './audit.js';
+import { dbUpdate, dbInsert } from '../db.js';
+import { toast } from '../services/ui.js';
+import { saveCache } from '../services/storage.js';
+import { normField } from './date.js';
+import { requireEdit } from '../services/editmode.js';
+import { renderMergeTable, copyCellText } from './table.js';
+
+const esc = v => (v == null ? '' : String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+const norm = v => (v == null ? '' : String(v).trim());
+
+export const FLABEL = {
+  model_name: '모델명', tft_sn: 'TFT', scintillator: 'Scintillator', cpu_sn: 'CPU', main_board_sn: 'BOARD S/N', main_board_ver: 'BOARD VER',
+  panel_type: '중판', completed_date: '제작완료일', detector_fw: 'F/W', micom_ver: 'MICOM', bat_micom_ver: 'BAT MICOM', worker: '작업자',
+  aed_sn: 'AED', note1: '비고1', note2: '비고', detector_sn: '디텍터',
+};
+
+// 출하 _id → 문제 목록. 데이터가 바뀌면(markDupDirty) 다시 계산 — 6천 건에 20ms 안팎
+let cache = null;
+export function getAudit() {
+  if (cache && !state.auditDirty) return cache;
+  state.auditDirty = false;
+  const restock = new Set(state.tftmD.filter(t => norm(t.note).includes('재입고')).map(t => t.detector_sn));
+  cache = auditMerge(state.shipD, state.detTftMap, state.tftMap, state.prodD, restock);
+  return cache;
+}
+export const hasProblem = xs => !!xs && xs.some(x => x.kind !== 'ok');
+export function auditCount() { let n = 0; for (const xs of getAudit().values()) if (hasProblem(xs)) n++; return n; }
+
+// 생산 칸 수정 → 수정 이력(fix_log)에 칸마다 한 줄. before = 고치기 전 생산 행(복사본)
+export async function logFixes(before, det, product, changes, issues, reason) {
+  let ok = 0;
+  for (const [f, after] of Object.entries(changes)) {
+    const why = (issues || []).filter(x => x.f === f).map(x => x.msg).join(' / ');
+    const row = await dbInsert('fix_log', {
+      kind: '이력 수정', prod_id: before.id != null ? before.id : before._id, prod_no: before.prod_no || null, worker: before.worker || null,
+      completed_date: before.completed_date || null, product: product || before.model_name || null, detector_sn: det || null,
+      before_val: before[f] == null ? '' : String(before[f]), after_val: after == null ? '' : String(after),
+      what: (FLABEL[f] || f) + (why ? ': ' + why : ''), reason: reason || null,
+    });
+    if (row) ok++;
+  }
+  return ok;
+}
+
+// ── 🔍 점검 큐 ──
+//  중복은 같은 값끼리 한 건(관련 유닛·생산기록 카드를 나란히), 형식 이상은 유닛 한 칸이 한 건
+let qOpen = false, qSel = 0;
+const CHECK_KEY = 'audit_check';
+let checked = new Set();
+try { checked = new Set(JSON.parse(localStorage.getItem(CHECK_KEY) || '[]')); } catch (e) {}
+const saveChecked = () => { try { localStorage.setItem(CHECK_KEY, JSON.stringify([...checked])); } catch (e) {} };
+
+function groups() {
+  const audit = getAudit(), out = [], byKey = new Map();
+  for (const s of state.shipD) {
+    for (const x of audit.get(s._id) || []) {
+      if (x.kind === 'odd') { out.push({ key: x.key + '|' + s._id, kind: 'odd', f: x.f, ships: [s], msg: x.msg }); continue; }
+      let g = byKey.get(x.key);
+      if (!g) { g = { key: x.key, kind: x.kind, f: x.f, ships: [], msg: x.msg }; byKey.set(x.key, g); out.push(g); }
+      if (!g.ships.includes(s)) g.ships.push(s);
+    }
+  }
+  const rank = { dup: 0, odd: 1, ok: 2 };
+  return out.sort((a, b) => rank[a.kind] - rank[b.kind]);
+}
+const prodOf = s => state.tftMap[state.detTftMap[s.detector_sn]] || null;
+const pid = p => (p.id != null ? p.id : p._id);
+// 같은 값을 가진 다른 생산기록 — 2026 출하 대장에 없는 것(재고·이전 연도 출하)까지
+function peersOf(g) {
+  if (g.kind !== 'dup' || !['cpu_sn', 'main_board_sn', 'aed_sn'].includes(g.f)) return [];
+  const v = g.key.split('|').slice(1).join('|'), have = new Set(g.ships.map(prodOf).filter(Boolean));
+  return state.prodD.filter(p => norm(p[g.f]) === v && !have.has(p));
+}
+const detsOfTft = t => state.tftmD.filter(x => x.tft_sn === t).map(x => x.detector_sn);
+
+const CARD_F = ['tft_sn', 'scintillator', 'cpu_sn', 'main_board_sn', 'main_board_ver', 'aed_sn', 'worker', 'completed_date', 'prod_no'];
+const EDIT_F = new Set(['scintillator', 'cpu_sn', 'main_board_sn', 'main_board_ver', 'aed_sn']);
+function card(head, sub, p, g, det) {
+  const lock = !p || (g.f === 'tft_sn' || g.f === 'detector_sn');   // TFT·디텍터 문제는 출하 폴더/엑셀에서 고침
+  const kv = CARD_F.map(f => {
+    const v = p ? p[f] : '', hit = f === g.f ? (g.kind === 'odd' ? ' odd' : g.kind === 'ok' ? ' okv' : ' hit') : '';
+    const ro = lock || !EDIT_F.has(f) || !p;
+    return '<span>' + (f === 'prod_no' ? '생산번호' : FLABEL[f]) + '</span><input class="' + hit.trim() + '" value="' + esc(v) + '"'
+      + (ro ? ' readonly tabindex="-1"' : ' data-pid="' + esc(pid(p)) + '" data-f="' + f + '" data-det="' + esc(det || '') + '"') + '>';
+  }).join('');
+  return '<div class="aq-card"><div class="aq-ch">' + head + '<small>' + sub + '</small></div>'
+    + (p ? '<div class="aq-kv">' + kv + '</div>' : '<div class="aq-none">생산기록 없음 (TFT 매칭 없음)</div>') + '</div>';
+}
+function hint(g) {
+  if (g.kind === 'ok') return '재입고(같은 제품을 새 디텍터 S/N으로 다시 출하) — 출하 폴더에 「재입고」가 적혀 있어 정상 연결로 봅니다. 확인만 하고 넘기면 됩니다.';
+  if (g.f === 'tft_sn') return 'TFT는 출하완료 폴더 이름에서 매일 다시 만들어집니다 → 여기서는 못 고칩니다. 폴더 안쪽 원본 폴더가 없어 자동으로 못 바로잡은 건이므로 <b>실물 TFT 라벨 확인</b> 후 출하 폴더명을 고쳐 주세요.';
+  if (g.f === 'detector_sn') return '출하 대장(엑셀)에 같은 디텍터 S/N이 두 번 있습니다 → 통합 출하 이력 엑셀에서 고칩니다.';
+  if (g.kind === 'dup') return '서로 다른 생산기록에 같은 <b>' + FLABEL[g.f] + '</b>가 적혀 있습니다. CPU·보드는 같은 날 조립하면 번호가 함께 올라가니 <b>옆 칸 번호·완료일</b>을 보고 틀린 쪽을 고치세요. 모르겠으면 「🔍 실물 확인」.';
+  return '형식이 이상한 값: <b>' + esc(g.msg) + '</b> — 실물 라벨을 보고 고치세요.';
+}
+
+export function isAuditQueueOpen() { return qOpen; }
+export function toggleAuditQueue(force) {
+  qOpen = force ?? !qOpen;
+  document.getElementById('auditQ').hidden = !qOpen;
+  document.querySelector('#v-merge .tw').hidden = qOpen;
+  document.getElementById('auditQBtn')?.classList.toggle('on', qOpen);
+  if (qOpen) renderAuditQueue(); else renderMergeTable();
+}
+
+export function renderAuditQueue() {
+  if (!qOpen) return;
+  const gs = groups();
+  if (qSel >= gs.length) qSel = Math.max(0, gs.length - 1);
+  const nCheck = gs.filter(g => checked.has(g.key)).length;
+  document.getElementById('aqProg').textContent = '남은 ' + gs.filter(g => g.kind !== 'ok').length + '건 · 실물 확인 ' + nCheck + '건';
+  const TYPE = [['dup', '중복 — 다른 유닛과 같은 S/N'], ['odd', '형식 이상'], ['ok', '재입고 연결 (정상)']];
+  let h = '';
+  for (const [t, l] of TYPE) {
+    const list = gs.filter(g => g.kind === t); if (!list.length) continue;
+    h += '<div class="aq-gh">' + l + ' · ' + list.length + '</div>';
+    for (const g of list) {
+      const i = gs.indexOf(g), p0 = prodOf(g.ships[0]);
+      const v = g.kind === 'odd' ? (p0 ? p0[g.f] : '') : g.key.split('|').slice(1).join('|');
+      h += '<div class="aq-i' + (i === qSel ? ' sel' : '') + '" data-i="' + i + '"><div><b>' + FLABEL[g.f] + '</b> <span class="mono">' + esc(v) + '</span><br><small>'
+        + esc(g.ships.map(s => s.detector_sn).join(' · ')) + '</small></div>' + (checked.has(g.key) ? '<span title="실물 확인 요청함">🔍</span>' : '') + '</div>';
+    }
+  }
+  document.getElementById('aqList').innerHTML = h || '<div class="aq-empty">문제 없음 🎉</div>';
+  const g = gs[qSel], right = document.getElementById('aqRight');
+  if (!g) { right.innerHTML = '<div class="aq-empty">중복·이상 이력이 없습니다.</div>'; return; }
+  // TFT 중복이면 두 디텍터 카드가 같은 생산기록을 보여줌 — 그 경우 수정은 막혀 있음
+  const cards = g.ships.map(s => {
+    const p = prodOf(s);
+    return card(esc(s.detector_sn), esc(s.product_name) + ' · ' + esc(norm(s.company).slice(0, 28)) + ' · 예상출하 ' + esc(s.planned_ship_date || '-'), p, g, s.detector_sn);
+  }).concat(peersOf(g).map(p => {
+    const dets = detsOfTft(p.tft_sn);
+    return card('TFT ' + esc(p.tft_sn || '없음') + ' 생산기록', dets.length ? '출하 폴더 디텍터 ' + esc(dets.join(', ')) + ' (2026 출하 대장 밖)' : '출하 기록 없음 — 재고이거나 이전 연도', p, g, dets[0]);
+  }));
+  const editable = g.f !== 'tft_sn' && g.f !== 'detector_sn' && g.kind !== 'ok';
+  right.innerHTML = '<div class="aq-t">' + FLABEL[g.f] + ' ' + (g.kind === 'odd' ? '형식 이상' : g.kind === 'ok' ? '재입고 연결' : '중복') + '</div>'
+    + '<div class="aq-sub">' + esc(g.msg) + '</div><div class="aq-hint">' + hint(g) + '</div><div class="aq-cmp">' + cards.join('') + '</div>'
+    + '<div class="aq-act">' + (editable ? '<input id="aqReason" placeholder="수정 사유 (수정 이력에 남음) — 예: 실물 라벨 확인, 같은 날 연번">'
+      + '<button class="btn btn-pr" data-aq="save">💾 저장하고 다음</button>' : '')
+    + '<button class="btn" data-aq="check">' + (checked.has(g.key) ? '🔍 실물 확인 취소' : '🔍 실물 확인으로') + '</button>'
+    + '<button class="btn" data-aq="next">다음 ▶</button></div>';
+  right.querySelectorAll('input[data-f]').forEach(inp => inp.addEventListener('input', () => inp.classList.toggle('chg', inp.value !== inp.defaultValue)));
+}
+
+async function saveCurrent(g) {
+  const changed = [...document.querySelectorAll('#aqRight input[data-f]')].filter(i => i.value.trim() !== i.defaultValue);
+  if (!changed.length) { toast('바뀐 칸이 없습니다', 'info'); return false; }
+  if (!requireEdit()) return false;
+  const reason = document.getElementById('aqReason')?.value.trim() || '';
+  const byPid = new Map();
+  for (const i of changed) {
+    if (!byPid.has(i.dataset.pid)) byPid.set(i.dataset.pid, { det: i.dataset.det, ch: {} });
+    const v = normField(i.dataset.f, i.value.trim());
+    byPid.get(i.dataset.pid).ch[i.dataset.f] = v === '' ? null : v;
+  }
+  const audit = getAudit();
+  let nField = 0, nLog = 0;
+  for (const [id, { det, ch }] of byPid) {
+    const idx = state.prodD.findIndex(p => String(pid(p)) === id);
+    if (idx < 0) continue;
+    const before = { ...state.prodD[idx] };
+    const updated = await dbUpdate('production', before.id != null ? before.id : before._id, ch);
+    if (!updated) { toast('저장 실패 — 다시 시도해주세요', 'er'); return false; }
+    Object.assign(state.prodD[idx], updated, { _id: updated.id });
+    nField += Object.keys(ch).length;
+    const ship = state.shipD.find(s => s.detector_sn === det);
+    nLog += await logFixes(before, det, ship?.product_name, ch, ship ? audit.get(ship._id) : [], reason);
+  }
+  rebuildTft(); markDupDirty(); invalidateOtherTabs(); saveCache(state.shipD, state.prodD);
+  toast('저장 완료 — ' + nField + '칸' + (nLog === nField ? ' · 수정 이력에 기록' : ' · ⚠ 수정 이력 일부 저장 실패'), nLog === nField ? 'ok' : 'er');
+  return true;
+}
+
+// 실물 확인 요청한 건 → 작업자별 카톡 문구
+function checkKakao() {
+  const gs = groups().filter(g => checked.has(g.key));
+  if (!gs.length) { toast('「🔍 실물 확인으로」 넘긴 건이 없습니다', 'info'); return; }
+  const byW = {};
+  for (const g of gs) {
+    const ps = g.ships.map(prodOf).filter(Boolean).concat(peersOf(g));
+    const w = [...new Set(ps.map(p => p.worker || '작업자 없음'))].join('·') || '작업자 없음';
+    const p0 = ps[0] || {};
+    const v = g.kind === 'odd' ? p0[g.f] : g.key.split('|').slice(1).join('|');
+    (byW[w] ||= []).push('- 디텍터 ' + g.ships.map(s => s.detector_sn).join(', ') + (p0.completed_date ? ' / 완료 ' + p0.completed_date : '')
+      + ' : ' + FLABEL[g.f] + ' ' + v + ' — ' + g.msg);
+  }
+  const txt = '[생산 이력 실물 확인 요청] ' + new Date().toLocaleDateString('sv-SE')
+    + '\n생산관리대장 값이 다른 기록과 겹치거나 형식이 이상합니다. 실물 라벨 확인 후 맞는 값 알려주세요.\n'
+    + Object.entries(byW).map(([w, ls]) => '\n■ ' + w + ' (' + ls.length + '건)\n' + ls.join('\n')).join('\n');
+  copyCellText(txt);
+}
+
+export function initAuditQueue() {
+  document.getElementById('dupChip3')?.addEventListener('click', e => {
+    state.auditMode = !state.auditMode;
+    e.currentTarget.classList.toggle('on', state.auditMode);
+    if (qOpen) toggleAuditQueue(false); else renderMergeTable();
+  });
+  document.getElementById('auditQBtn')?.addEventListener('click', () => toggleAuditQueue());
+  document.getElementById('aqKakao')?.addEventListener('click', checkKakao);
+  document.getElementById('aqList')?.addEventListener('click', e => {
+    const t = e.target.closest('.aq-i'); if (!t) return;
+    qSel = +t.dataset.i; renderAuditQueue();
+  });
+  document.getElementById('aqRight')?.addEventListener('click', async e => {
+    const b = e.target.closest('[data-aq]'); if (!b) return;
+    const gs = groups(), g = gs[qSel]; if (!g) return;
+    if (b.dataset.aq === 'save') {
+      b.disabled = true;
+      const ok = await saveCurrent(g);
+      b.disabled = false;
+      if (!ok) return;
+      checked.delete(g.key); saveChecked();
+      // 고쳐서 문제가 사라지면 목록에서 빠지므로 같은 번호 = 다음 건
+      const still = groups().some(x => x.key === g.key);
+      if (still) qSel++;
+    } else if (b.dataset.aq === 'check') {
+      if (checked.has(g.key)) checked.delete(g.key); else { checked.add(g.key); qSel++; }
+      saveChecked();
+    } else qSel++;
+    renderAuditQueue();
+  });
+}

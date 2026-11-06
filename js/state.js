@@ -56,6 +56,8 @@ export const state = {
   shipDups: {},
   prodDups: {},
   dupDirty: true,
+  auditMode: false,   // 통합취합본 「⚠ 중복·이상」 칩 — 문제 행만 묶어 보기
+  auditDirty: true,
 
   // Fill handle
   fillSt: null,
@@ -129,4 +131,4 @@ export function pushUndo(entries) {
 }
 
 // ═══ DUPLICATE HELPERS ═══
-export function markDupDirty() { state.dupDirty = true; }
+export function markDupDirty() { state.dupDirty = true; state.auditDirty = true; }   // auditDirty: 통합취합본 이력 점검 다시 계산
