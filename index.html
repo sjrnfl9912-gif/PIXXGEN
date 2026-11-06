@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/buttons.css">
-  <link rel="stylesheet" href="css/table.css?v=20261106a">
-  <link rel="stylesheet" href="css/modals.css?v=20261106a">
+  <link rel="stylesheet" href="css/table.css?v=20261106b">
+  <link rel="stylesheet" href="css/modals.css?v=20261106b">
   <link rel="stylesheet" href="css/kpi.css?v=20261105a">
   <link rel="stylesheet" href="css/editmode.css?v=20261019c">
   <link rel="stylesheet" href="css/responsive.css">
@@ -551,6 +551,7 @@
               <li><b>⚠ 통합취합본 중복·이상 점검</b> — 통합취합본에서 다른 유닛과 같은 S/N(TFT·CPU·보드·AED·디텍터)은 빨강, 형식이 이상한 값(? 표시, 한글 섞임, BOARD S/N·VER 칸 바뀜, TFT 12자리 아님 등)은 주황, 재입고로 연결된 건은 초록으로 표시됩니다. 칸에 마우스를 올리면 이유가 나오고, 「⚠ 중복·이상」 칩을 누르면 문제 행만 같은 문제끼리 묶어 보여줍니다.</li>
               <li><b>🔍 점검 큐</b> — 문제 한 건씩 관련 기록을 카드로 나란히 놓고 비교·수정합니다. 2026 출하 대장에 없는 생산기록(재고·이전 연도 출하)도 같이 보여 어느 쪽이 틀렸는지 판단하기 쉽습니다. 모르는 건은 「🔍 실물 확인으로」 넘기고, 작업자별 확인 요청 카톡 문구를 한 번에 복사합니다.</li>
               <li><b>🧾 수정 이력 자동 기록</b> — 유닛 상세 편집·점검 큐에서 생산 칸을 고치면 칸마다 이전값·새값·점검 이유·수정 사유가 수정 이력에 남습니다. 수정 이력의 작업자별 건수에도 같이 집계됩니다.</li>
+              <li><b>📋 행 복사·신틸레이터·완료일 점검</b> — 같은 날 기록 중 Scintillator·CPU·BOARD·생산번호가 2개 이상 같으면(한 행을 복사해 TFT만 바꾼 것) 「행 복사 의심」 한 건으로 묶고, 출하 폴더 날짜보다 완료일이 늦은 쪽을 복사된 기록으로 짚어 줍니다. Scintillator 중복도 잡습니다(TR 번호는 돌려 쓰므로 제외). 완료일이 실제 출하보다 늦은 유닛도 표시합니다.</li>
               <li><b>📂 TFT 매칭 정확도</b> — 출하 폴더 바깥 이름의 TFT가 틀려도 안쪽 원본 폴더의 TFT로 연결합니다(같은 TFT가 두 유닛에 잡히던 문제 해결). 선지원RMA 폴더는 원래 출하 폴더가 없을 때만 씁니다.</li>
             </ul>
           </div>
@@ -742,6 +743,6 @@
   <button class="fab-bottom" id="fabBottom" title="맨 아래로">⬇</button>
 
   <!-- Scripts -->
-  <script type="module" src="js/main.js?v=20261106a"></script>
+  <script type="module" src="js/main.js?v=20261106b"></script>
 </body>
 </html>

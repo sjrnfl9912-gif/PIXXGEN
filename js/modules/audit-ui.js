@@ -15,7 +15,7 @@ const norm = v => (v == null ? '' : String(v).trim());
 export const FLABEL = {
   model_name: '모델명', tft_sn: 'TFT', scintillator: 'Scintillator', cpu_sn: 'CPU', main_board_sn: 'BOARD S/N', main_board_ver: 'BOARD VER',
   panel_type: '중판', completed_date: '제작완료일', detector_fw: 'F/W', micom_ver: 'MICOM', bat_micom_ver: 'BAT MICOM', worker: '작업자',
-  aed_sn: 'AED', note1: '비고1', note2: '비고', detector_sn: '디텍터',
+  aed_sn: 'AED', note1: '비고1', note2: '비고', detector_sn: '디텍터', prod_no: '생산번호',
 };
 
 // 출하 _id → 문제 목록. 데이터가 바뀌면(markDupDirty) 다시 계산 — 6천 건에 20ms 안팎
@@ -24,9 +24,11 @@ export function getAudit() {
   if (cache && !state.auditDirty) return cache;
   state.auditDirty = false;
   const restock = new Set(state.tftmD.filter(t => norm(t.note).includes('재입고')).map(t => t.detector_sn));
-  cache = auditMerge(state.shipD, state.detTftMap, state.tftMap, state.prodD, restock);
+  cache = auditMerge(state.shipD, state.detTftMap, state.tftMap, state.prodD, restock, shipDates());
   return cache;
 }
+// 디텍터 → 출하 폴더 날짜 (실제 출하일; 출하 대장 예상출하일은 밀리는 경우가 많아 안 씀)
+function shipDates() { const m = {}; for (const t of state.tftmD) if (t.detector_sn && t.ship_date) m[t.detector_sn] = t.ship_date; return m; }
 export const hasProblem = xs => !!xs && xs.some(x => x.kind !== 'ok');
 export function auditCount() { let n = 0; for (const xs of getAudit().values()) if (hasProblem(xs)) n++; return n; }
 
@@ -58,9 +60,10 @@ function groups() {
   const audit = getAudit(), out = [], byKey = new Map();
   for (const s of state.shipD) {
     for (const x of audit.get(s._id) || []) {
-      if (x.kind === 'odd') { out.push({ key: x.key + '|' + s._id, kind: 'odd', f: x.f, ships: [s], msg: x.msg }); continue; }
+      if (x.kind === 'odd') { out.push({ key: x.key + '|' + s._id, kind: 'odd', f: x.f, fs: new Set([x.f]), ships: [s], msg: x.msg }); continue; }
       let g = byKey.get(x.key);
-      if (!g) { g = { key: x.key, kind: x.kind, f: x.f, ships: [], msg: x.msg }; byKey.set(x.key, g); out.push(g); }
+      if (!g) { g = { key: x.key, kind: x.kind, f: x.f, fs: new Set(), copy: x.key.startsWith('copy|'), ships: [], msg: x.msg }; byKey.set(x.key, g); out.push(g); }
+      g.fs.add(x.f);
       if (!g.ships.includes(s)) g.ships.push(s);
     }
   }
@@ -71,10 +74,16 @@ const prodOf = s => state.tftMap[state.detTftMap[s.detector_sn]] || null;
 const pid = p => (p.id != null ? p.id : p._id);
 // 같은 값을 가진 다른 생산기록 — 2026 출하 대장에 없는 것(재고·이전 연도 출하)까지
 function peersOf(g) {
-  if (g.kind !== 'dup' || !['cpu_sn', 'main_board_sn', 'aed_sn'].includes(g.f)) return [];
-  const v = g.key.split('|').slice(1).join('|'), have = new Set(g.ships.map(prodOf).filter(Boolean));
+  const have = new Set(g.ships.map(prodOf).filter(Boolean));
+  if (g.copy) { const ids = new Set(g.key.slice(5).split('-')); return state.prodD.filter(p => ids.has(String(pid(p))) && !have.has(p)); }
+  if (g.kind !== 'dup' || !['scintillator', 'cpu_sn', 'main_board_sn', 'aed_sn'].includes(g.f)) return [];
+  const v = gVal(g);
   return state.prodD.filter(p => norm(p[g.f]) === v && !have.has(p));
 }
+const gVal = g => g.key.split('|').slice(1).join('|');
+// 목록·제목·카톡에 쓰는 이름
+const gName = g => (g.copy ? '행 복사' : FLABEL[g.f]);
+const gShow = (g, p0) => (g.copy ? [...g.fs].map(f => FLABEL[f]).join('·') + ' 같음' : g.kind === 'odd' ? (p0 ? p0[g.f] : '') : gVal(g));
 const detsOfTft = t => state.tftmD.filter(x => x.tft_sn === t).map(x => x.detector_sn);
 
 const CARD_F = ['tft_sn', 'scintillator', 'cpu_sn', 'main_board_sn', 'main_board_ver', 'aed_sn', 'worker', 'completed_date', 'prod_no'];
@@ -82,7 +91,7 @@ const EDIT_F = new Set(['scintillator', 'cpu_sn', 'main_board_sn', 'main_board_v
 function card(head, sub, p, g, det) {
   const lock = !p || (g.f === 'tft_sn' || g.f === 'detector_sn');   // TFT·디텍터 문제는 출하 폴더/엑셀에서 고침
   const kv = CARD_F.map(f => {
-    const v = p ? p[f] : '', hit = f === g.f ? (g.kind === 'odd' ? ' odd' : g.kind === 'ok' ? ' okv' : ' hit') : '';
+    const v = p ? p[f] : '', hit = g.fs.has(f) ? (g.kind === 'odd' ? ' odd' : g.kind === 'ok' ? ' okv' : ' hit') : '';
     const ro = lock || !EDIT_F.has(f) || !p;
     return '<span>' + (f === 'prod_no' ? '생산번호' : FLABEL[f]) + '</span><input class="' + hit.trim() + '" value="' + esc(v) + '"'
       + (ro ? ' readonly tabindex="-1"' : ' data-pid="' + esc(pid(p)) + '" data-f="' + f + '" data-det="' + esc(det || '') + '"') + '>';
@@ -90,10 +99,25 @@ function card(head, sub, p, g, det) {
   return '<div class="aq-card"><div class="aq-ch">' + head + '<small>' + sub + '</small></div>'
     + (p ? '<div class="aq-kv">' + kv + '</div>' : '<div class="aq-none">생산기록 없음 (TFT 매칭 없음)</div>') + '</div>';
 }
+// 행 복사 — 어느 쪽이 복사된 건지 단서: 완료일 > 실제 출하일, 출하 기록 없는 TFT
+function copyHint(g) {
+  const dates = shipDates(), clues = [];
+  for (const s of g.ships) {
+    const p = prodOf(s), d = dates[s.detector_sn];
+    if (p && d && norm(p.completed_date) > d) clues.push('디텍터 <b>' + esc(s.detector_sn) + '</b>는 ' + esc(d) + ' 출하인데 완료일이 ' + esc(p.completed_date) + ' → <b>이쪽이 복사된 기록</b>(실제 부품 값 아님)');
+  }
+  for (const p of peersOf(g)) if (!detsOfTft(p.tft_sn).length)
+    clues.push('TFT <b>' + esc(p.tft_sn || '없음') + '</b>는 출하 기록이 없음 → 같은 유닛을 TFT 오타로 한 번 더 입력한 행일 수 있음');
+  return 'TFT만 다르고 <b>' + [...g.fs].map(f => FLABEL[f]).join('·') + '</b>가 같은 날 같은 값 → 한 행을 복사해 TFT만 바꿔 적은 것으로 보입니다. 한쪽은 실제 부품 값이 아니니 <b>실물 확인</b> 후 틀린 쪽 칸을 고치세요.'
+    + (clues.length ? '<br>· ' + clues.join('<br>· ') : '');
+}
 function hint(g) {
+  if (g.copy) return copyHint(g);
   if (g.kind === 'ok') return '재입고(같은 제품을 새 디텍터 S/N으로 다시 출하) — 출하 폴더에 「재입고」가 적혀 있어 정상 연결로 봅니다. 확인만 하고 넘기면 됩니다.';
   if (g.f === 'tft_sn') return 'TFT는 출하완료 폴더 이름에서 매일 다시 만들어집니다 → 여기서는 못 고칩니다. 폴더 안쪽 원본 폴더가 없어 자동으로 못 바로잡은 건이므로 <b>실물 TFT 라벨 확인</b> 후 출하 폴더명을 고쳐 주세요.';
   if (g.f === 'detector_sn') return '출하 대장(엑셀)에 같은 디텍터 S/N이 두 번 있습니다 → 통합 출하 이력 엑셀에서 고칩니다.';
+  if (g.kind === 'dup' && g.f === 'scintillator') return '서로 다른 생산기록에 같은 <b>Scintillator</b> 번호가 적혀 있습니다 (TR 번호는 돌려 쓰므로 검사 안 함). 실물 라벨을 보고 틀린 쪽을 고치세요.';
+  if (g.f === 'completed_date') return '제작완료일이 실제 출하(출하 폴더 날짜)보다 늦습니다 → 다른 유닛 기록을 잘못 연결했거나 날짜 오기입. 생산번호·옆 기록을 보고 확인하세요.';
   if (g.kind === 'dup') return '서로 다른 생산기록에 같은 <b>' + FLABEL[g.f] + '</b>가 적혀 있습니다. CPU·보드는 같은 날 조립하면 번호가 함께 올라가니 <b>옆 칸 번호·완료일</b>을 보고 틀린 쪽을 고치세요. 모르겠으면 「🔍 실물 확인」.';
   return '형식이 이상한 값: <b>' + esc(g.msg) + '</b> — 실물 라벨을 보고 고치세요.';
 }
@@ -120,8 +144,7 @@ export function renderAuditQueue() {
     h += '<div class="aq-gh">' + l + ' · ' + list.length + '</div>';
     for (const g of list) {
       const i = gs.indexOf(g), p0 = prodOf(g.ships[0]);
-      const v = g.kind === 'odd' ? (p0 ? p0[g.f] : '') : g.key.split('|').slice(1).join('|');
-      h += '<div class="aq-i' + (i === qSel ? ' sel' : '') + '" data-i="' + i + '"><div><b>' + FLABEL[g.f] + '</b> <span class="mono">' + esc(v) + '</span><br><small>'
+      h += '<div class="aq-i' + (i === qSel ? ' sel' : '') + '" data-i="' + i + '"><div><b>' + gName(g) + '</b> <span class="mono">' + esc(gShow(g, p0)) + '</span><br><small>'
         + esc(g.ships.map(s => s.detector_sn).join(' · ')) + '</small></div>' + (checked.has(g.key) ? '<span title="실물 확인 요청함">🔍</span>' : '') + '</div>';
     }
   }
@@ -137,7 +160,7 @@ export function renderAuditQueue() {
     return card('TFT ' + esc(p.tft_sn || '없음') + ' 생산기록', dets.length ? '출하 폴더 디텍터 ' + esc(dets.join(', ')) + ' (2026 출하 대장 밖)' : '출하 기록 없음 — 재고이거나 이전 연도', p, g, dets[0]);
   }));
   const editable = g.f !== 'tft_sn' && g.f !== 'detector_sn' && g.kind !== 'ok';
-  right.innerHTML = '<div class="aq-t">' + FLABEL[g.f] + ' ' + (g.kind === 'odd' ? '형식 이상' : g.kind === 'ok' ? '재입고 연결' : '중복') + '</div>'
+  right.innerHTML = '<div class="aq-t">' + (g.copy ? '행 복사 의심' : FLABEL[g.f] + ' ' + (g.kind === 'odd' ? '형식 이상' : g.kind === 'ok' ? '재입고 연결' : '중복')) + '</div>'
     + '<div class="aq-sub">' + esc(g.msg) + '</div><div class="aq-hint">' + hint(g) + '</div><div class="aq-cmp">' + cards.join('') + '</div>'
     + '<div class="aq-act">' + (editable ? '<input id="aqReason" placeholder="수정 사유 (수정 이력에 남음) — 예: 실물 라벨 확인, 같은 날 연번">'
       + '<button class="btn btn-pr" data-aq="save">💾 저장하고 다음</button>' : '')
@@ -184,9 +207,8 @@ function checkKakao() {
     const ps = g.ships.map(prodOf).filter(Boolean).concat(peersOf(g));
     const w = [...new Set(ps.map(p => p.worker || '작업자 없음'))].join('·') || '작업자 없음';
     const p0 = ps[0] || {};
-    const v = g.kind === 'odd' ? p0[g.f] : g.key.split('|').slice(1).join('|');
     (byW[w] ||= []).push('- 디텍터 ' + g.ships.map(s => s.detector_sn).join(', ') + (p0.completed_date ? ' / 완료 ' + p0.completed_date : '')
-      + ' : ' + FLABEL[g.f] + ' ' + v + ' — ' + g.msg);
+      + ' : ' + (g.copy ? '' : gName(g) + ' ' + gShow(g, p0) + ' — ') + g.msg);
   }
   const txt = '[생산 이력 실물 확인 요청] ' + new Date().toLocaleDateString('sv-SE')
     + '\n생산관리대장 값이 다른 기록과 겹치거나 형식이 이상합니다. 실물 라벨 확인 후 맞는 값 알려주세요.\n'

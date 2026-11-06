@@ -389,13 +389,14 @@ function openUnitEditModal(shipId) {
   // 이력 점검 결과 — 이 유닛의 중복·형식 이상을 맨 위에, 해당 칸은 빨갛게
   const issues = getAudit().get(ship._id) || [];
   unitEditState.issues = issues;
-  const LB = { detector_sn: '디텍터', tft_sn: 'TFT', scintillator: 'Scintillator', cpu_sn: 'CPU', main_board_sn: 'BOARD S/N', main_board_ver: 'BOARD VER', aed_sn: 'AED' };
+  const LB = { detector_sn: '디텍터', tft_sn: 'TFT', scintillator: 'Scintillator', cpu_sn: 'CPU', main_board_sn: 'BOARD S/N', main_board_ver: 'BOARD VER', aed_sn: 'AED', completed_date: '제작완료일' };
+  const uniq = issues.filter((x, i) => issues.findIndex(y => y.key === x.key && y.msg === x.msg) === i);   // 행 복사는 칸마다 같은 문구
   const box = document.getElementById('unitIssues');
   box.hidden = !issues.length;
   box.className = 'unit-issues' + (hasProblem(issues) ? '' : ' ok');
   box.innerHTML = '<b>' + (hasProblem(issues) ? '⚠ 이 유닛의 이력 문제' : '✔ 재입고 연결') + '</b><ul>'
     // 중복·재입고 문구는 이미 「BOARD 중복 — …」처럼 칸 이름으로 시작 → 형식 이상만 칸 이름을 붙임
-    + issues.map(x => '<li>' + (x.kind === 'odd' ? '<b>' + (LB[x.f] || x.f) + '</b> ' : '') + esc(x.msg) + '</li>').join('') + '</ul>'
+    + uniq.map(x => '<li>' + (x.kind === 'odd' ? '<b>' + (LB[x.f] || x.f) + '</b> ' : '') + esc(x.msg) + '</li>').join('') + '</ul>'
     + (issues.some(x => x.f === 'tft_sn' && x.kind === 'dup') ? '<p>※ TFT는 출하완료 폴더 이름에서 매일 다시 만들어져 여기서 못 고칩니다 → 실물 TFT 라벨 확인 후 출하 폴더명 수정</p>' : '');
   issues.forEach(x => { if (x.kind !== 'ok') document.querySelector('#unitProdGrid [data-f="' + x.f + '"]')?.parentElement.classList.add('bad'); });
   const reasonInp = document.getElementById('unitReason');

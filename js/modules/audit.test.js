@@ -33,3 +33,30 @@ describe('통합취합본 중복', () => {
     expect(r.get(1).map(x => x.f)).toEqual(['tft_sn']);
   });
 });
+
+describe('신틸레이터 · 행 복사 · 완료일', () => {
+  const mk = (id, tft, o) => ({ id, tft_sn: tft, completed_date: '2026-01-24', ...o });
+  test('TR 신틸레이터는 단독 중복 아님, 그 외 형식은 중복', () => {
+    const A = mk(1, 'Q55180J2CAAA', { scintillator: 'TR0558', completed_date: '2026-01-01' }), B = mk(2, 'Q55180J2VAAA', { scintillator: 'TR0558' });
+    const C = mk(3, 'CJ5180H7FAAA', { scintillator: '24E21J3B', completed_date: '2026-01-01' }), D = mk(4, 'CJ51A0K0BAAA', { scintillator: '24E21J3B' });
+    const ships = [{ _id: 1, detector_sn: 'D1' }, { _id: 3, detector_sn: 'D3' }];
+    const r = auditMerge(ships, { D1: A.tft_sn, D3: C.tft_sn }, { [A.tft_sn]: A, [C.tft_sn]: C }, [A, B, C, D]);
+    expect(r.get(1)).toBe(undefined);
+    expect(r.get(3).map(x => x.f + x.kind)).toEqual(['scintillatordup']);
+  });
+  test('같은 날 Scint·CPU·BOARD·생산번호 같음 = 행 복사 한 건 (칸별 중복으로 따로 안 셈)', () => {
+    const o = { scintillator: 'TR0558', cpu_sn: 'C2601-282', main_board_sn: 'M142511A-0688', prod_no: '26D82' };
+    const A = mk(10, 'Q55180J2CAAA', o), B = mk(11, 'Q55180J2VAAA', o);
+    const ships = [{ _id: 1, detector_sn: 'K420261A0' }, { _id: 2, detector_sn: 'K422263A5' }];
+    const r = auditMerge(ships, { K420261A0: A.tft_sn, K422263A5: B.tft_sn }, { [A.tft_sn]: A, [B.tft_sn]: B }, [A, B], new Set(),
+      { K420261A0: '2026-01-12', K422263A5: '2026-01-29' });
+    expect(r.get(1).map(x => x.key + ' ' + x.f)).toEqual(['copy|10-11 scintillator', 'copy|10-11 cpu_sn', 'copy|10-11 main_board_sn', 'copy|10-11 prod_no', 'odd|completed_date completed_date']);
+    expect(r.get(2).map(x => x.f)).toEqual(['scintillator', 'cpu_sn', 'main_board_sn', 'prod_no']);   // 출하가 완료일 뒤 → 날짜 문제 없음
+  });
+  test('완료일이 다르면 행 복사 아님 (CPU 중복만)', () => {
+    const A = mk(1, 'Q55180J2CAAA', { cpu_sn: 'C2601-1', main_board_sn: 'M142511A-1', completed_date: '2025-12-16' }), B = mk(2, 'Q55180J2VAAA', { cpu_sn: 'C2601-1', main_board_sn: 'M142511A-1' });
+    const r = auditMerge([{ _id: 1, detector_sn: 'D1' }], { D1: A.tft_sn }, { [A.tft_sn]: A }, [A, B]);
+    expect(r.get(1).map(x => x.f)).toEqual(['cpu_sn', 'main_board_sn']);
+  });
+  test.each([['scintillator', 'DRZ-PLUS', '번호 없음'], ['scintillator', 'DRZ-PLUS 224050', '']])('%s %s', (f, v, why) => expect(oddReason(f, v)).toBe(why));
+});
