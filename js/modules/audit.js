@@ -2,7 +2,7 @@
 //  생산 출하 대장에는 RMA가 섞이지 않으므로 같은 S/N이 두 유닛에 있으면 오기입.
 //  예외: 재입고(같은 제품을 새 디텍터 S/N으로 다시 출하) — 출하 폴더에 「재입고」가 적혀 있으면 정상 연결로 봄.
 
-const NONE = new Set(['', '-', 'X', 'NA', '없음', '없음.']);
+const NONE = new Set(['', '-', 'X', 'NA', '없음', '없음.', '추정불가']);
 const norm = v => (v == null ? '' : String(v).trim());
 
 export const AUDIT_FIELDS = ['tft_sn', 'scintillator', 'cpu_sn', 'main_board_sn', 'main_board_ver', 'aed_sn'];
@@ -30,6 +30,7 @@ const FMT = {
 // 값 하나가 이상하면 이유, 정상이면 ''
 export function oddReason(f, v) {
   v = norm(v);
+  if (f === 'scintillator' && !v) return '미기입 — 모르면 「추정불가」로 적기';   // 빈칸은 안 적은 건지 없는 건지 구분 안 됨
   if (NONE.has(v.toUpperCase()) || NONE.has(v)) return '';
   if (/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(v)) return '한글 섞임';
   if (v.includes('?')) return '? 표시 (확인 못 한 값)';

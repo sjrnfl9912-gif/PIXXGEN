@@ -10,11 +10,12 @@ describe('이상값 규칙', () => {
     ['tft_sn', 'Q55180KAAAA', '11자리 (TFT는 12자리)'], ['main_board_sn', '4.751', 'BOARD S/N 칸에 VER 값'],
     ['main_board_ver', 'M142506A-044', 'VER 칸에 BOARD S/N'], ['main_board_sn', 'MN142511A-0310', '형식이 다름'],
     ['main_board_sn', 'M1412511A-0626', '형식이 다름'], ['cpu_sn', 'PCU22080101997', '형식이 다름'],
+    ['scintillator', '', '미기입 — 모르면 「추정불가」로 적기'], ['scintillator', '추정불가', ''], ['scintillator', '없음', ''], ['cpu_sn', '', ''],
   ])('%s %s', (f, v, why) => expect(oddReason(f, v)).toBe(why));
 });
 
 describe('통합취합본 중복', () => {
-  const P1 = { tft_sn: 'CJ5180H7FAAA', main_board_sn: 'M172506A-001' }, P2 = { tft_sn: 'CJ51A0K0BAAA', main_board_sn: 'M172506A-001' };
+  const P1 = { tft_sn: 'CJ5180H7FAAA', scintillator: 'TR0001', main_board_sn: 'M172506A-001' }, P2 = { tft_sn: 'CJ51A0K0BAAA', scintillator: 'TR0002', main_board_sn: 'M172506A-001' };
   const ships = [{ _id: 1, detector_sn: 'D1' }, { _id: 2, detector_sn: 'D2' }, { _id: 3, detector_sn: 'D3' }];
   const detTft = { D1: 'CJ5180H7FAAA', D2: 'CJ5180H7FAAA', D3: 'CJ51A0K0BAAA' };
   const tftMap = { CJ5180H7FAAA: P1, CJ51A0K0BAAA: P2 };
@@ -54,7 +55,7 @@ describe('신틸레이터 · 행 복사 · 완료일', () => {
     expect(r.get(2).map(x => x.f)).toEqual(['scintillator', 'cpu_sn', 'main_board_sn', 'prod_no']);   // 출하가 완료일 뒤 → 날짜 문제 없음
   });
   test('완료일이 다르면 행 복사 아님 (CPU 중복만)', () => {
-    const A = mk(1, 'Q55180J2CAAA', { cpu_sn: 'C2601-1', main_board_sn: 'M142511A-1', completed_date: '2025-12-16' }), B = mk(2, 'Q55180J2VAAA', { cpu_sn: 'C2601-1', main_board_sn: 'M142511A-1' });
+    const A = mk(1, 'Q55180J2CAAA', { scintillator: 'TR0001', cpu_sn: 'C2601-1', main_board_sn: 'M142511A-1', completed_date: '2025-12-16' }), B = mk(2, 'Q55180J2VAAA', { cpu_sn: 'C2601-1', main_board_sn: 'M142511A-1' });
     const r = auditMerge([{ _id: 1, detector_sn: 'D1' }], { D1: A.tft_sn }, { [A.tft_sn]: A }, [A, B]);
     expect(r.get(1).map(x => x.f)).toEqual(['cpu_sn', 'main_board_sn']);
   });

@@ -326,7 +326,9 @@ export function renderMergeTable() {
       if (!tftSn) { cells.push('<td class="v"><span class="vl-na">-</span></td>'); continue; }
       if (p[f] == null || p[f] === '') {
         // 모델명은 미입력이 정상(매칭 실패 아님) → 빈칸
-        cells.push(ed(f === 'model_name' ? '<td class="v"></td>' : '<td class="v"><span class="vl-miss">매칭없음</span></td>', f)); continue;
+        const is0 = issueOf(xs, f);   // Scintillator 미기입은 주황으로
+        cells.push(ed(is0 ? '<td class="v' + is0.cls + '" title="' + esc(is0.tip) + '">미기입</td>'
+          : f === 'model_name' ? '<td class="v"></td>' : '<td class="v"><span class="vl-miss">매칭없음</span></td>', f)); continue;
       }
       const is = issueOf(xs, f);
       cells.push(ed(readCell(f, p[f], 'v' + (is ? is.cls : ''), q, is?.tip), f));
