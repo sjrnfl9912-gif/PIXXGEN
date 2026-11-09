@@ -707,3 +707,5 @@ td.ok-cell { background: #f0fdf4 !important; color: #15803d; }
 #b3 td[data-pf] { cursor: cell; }
 #b3 td input.merge-inl { width: 100%; min-width: 90px; border: 1px solid #2563eb; border-radius: 3px; padding: 1px 4px; font: inherit; background: #fff; }
 .aq-mg { font-weight: 500; font-size: 11px; color: #4b5563; background: #f1f5f9; border-radius: 4px; padding: 1px 6px; margin-left: 6px; }
+.aq-done { display: flex; align-items: center; gap: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; border-radius: 8px; padding: 8px 12px; margin-top: 10px; font-size: 12px; }
+.aq-done a { color: #64748b; margin-left: auto; cursor: pointer; text-decoration: underline; white-space: nowrap; }

@@ -2,8 +2,8 @@
 //  표 강조/⚠ 칩/유닛 모달은 table.js, 판정 규칙은 audit.js
 import { state, rebuildTft, markDupDirty, invalidateOtherTabs } from '../state.js';
 import { auditMerge } from './audit.js';
-import { dbUpdate, dbInsert } from '../db.js';
-import { toast } from '../services/ui.js';
+import { dbUpdate, dbInsert, dbDelete, dbFetchAll } from '../db.js';
+import { toast, customConfirm } from '../services/ui.js';
 import { saveCache } from '../services/storage.js';
 import { normField } from './date.js';
 import { requireEdit } from '../services/editmode.js';
@@ -24,11 +24,19 @@ export function getAudit() {
   if (cache && !state.auditDirty) return cache;
   state.auditDirty = false;
   const restock = new Set(state.tftmD.filter(t => norm(t.note).includes('재입고')).map(t => t.detector_sn));
-  cache = auditMerge(state.shipD, state.detTftMap, state.tftMap, state.prodD, restock, shipDates());
+  for (const r of state.restockConf?.values() || []) for (const d of norm(r.dets).split(',')) if (d) restock.add(d);   // 웹에서 「재입고 맞음」 확인한 건
+  cache =auditMerge(state.shipD, state.detTftMap, state.tftMap, state.prodD, restock, shipDates());
   return cache;
 }
 // 디텍터 → 출하 폴더 날짜 (실제 출하일; 출하 대장 예상출하일은 밀리는 경우가 많아 안 씀)
 function shipDates() { const m = {}; for (const t of state.tftmD) if (t.detector_sn && t.ship_date) m[t.detector_sn] = t.ship_date; return m; }
+// 「재입고 맞음」 확인 기록 (restock_confirm, 15번 SQL) — TFT → 행. 표가 없으면 null → 버튼 숨김
+export async function loadRestockConf() {
+  try { state.restockConf = new Map((await dbFetchAll('restock_confirm')).map(r => [r.tft_sn, r])); }
+  catch (e) { state.restockConf = null; }
+  state.auditDirty = true;
+  if (state.mergeD?.length) renderMergeTable();
+}
 export const hasProblem = xs => !!xs && xs.some(x => x.kind !== 'ok');
 export function auditCount() { let n = 0; for (const xs of getAudit().values()) if (hasProblem(xs)) n++; return n; }
 
@@ -113,10 +121,64 @@ function copyHint(g) {
   return 'TFT만 다르고 <b>' + [...g.fs].map(f => FLABEL[f]).join('·') + '</b>가 같은 날 같은 값 → 한 행을 복사해 TFT만 바꿔 적은 것으로 보입니다. 한쪽은 실제 부품 값이 아니니 <b>실물 확인</b> 후 틀린 쪽 칸을 고치세요.'
     + (clues.length ? '<br>· ' + clues.join('<br>· ') : '');
 }
+const confOf = g => (g.f === 'tft_sn' ? state.restockConf?.get(gVal(g)) || null : null);
+const RS_KINDS = ['재입고 후 재출하', '데모·대여 회수 후 재출하', '기타'];
+// 출하 순서(출하 폴더 날짜, 없으면 예상출하일)로 정렬
+function shipOrder(g) {
+  const dates = shipDates(), dOf = s => dates[s.detector_sn] || s.planned_ship_date || '';
+  return [...g.ships].sort((a, b) => (dOf(a) < dOf(b) ? -1 : dOf(a) > dOf(b) ? 1 : 0)).map(s => ({ s, d: dOf(s) }));
+}
+// 재입고 확인 창 — 이전 출하 → 재출하 순서 + 구분 + 메모 + 확인자
+function openRestockModal(g) {
+  if (!g || !requireEdit()) return;
+  const xs = shipOrder(g);
+  let who = ''; try { who = localStorage.getItem('audit_who') || ''; } catch (e) {}
+  const node = (x, i) => '<div class="rs-node"><div class="rs-lb">' + (i === 0 ? '이전 출하' : '재출하' + (xs.length > 2 ? ' ' + i : '')) + '</div><div class="rs-d">' + esc(x.s.detector_sn) + '</div><div class="rs-m">'
+    + [norm(x.s.mgmt_no) && '관리번호 ' + esc(x.s.mgmt_no), esc(x.d), esc(norm(x.s.company).slice(0, 30)), esc(x.s.country || '')].filter(Boolean).join(' · ') + '</div></div>';
+  const bg = document.createElement('div');
+  bg.className = 'rs-bg';
+  bg.innerHTML = '<div class="rs"><h3>재입고로 확인</h3><div class="rs-sub">TFT <b>' + esc(gVal(g)) + '</b> — 같은 제품을 재입고 후 새 디텍터 S/N으로 다시 출하한 건이면 두 이력 모두 맞음</div>'
+    + '<div class="rs-tl">' + xs.map(node).join('<div class="rs-arrow">재입고 → 재출하</div>') + '</div>'
+    + '<div class="rs-opt">' + RS_KINDS.map((k, i) => '<label><input type="radio" name="rsKind" value="' + k + '"' + (i ? '' : ' checked') + '>' + k + '</label>').join('') + '</div>'
+    + '<input class="rs-in" id="rsMemo" placeholder="메모 (선택) — 예: 국내영업 반납분, 재검사 후 폴란드 출하">'
+    + '<div class="rs-who">확인자 <input class="rs-in" id="rsWho" value="' + esc(who) + '" placeholder="이름"></div>'
+    + '<div class="rs-foot"><button class="btn" data-rs="no">취소</button><button class="btn rs-ok" data-rs="ok">✅ 재입고로 확인</button></div></div>';
+  document.body.appendChild(bg);
+  const close = () => bg.remove();
+  bg.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') close(); });
+  bg.addEventListener('click', async e => {
+    const act = e.target.dataset?.rs;
+    if (e.target === bg || act === 'no') { close(); return; }
+    if (act !== 'ok') return;
+    const by = bg.querySelector('#rsWho').value.trim();
+    if (!by) { toast('확인자 이름을 적어주세요', 'info'); bg.querySelector('#rsWho').focus(); return; }
+    try { localStorage.setItem('audit_who', by); } catch (err) {}
+    e.target.disabled = true;
+    const row = await dbInsert('restock_confirm', {
+      tft_sn: gVal(g), dets: xs.map(x => x.s.detector_sn).join(','), kind: bg.querySelector('input[name=rsKind]:checked').value,
+      memo: bg.querySelector('#rsMemo').value.trim() || null, confirmed_by: by,
+    });
+    if (!row) { toast('저장 실패 — 다시 시도해주세요', 'er'); e.target.disabled = false; return; }
+    state.restockConf.set(row.tft_sn, row);
+    close(); state.auditDirty = true; renderMergeTable();
+    toast('재입고로 확인 — ' + row.dets.replace(/,/g, ' → '), 'ok');
+  });
+  bg.querySelector('#rsMemo').focus();
+}
+function unconfirmRestock(g) {
+  const c = g && confOf(g);
+  if (!c || !requireEdit()) return;
+  customConfirm('TFT ' + c.tft_sn + ' 재입고 확인을 취소할까요? 다시 TFT 중복으로 표시됩니다.', async () => {
+    if (!(await dbDelete('restock_confirm', [c.id]))) { toast('취소 실패 — 다시 시도해주세요', 'er'); return; }
+    state.restockConf.delete(c.tft_sn); state.auditDirty = true; renderMergeTable();
+    toast('재입고 확인 취소', 'ok');
+  });
+}
 function hint(g) {
   if (g.copy) return copyHint(g);
-  if (g.kind === 'ok') return '재입고(같은 제품을 새 디텍터 S/N으로 다시 출하) — 출하 폴더에 「재입고」가 적혀 있어 정상 연결로 봅니다. 확인만 하고 넘기면 됩니다.';
-  if (g.f === 'tft_sn') return 'TFT는 출하완료 폴더 이름에서 매일 다시 만들어집니다 → 여기서는 못 고칩니다. 폴더 안쪽 원본 폴더가 없어 자동으로 못 바로잡은 건이므로 <b>실물 TFT 라벨 확인</b> 후 출하 폴더명을 고쳐 주세요.';
+  if (g.kind === 'ok') return confOf(g) ? '재입고로 확인한 건 — 두 이력 모두 맞음 (같은 제품을 새 디텍터 S/N으로 다시 출하).'
+    : '재입고(같은 제품을 새 디텍터 S/N으로 다시 출하) — 출하 폴더에 「재입고」가 적혀 있어 정상 연결로 봅니다. 확인만 하고 넘기면 됩니다.';
+  if (g.f === 'tft_sn') return 'TFT는 출하완료 폴더 이름에서 매일 다시 만들어집니다 → 여기서는 못 고칩니다. <b>오기입이면</b> 실물 TFT 라벨 확인 후 출하 폴더명을 고치고, <b>재입고 후 재출하한 같은 제품이면</b> 「✅ 재입고 맞음」으로 확인하세요.';
   if (g.f === 'detector_sn') return '출하 대장(엑셀)에 같은 디텍터 S/N이 두 번 있습니다 → 통합 출하 이력 엑셀에서 고칩니다.';
   if (g.kind === 'dup' && g.f === 'scintillator') return '서로 다른 생산기록에 같은 <b>Scintillator</b> 번호가 적혀 있습니다 (TR 번호는 돌려 쓰므로 검사 안 함). 실물 라벨을 보고 틀린 쪽을 고치세요.';
   if (g.f === 'completed_date') return '제작완료일이 실제 출하(출하 폴더 날짜)보다 늦습니다 → 다른 유닛 기록을 잘못 연결했거나 날짜 오기입. 생산번호·옆 기록을 보고 확인하세요.';
@@ -162,9 +224,12 @@ export function renderAuditQueue() {
     return card('TFT ' + esc(p.tft_sn || '없음') + ' 생산기록', dets.length ? '출하 폴더 디텍터 ' + esc(dets.join(', ')) + ' (2026 출하 대장 밖)' : '출하 기록 없음 — 재고이거나 이전 연도', p, g, dets[0]);
   }));
   const editable = g.f !== 'tft_sn' && g.f !== 'detector_sn' && g.kind !== 'ok';
+  const conf = confOf(g), canRestock = g.f === 'tft_sn' && g.kind === 'dup' && state.restockConf;
+  const done = conf ? '<div class="aq-done">✅ ' + esc(conf.kind) + ' · ' + esc(conf.confirmed_by || '') + ' · ' + esc(String(conf.confirmed_at || '').slice(0, 10))
+    + (conf.memo ? ' · ' + esc(conf.memo) : '') + ' · ' + esc(norm(conf.dets).replace(/,/g, ' → ')) + '<a data-aq="unrestock">확인 취소</a></div>' : '';
   right.innerHTML = '<div class="aq-t">' + (g.copy ? '행 복사 의심' : FLABEL[g.f] + ' ' + (g.kind === 'odd' ? '형식 이상' : g.kind === 'ok' ? '재입고 연결' : '중복')) + '</div>'
-    + '<div class="aq-sub">' + esc(g.msg) + '</div><div class="aq-hint">' + hint(g) + '</div><div class="aq-cmp">' + cards.join('') + '</div>'
-    + '<div class="aq-act">' + (editable ? '<input id="aqReason" placeholder="수정 사유 (수정 이력에 남음) — 예: 실물 라벨 확인, 같은 날 연번">'
+    + '<div class="aq-sub">' + esc(g.msg) + '</div><div class="aq-hint">' + hint(g) + '</div><div class="aq-cmp">' + cards.join('') + '</div>' + done
+    + '<div class="aq-act">' + (canRestock ? '<button class="btn rs-ok" data-aq="restock">✅ 재입고 맞음…</button>' : '') + (editable ? '<input id="aqReason" placeholder="수정 사유 (수정 이력에 남음) — 예: 실물 라벨 확인, 같은 날 연번">'
       + '<button class="btn btn-pr" data-aq="save">💾 저장하고 다음</button>' : '')
     + '<button class="btn" data-aq="check">' + (checked.has(g.key) ? '🔍 실물 확인 취소' : '🔍 실물 확인으로') + '</button>'
     + '<button class="btn" data-aq="next">다음 ▶</button></div>';
@@ -241,6 +306,8 @@ export function initAuditQueue() {
     const b = e.target.closest('[data-aq]'); if (!b) return;
     if (b.dataset.aq === 'copy') { copyCellText(b.previousElementSibling.value); return; }   // 고치던 값이면 고친 값으로
     if (b.dataset.aq === 'goprod') { goProd(b.dataset.tft); return; }
+    if (b.dataset.aq === 'restock') { openRestockModal(groups()[qSel]); return; }
+    if (b.dataset.aq === 'unrestock') { unconfirmRestock(groups()[qSel]); return; }
     const gs = groups(), g = gs[qSel]; if (!g) return;
     if (b.dataset.aq === 'save') {
       b.disabled = true;

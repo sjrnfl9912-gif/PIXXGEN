@@ -5,7 +5,7 @@ import { SHIP_FIELDS, PROD_FIELDS } from './config.js';
 import { state, rebuildTft, rebuildDetTft, markDirty, markDupDirty, invalidateOtherTabs, invalidateAllTabs } from './state.js';
 import { dbFetchAll } from './db.js';
 import { renderAll, renderShipmentTable, renderProductionTable, renderHistNeedTable, updateTabCounts, initHistNeed, initMergeEditClicks } from './modules/table.js';
-import { initAuditQueue } from './modules/audit-ui.js';
+import { initAuditQueue, loadRestockConf } from './modules/audit-ui.js';
 import { saveCache, saveTftmCache, loadCache } from './services/storage.js';
 import { toast, showLoading, customConfirm } from './services/ui.js';
 import { init as initSelection } from './modules/selection.js';
@@ -92,6 +92,7 @@ async function fullReload() {
     state.folderIssues = fiData || [];
     loadServerTft();
     loadHistFlags();
+    loadRestockConf();
     // dirty 상태 초기화 (DB 데이터로 완전 교체했으므로)
     state.dirty = { updates: {}, inserts: { ship: [], prod: [] }, deletes: { ship: [], prod: [] } };
     state.hasChanges = false;
@@ -443,6 +444,7 @@ async function init() {
   initRealtime();
   loadServerTft();   // 오기입 추정 안전장치 — 화면을 막지 않게 뒤에서 받음
   loadHistFlags();
+  loadRestockConf();
 
   // Post-render: init resize on visible tables
   setTimeout(() => { initResize('b1'); initResize('b2'); initResize('b3'); initResize('b4'); }, 100);

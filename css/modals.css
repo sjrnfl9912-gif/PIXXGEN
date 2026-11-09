@@ -608,3 +608,26 @@ table.hg-kt td:first-child { width: 190px; }
 .unit-issues p { margin: 6px 0 0; font-size: 11px; }
 .unit-fld.bad input { border-color: #f87171; background: #fef2f2; }
 .unit-reason { width: 280px; max-width: 40vw; border: 1px solid #d9e0ec; border-radius: 4px; padding: 5px 8px; font-size: 11.5px; }
+
+/* 재입고 확인 창 (점검 큐) */
+.rs-bg { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.rs { background: #fff; border-radius: 12px; width: min(680px, 94vw); padding: 16px 18px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+.rs h3 { margin: 0 0 4px; font-size: 15px; }
+.rs-sub { color: #6b7280; font-size: 11.5px; margin-bottom: 10px; }
+.rs-tl { display: flex; align-items: center; margin: 6px 0 12px; }
+.rs-node { flex: 1; border: 1px solid #e5e7eb; border-radius: 10px; padding: 9px 12px; }
+.rs-lb { font-size: 10.5px; color: #6b7280; }
+.rs-d { font-weight: 700; font-size: 14px; }
+.rs-m { font-size: 11px; color: #475569; }
+.rs-arrow { flex: 0 0 110px; text-align: center; color: #16a34a; font-weight: 700; font-size: 11.5px; }
+.rs-arrow::before { content: ""; display: block; height: 2px; background: #86efac; margin: 0 8px 4px; }
+.rs-opt { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.rs-opt label { border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 12px; }
+.rs-opt input { margin-right: 5px; }
+.rs-in { border: 1px solid #d9e0ec; border-radius: 6px; padding: 6px 9px; font-size: 12px; }
+#rsMemo { width: 100%; }
+.rs-who { display: flex; gap: 8px; align-items: center; margin-top: 8px; font-size: 11.5px; color: #6b7280; }
+.rs-who input { width: 130px; }
+.rs-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.rs-ok { background: #16a34a !important; color: #fff !important; border-color: #16a34a !important; }
+@media (max-width: 640px) { .rs-tl { flex-direction: column; } .rs-arrow { flex: 0 0 auto; padding: 6px; } }
