@@ -9,7 +9,7 @@ describe('이상값 규칙', () => {
     ['main_board_sn', 'M172506A-392.', '끝에 불필요한 문자'], ['cpu_sn', 'C2507-11`', '끝에 불필요한 문자'],
     ['tft_sn', 'Q55180KAAAA', '11자리 (TFT는 12자리)'], ['main_board_sn', '4.751', 'BOARD S/N 칸에 VER 값'],
     ['main_board_ver', 'M142506A-044', 'VER 칸에 BOARD S/N'], ['main_board_sn', 'MN142511A-0310', '형식이 다름'],
-    ['main_board_sn', 'M1412511A-0626', '형식이 다름'], ['cpu_sn', 'PCU220800943', ''], ['cpu_sn', 'PCU22080101079', ''], ['cpu_sn', 'PCU2208010', '형식이 다름'],
+    ['main_board_sn', 'M1412511A-0626', '형식이 다름'], ['cpu_sn', 'PCU220800943', ''], ['cpu_sn', 'C:RE-46', ''], ['cpu_sn', 'C재작업-46', '재작업 라벨 — C:RE-번호로 적기 (예: C:RE-46)'], ['cpu_sn', 'PCU22080101079', ''], ['cpu_sn', 'PCU2208010', '형식이 다름'],
     ['scintillator', '', '미기입 — 모르면 「추정불가」로 적기'], ['scintillator', '추정불가', ''], ['scintillator', '없음', ''], ['cpu_sn', '', ''],
   ])('%s %s', (f, v, why) => expect(oddReason(f, v)).toBe(why));
 });

@@ -21,7 +21,7 @@ const pidOf = p => String(p.id != null ? p.id : p._id);
 
 // 형식 규칙 — 2026-11-05 대장 5,400여 건 분포 기준 (드물게 나온 모양만 걸림)
 const FMT = {
-  cpu_sn: /^(C\d{4}-\d+[A-Z]?|PCU\d{9,11})$/,   // 옛 양식 PCU2208 + 번호 (자릿수 9~11 섞여 있음)
+  cpu_sn: /^(C\d{4}-\d+[A-Z]?|PCU\d{9,11}|C:RE-\d+)$/,   // 옛 양식 PCU2208 + 번호 (자릿수 9~11 섞여 있음), C:RE- = 재작업 라벨
   main_board_sn: /^(M\d{6}A?-\d+[A-Z]?|(OP|PI|PR)\d{6}-\d+|PI\d{8}|P\d{6,7}-\d+|A\dMB\d{9})$/,
   main_board_ver: /^\d+\.\d+$/,
   aed_sn: /^(A\d{4}-\d+|PD\d{11})$/,   // 옛 양식 PD + 숫자 11자리 (2024 PIXX1717W)
@@ -32,6 +32,7 @@ export function oddReason(f, v) {
   v = norm(v);
   if (f === 'scintillator' && !v) return '미기입 — 모르면 「추정불가」로 적기';   // 빈칸은 안 적은 건지 없는 건지 구분 안 됨
   if (NONE.has(v.toUpperCase()) || NONE.has(v)) return '';
+  if (f === 'cpu_sn' && v.includes('재작업')) return '재작업 라벨 — C:RE-번호로 적기 (예: C:RE-46)';
   if (/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(v)) return '한글 섞임';
   if (v.includes('?')) return '? 표시 (확인 못 한 값)';
   if (/[.`'",]$/.test(v)) return '끝에 불필요한 문자';
