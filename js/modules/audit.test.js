@@ -4,7 +4,7 @@ describe('이상값 규칙', () => {
   test.each([
     ['cpu_sn', 'C2601-185', ''], ['cpu_sn', 'PCU2208010908', ''], ['main_board_sn', 'M172506A-415', ''],
     ['main_board_sn', 'OP142509-11', ''], ['main_board_sn', 'A7MB211101733', ''], ['main_board_ver', '4.751', ''],
-    ['aed_sn', 'PD10230400380', ''], ['aed_sn', 'PD1023040083', '형식이 다름'], ['tft_sn', 'Q55180H9NAAA', ''], ['cpu_sn', 'X', ''],
+    ['aed_sn', 'PD10230400380', ''], ['main_board_sn', 'P121226-200', ''], ['aed_sn', 'PD1023040083', '형식이 다름'], ['tft_sn', 'Q55180H9NAAA', ''], ['cpu_sn', 'X', ''],
     ['cpu_sn', 'ㅊ2504-87', '한글 섞임'], ['main_board_sn', 'M172601A-085?', '? 표시 (확인 못 한 값)'],
     ['main_board_sn', 'M172506A-392.', '끝에 불필요한 문자'], ['cpu_sn', 'C2507-11`', '끝에 불필요한 문자'],
     ['tft_sn', 'Q55180KAAAA', '11자리 (TFT는 12자리)'], ['main_board_sn', '4.751', 'BOARD S/N 칸에 VER 값'],

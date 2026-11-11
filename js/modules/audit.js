@@ -22,7 +22,7 @@ const pidOf = p => String(p.id != null ? p.id : p._id);
 // 형식 규칙 — 2026-11-05 대장 5,400여 건 분포 기준 (드물게 나온 모양만 걸림)
 const FMT = {
   cpu_sn: /^(C\d{4}-\d+[A-Z]?|PCU\d{10})$/,
-  main_board_sn: /^(M\d{6}A?-\d+[A-Z]?|(OP|PI|PR)\d{6}-\d+|PI\d{8}|P\d{7}-\d+|A\dMB\d{9})$/,
+  main_board_sn: /^(M\d{6}A?-\d+[A-Z]?|(OP|PI|PR)\d{6}-\d+|PI\d{8}|P\d{6,7}-\d+|A\dMB\d{9})$/,
   main_board_ver: /^\d+\.\d+$/,
   aed_sn: /^(A\d{4}-\d+|PD\d{11})$/,   // 옛 양식 PD + 숫자 11자리 (2024 PIXX1717W)
 };
