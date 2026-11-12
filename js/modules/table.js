@@ -11,6 +11,7 @@ import { DATE_FIELDS, normDate, normField } from './date.js';
 import { suggestPairs, describeFix } from './fuzzy.js';
 import { mountRows } from './lazy.js';
 import { requireEdit } from '../services/editmode.js';
+import { applyColView, hasColSort, colViewKey, headMark } from './colview.js';
 import { getAudit, hasProblem, auditCount, logFixes, renderAuditQueue, isAuditQueueOpen, FLABEL } from './audit-ui.js';
 
 function colL(n) { let s = ''; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; }
@@ -92,8 +93,8 @@ export function updateDupCounts() {
 
 // Header rendering
 const _headCache = {};
-function mkHead(thId, tbId, heads, vcStart) {
-  const cacheKey = tbId + (vcStart ?? '');
+function mkHead(thId, tbId, heads, vcStart, fields) {
+  const cacheKey = tbId + (vcStart ?? '') + colViewKey(tbId);
   const th = document.getElementById(thId);
   if (_headCache[thId] === cacheKey && th && th.childElementCount) return;
   _headCache[thId] = cacheKey;
@@ -103,7 +104,8 @@ function mkHead(thId, tbId, heads, vcStart) {
   h1 += '</tr><tr><th style="width:30px;background:#2a3a52">\u3000</th>';
   for (let i = 0; i < heads.length; i++) {
     const vc = vcStart !== undefined && i >= vcStart;
-    h1 += '<th' + (vc ? ' class="vc"' : '') + '>' + heads[i].replace(/\n/g, '<br>') + (vc ? '<span class="sub">← 자동</span>' : '') + '</th>';
+    h1 += '<th' + (vc ? ' class="vc"' : '') + '>' + heads[i].replace(/\n/g, '<br>') + (vc ? '<span class="sub">← 자동</span>' : '')
+      + (fields ? headMark(tbId, fields[i]) : '') + '</th>';
   }
   th.innerHTML = h1 + '</tr>';
 }
@@ -123,11 +125,12 @@ export function renderShipmentTable() {
     groupInfo = groupDupRows(d, SHIP_SN_FIELDS, state.shipDups);
     d = groupInfo.sorted;
   }
+  d = applyColView('b1', d, (r, f) => r[f], !state.dupMode.ship);   // 열 제목 ▾ 정렬·필터 (중복 묶음 보기에선 필터만)
   state.shipFiltered = d;
   const p1 = document.getElementById('p1'), cnt1 = document.getElementById('cnt1');
   if (p1) p1.textContent = d.length + '건';
   if (cnt1) cnt1.textContent = state.shipD.length;
-  mkHead('th1', 'b1', SHIP_HEADS);
+  mkHead('th1', 'b1', SHIP_HEADS, undefined, SHIP_FIELDS);
   const rows = [];
   for (let i = 0; i < d.length; i++) {
     const r = d[i];
@@ -140,7 +143,7 @@ export function renderShipmentTable() {
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
-  mountRows('b1', rows, [state.shipFilt, q, state.dupMode.ship].join('|'));
+  mountRows('b1', rows, [state.shipFilt, q, state.dupMode.ship, colViewKey('b1')].join('|'));
   state.tabRendered.ship = true;
 }
 
@@ -180,8 +183,8 @@ export function renderProductionTable() {
     d = d.filter(r => rowHasDup(r, state.prodDups, PROD_SN_FIELDS));
     groupInfo = groupDupRows(d, PROD_SN_FIELDS, state.prodDups);
     d = groupInfo.sorted;
-  } else {
-    // 완제품 제작완료일 기준 자동 정렬 (오래된 순, 날짜 없는 행은 맨 뒤)
+  } else if (!hasColSort('b2')) {
+    // 완제품 제작완료일 기준 자동 정렬 (오래된 순, 날짜 없는 행은 맨 뒤) — 열 제목 ▾로 다른 정렬을 고르면 그쪽
     d = d.slice().sort((a, b) => {
       const x = a.completed_date || '', y = b.completed_date || '';
       if (!x && !y) return 0;
@@ -190,11 +193,12 @@ export function renderProductionTable() {
       return x < y ? -1 : x > y ? 1 : 0;
     });
   }
+  d = applyColView('b2', d, (r, f) => r[f], !state.dupMode.prod);
   state.prodFiltered = d;
   const p2 = document.getElementById('p2'), cnt2 = document.getElementById('cnt2');
   if (p2) p2.textContent = d.length + '건';
   if (cnt2) cnt2.textContent = state.prodD.length;
-  mkHead('th2', 'b2', PROD_HEADS);
+  mkHead('th2', 'b2', PROD_HEADS, undefined, PROD_FIELDS);
   const rows = [];
   for (let i = 0; i < d.length; i++) {
     const r = d[i];
@@ -207,11 +211,14 @@ export function renderProductionTable() {
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
-  mountRows('b2', rows, [state.workerFilt, state.prodYearFilt, q, state.dupMode.prod].join('|'));
+  mountRows('b2', rows, [state.workerFilt, state.prodYearFilt, q, state.dupMode.prod, colViewKey('b2')].join('|'));
   state.tabRendered.prod = true;
 }
 
 const PROD_VL_FIELDS = ['model_name', 'tft_sn', 'scintillator', 'cpu_sn', 'main_board_sn', 'main_board_ver', 'panel_type', 'completed_date', 'detector_fw', 'micom_ver', 'bat_micom_ver', 'worker', 'aed_sn', 'note1', 'note2'];
+// 통합취합본 열 = 출하 15 + 생산 15 — 출하·생산 둘 다 detector_fw가 있어 생산 쪽은 키를 따로 둠
+const MERGE_FIELDS = [...SHIP_FIELDS, ...PROD_VL_FIELDS.map(f => (SHIP_FIELDS.includes(f) ? 'p:' + f : f))];
+const MERGE_SHIP_F = new Set(SHIP_FIELDS);
 
 // 가독성 — 긴 텍스트 잘림(툴팁) / 클릭 복사 대상 컬럼
 const LONG_COLS = new Set(['product_name', 'company', 'manager_info', 'zview_sw', 'note1', 'note2']);
@@ -295,11 +302,13 @@ export function renderMergeTable() {
     if (!m.length) return null;
     return { cls: m.some(x => x.kind === 'dup') ? ' dup-cell' : m.some(x => x.kind === 'odd') ? ' odd-cell' : ' ok-cell', tip: m.map(x => x.msg).join(' / ') };
   };
+  // 열 제목 ▾ — 앞 15칸은 출하 행, 뒤는 TFT로 이은 생산 행의 값 (⚠ 묶음 보기에선 필터만)
+  d = applyColView('b3', d, (r, f) => (MERGE_SHIP_F.has(f) ? r[f] : (state.tftMap[state.detTftMap[r.detector_sn]] || {})[f.replace(/^p:/, '')]), !state.auditMode);
   state.mergeFiltered = d;
   const p3 = document.getElementById('p3'), cnt3 = document.getElementById('cnt3');
   if (p3) p3.textContent = d.length + '건';
   if (cnt3) cnt3.textContent = state.mergeD.length;
-  mkHead('th3', 'b3', MERGE_HEADS, MERGE_VC_START);
+  mkHead('th3', 'b3', MERGE_HEADS, MERGE_VC_START, MERGE_FIELDS);
   const rows = [];
   let prevKey = null;
   for (let i = 0; i < d.length; i++) {
@@ -336,7 +345,7 @@ export function renderMergeTable() {
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
-  mountRows('b3', rows, q + '|' + state.auditMode);
+  mountRows('b3', rows, q + '|' + state.auditMode + '|' + colViewKey('b3'));
   state.tabRendered.merge = true;
   if (isAuditQueueOpen()) renderAuditQueue();
 }
@@ -571,11 +580,12 @@ export function renderTftmTable() {
   let d = state.tftmD;
   const terms = qTerms(q);
   if (terms.length) d = d.filter(r => TFTM_FIELDS.some(f => matchQ(r[f], terms)));
+  d = applyColView('b4', d, (r, f) => r[f]);
   state.tftmFiltered = d;
   const p4 = document.getElementById('p4'), cnt4 = document.getElementById('cnt4');
   if (p4) p4.textContent = d.length + '건';
   if (cnt4) cnt4.textContent = state.tftmD.length;
-  mkHead('th4', 'b4', TFTM_HEADS);
+  mkHead('th4', 'b4', TFTM_HEADS, undefined, TFTM_FIELDS);
   const rows = [];
   for (let i = 0; i < d.length; i++) {
     const r = d[i];
@@ -587,7 +597,7 @@ export function renderTftmTable() {
     cells.push('</tr>');
     rows.push(cells.join(''));
   }
-  mountRows('b4', rows, q);
+  mountRows('b4', rows, q + '|' + colViewKey('b4'));
   renderFolderIssues();   // 폴더 오류 섹션도 같이 갱신 (TFT 매칭 탭 안에 있음)
   state.tabRendered.tftm = true;
 }

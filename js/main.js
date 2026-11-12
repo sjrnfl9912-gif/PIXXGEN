@@ -6,6 +6,7 @@ import { state, rebuildTft, rebuildDetTft, markDirty, markDupDirty, invalidateOt
 import { dbFetchAll } from './db.js';
 import { renderAll, renderShipmentTable, renderProductionTable, renderHistNeedTable, updateTabCounts, initHistNeed, initMergeEditClicks } from './modules/table.js';
 import { initAuditQueue, loadRestockConf } from './modules/audit-ui.js';
+import { initColView } from './modules/colview.js';
 import { saveCache, saveTftmCache, loadCache } from './services/storage.js';
 import { toast, showLoading, customConfirm } from './services/ui.js';
 import { init as initSelection } from './modules/selection.js';
@@ -396,6 +397,7 @@ async function init() {
   initKPI();
   initHistNeed();
   initMergeEditClicks();
+  initColView();
   initAuditQueue();
   // 보기 잠금 — 로그인(보기 비밀번호) 전에는 캐시·DB 데이터를 띄우지 않음
   await ensureViewAccess();
