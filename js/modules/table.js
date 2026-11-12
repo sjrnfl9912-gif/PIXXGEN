@@ -1217,15 +1217,22 @@ function renderHistPending() {
 // 검사포장 폴더 오류 — tft-sync가 인식 못한 폴더 목록 (품질팀 검토용)
 //  spacing: 띄어쓰기 누락 (TFT+디텍터 붙음) — 폴더명만 수정하면 인식됨
 //  review : 그 외 (디텍터 누락 / 오타 / 묶음 외 단독 등) — 수동 검토 필요
+//  inner  : 폴더명 TFT ≠ 안쪽 원본 폴더(장비가 만든 이름)의 TFT — 동기화가 원본 값으로 자동 연결 중
+//           (tft_match.note 「폴더명 TFT 바깥값」). 담당자가 실물 확인 후 폴더명을 고치면 목록에서 사라짐
+function innerTftFixes() {
+  return (state.tftmD || []).filter(t => /폴더명 TFT \S/.test(t.note || '')).map(t => ({
+    outer: t.note.match(/폴더명 TFT (\S+)/)[1], inner: t.tft_sn, det: t.detector_sn, date: t.ship_date || '',
+  })).sort((a, b) => (a.date < b.date ? 1 : -1));
+}
 function renderFolderIssues() {
-  const list = state.folderIssues || [];
+  const list = state.folderIssues || [], fx = innerTftFixes();
   const p7 = document.getElementById('p7');
-  if (p7) p7.textContent = list.length + '건';
+  if (p7) p7.textContent = (list.length + fx.length) + '건';
   const sum = document.getElementById('fiSummary');
   if (sum) {
     const nSp = list.filter(x => x.issue_type === 'spacing').length;
     const nRv = list.length - nSp;
-    sum.textContent = list.length ? ('띄어쓰기 누락 ' + nSp + ' · 검토 필요 ' + nRv) : '인식 못한 폴더 없음 👍';
+    sum.textContent = list.length + fx.length ? ('띄어쓰기 누락 ' + nSp + ' · 폴더명 TFT 자동 보정 ' + fx.length + ' · 검토 필요 ' + nRv) : '인식 못한 폴더 없음 👍';
   }
   const th7 = document.getElementById('th7');
   if (th7 && !th7.childElementCount) {
@@ -1236,13 +1243,21 @@ function renderFolderIssues() {
   }
   const b7 = document.getElementById('b7');
   if (!b7) return;
-  if (!list.length) {
+  if (!list.length && !fx.length) {
     b7.innerHTML = '<tr><td colspan="4" class="hn-empty">tft-sync가 모든 폴더를 정상 인식했습니다 👍</td></tr>';
     return;
   }
-  // spacing 먼저(쉽게 고침), 그 다음 review
+  // spacing 먼저(쉽게 고침), 그 다음 폴더명 TFT 자동 보정, review
   const sorted = [...list].sort((a, b) => (a.issue_type === 'spacing' ? -1 : 1) - (b.issue_type === 'spacing' ? -1 : 1));
-  b7.innerHTML = sorted.map((x, i) => {
+  const nSp = sorted.filter(x => x.issue_type === 'spacing').length;
+  const fxRows = fx.map((x, k) => '<tr>'
+    + '<td class="hn-rn">' + (nSp + k + 1) + '</td>'
+    + '<td class="hn-c"><span class="hn-badge" style="background:#e8f0fe;color:#1e3a8a">폴더명 TFT 자동 보정</span></td>'
+    + '<td class="hn-c hn-mono hn-copy" data-copy="' + esc(x.det) + '" title="클릭하면 디텍터 S/N 복사 (폴더 찾기용)">' + esc(x.date + ' ' + x.outer + ' ' + x.det) + ' …</td>'
+    + '<td class="hn-c" style="color:#666;font-size:11px">폴더명 TFT <b>' + esc(x.outer) + '</b> → 안쪽 원본 <b>' + esc(x.inner) + '</b> · 실물 확인 후 폴더명 수정</td>'
+    + '</tr>');
+  const rows = sorted.map((x, i) => {
+    if (i >= nSp) i += fx.length;   // 자동 보정 줄이 띄어쓰기 누락 바로 뒤에 끼므로 번호를 밀어 줌
     const isSp = x.issue_type === 'spacing';
     const badge = isSp
       ? '<span class="hn-badge" style="background:#fff5e1;color:#7a4a00">띄어쓰기 누락</span>'
@@ -1256,21 +1271,29 @@ function renderFolderIssues() {
       + '<td class="hn-c hn-mono hn-copy" data-copy="' + esc(x.folder_name) + '" title="클릭하면 폴더명 복사">' + esc(x.folder_name) + '</td>'
       + '<td class="hn-c" style="color:#666;font-size:11px">' + action + '</td>'
       + '</tr>';
-  }).join('');
+  });
+  rows.splice(nSp, 0, ...fxRows);
+  b7.innerHTML = rows.join('');
 }
 
 // 폴더 오류 전체를 카톡 공유용 텍스트로 클립보드 복사
 function copyFolderIssuesText() {
-  const list = state.folderIssues || [];
-  if (!list.length) { toast('공유할 폴더 오류가 없습니다', 'info'); return; }
+  const list = state.folderIssues || [], fx = innerTftFixes();
+  if (!list.length && !fx.length) { toast('공유할 폴더 오류가 없습니다', 'info'); return; }
   const nSp = list.filter(x => x.issue_type === 'spacing').length;
   const nRv = list.length - nSp;
   const lines = ['[검사포장 폴더명 검토 요청]',
-    '총 ' + list.length + '건 (띄어쓰기 누락 ' + nSp + ' · 검토 필요 ' + nRv + ')',
+    '총 ' + (list.length + fx.length) + '건 (띄어쓰기 누락 ' + nSp + ' · 폴더명 TFT 오기입 ' + fx.length + ' · 검토 필요 ' + nRv + ')',
     ''];
   if (nSp > 0) {
     lines.push('▣ 띄어쓰기 누락 — TFT와 디텍터 사이에 공백만 넣으면 자동 인식됨:');
     list.filter(x => x.issue_type === 'spacing').forEach(x => lines.push('  • ' + x.folder_name));
+    lines.push('');
+  }
+  if (fx.length) {
+    lines.push('▣ 폴더명 TFT 오기입 — 폴더 안쪽 원본(장비가 만든 이름)의 TFT와 달라서 시스템은 원본 TFT로 연결해 둠.');
+    lines.push('   실물 TFT 라벨 확인 후 폴더명 수정 부탁. 바깥(폴더명) 값이 맞으면 회신:');
+    fx.forEach(x => lines.push('  • ' + x.det + ' (' + x.date + ') : 폴더명 ' + x.outer + ' → 원본 ' + x.inner));
     lines.push('');
   }
   if (nRv > 0) {
